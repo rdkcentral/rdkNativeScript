@@ -18,6 +18,10 @@
 **/
 
 #include <NativeJSRenderer.h>
+#if defined(ENABLE_JSRUNTIME_SERVER)
+#include <JSRuntimeServer.h>
+#endif
+
 #include <thread>
 #include <string>
 #include <iostream>
@@ -36,9 +40,15 @@ int main(int argc, char* argv[])
         std::cout << "pass the url to run" << std::endl;
 	return -1;
     }
-    std::string waylanddisplay("test");
+
+    bool runServer = false;
+
+    std::string waylanddisplay("");
+    bool enableJSDOM = false, enableWindow = false, enablePlayer = false, enableWebSocketEnhanced = false, enableFetch = false;
     int i = 1, appendindex=argc-1;
     std::vector<std::string> applications;
+    ModuleSettings moduleSettings;
+    bool consoleMode = false;
     while (i<argc)
     {	    
         if (strcmp(argv[i], "--display") == 0)
@@ -47,24 +57,82 @@ int main(int argc, char* argv[])
 	    i++;
             waylanddisplay = argv[i];
         }
+	else if (strcmp(argv[i], "--enableHttp") == 0)
+        {
+            moduleSettings.enableHttp = true;
+        }
+	else if (strcmp(argv[i], "--enableXHR") == 0)
+        {
+            moduleSettings.enableXHR = true;
+        }
+	else if (strcmp(argv[i], "--enableWebSocket") == 0)
+        {
+            moduleSettings.enableWebSocket = true;
+        }
+	else if (strcmp(argv[i], "--enableWebSocketEnhanced") == 0)
+        {
+            moduleSettings.enableWebSocketEnhanced = true;
+        }
+	else if (strcmp(argv[i], "--enableFetch") == 0)
+        {
+            moduleSettings.enableFetch = true;
+        }
+	else if (strcmp(argv[i], "--enableJSDOM") == 0)
+        {
+            moduleSettings.enableJSDOM = true;
+        }
+	else if (strcmp(argv[i], "--enableWindow") == 0)
+        {
+            moduleSettings.enableWindow = true;
+        }
+	else if (strcmp(argv[i], "--enablePlayer") == 0)
+        {
+            moduleSettings.enablePlayer = true;
+        }
+    else if (strcmp(argv[i], "--console") == 0)
+        {
+            consoleMode = true;
+        }
+#if defined(ENABLE_JSRUNTIME_SERVER)
+	else if (strcmp(argv[i], "--server") == 0)
+        {
+            runServer = true;
+        }
+#endif
         else
-	{
+        {
             applications.push_back(argv[i]);
         }
 	i++;
     }
+
     std::shared_ptr<NativeJSRenderer> renderer = std::make_shared<NativeJSRenderer>(waylanddisplay);
+    if (consoleMode) {
+        renderer->setEnvForConsoleMode(moduleSettings);
+    }
     if (!renderer)
     {
         std::cout << "unable to run application" << std::endl;
-	return -1;
+        return -1;
     }
-    for (int j=1; j<=appendindex; j++)
+
+#if defined(ENABLE_JSRUNTIME_SERVER)
+    if (runServer == true)
     {
-        std::string url = argv[j];
-        std::cout << "application url is " << url.c_str() << std::endl;
-        renderer->launchApplication(url);
+        JSRuntimeServer *server = JSRuntimeServer::getInstance();
+        server->initialize(WS_SERVER_PORT, renderer);
+        server->start();
+    }
+#endif
+
+    for (int j=0; j<applications.size(); j++)
+    {
+        std::string url = applications[j];
+        std::cout << "application url is " << (url.size() ? url.c_str() : "empty") << std::endl;
+        renderer->launchApplication(url, moduleSettings);
     } 
+
     renderer->run();
+
     return 0;
 }

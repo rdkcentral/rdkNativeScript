@@ -25,6 +25,7 @@
 #include <vector>
 #include <utility>
 #include <iostream>
+#include <signal.h>
 
 #include <JavaScriptCore/JavaScript.h>
 #include <JavaScriptContext.h>
@@ -36,16 +37,25 @@
 #include "rtWebSocketServer.h"
 #endif
 #include "JavaScriptWrapper.h"
+#ifdef ENABLE_JSRUNTIME_PLAYER
 #ifndef ENABLE_AAMP_JSBINDINGS
 #include <PlayerWrapper.h>
 #endif
+#if ENABLE_AAMP_JSBINDINGS_DYNAMIC
+#include <dlfcn.h>
+#endif
+#endif
 
 extern "C" JS_EXPORT void JSSynchronousGarbageCollectForDebugging(JSContextRef);
-#ifdef ENABLE_AAMP_JSBINDINGS
+#ifdef ENABLE_AAMP_JSBINDINGS_STATIC
 extern void AAMPPlayer_LoadJS(void* context);
 extern void AAMPPlayer_UnloadJS(void* context);
 #endif
-
+#ifdef ENABLE_AAMP_JSBINDINGS_DYNAMIC
+static AAMPJSBindings* gAAMPJSBindings = nullptr;
+#endif
+//BIG CHANGE
+extern void functionLoadModule(JSGlobalContextRef ref, JSObjectRef globalObjectRef, char* buffer, int len, char* name);
 JSContextGroupRef globalContextGroup()
 {
     static JSContextGroupRef gGroupRef = JSContextGroupCreate();
@@ -54,7 +64,7 @@ JSContextGroupRef globalContextGroup()
 
 JSGlobalContextRef gTopLevelContext = nullptr;
 
-JavaScriptContext::JavaScriptContext(bool embedThunderJS, bool embedWebBridge, bool enableWebSockerServer, std::string url, IJavaScriptEngine* jsEngine):JavaScriptContextBase(embedThunderJS, embedWebBridge, enableWebSockerServer, url, jsEngine)
+JavaScriptContext::JavaScriptContext(JavaScriptContextFeatures& features, std::string url, IJavaScriptEngine* jsEngine):JavaScriptContextBase(features, url, jsEngine)
 {
     rtLogInfo("%s", __FUNCTION__);
     mContextGroup = JSContextGroupRetain(globalContextGroup());
@@ -70,10 +80,28 @@ JavaScriptContext::~JavaScriptContext()
 {
     rtLogInfo("%s begin", __FUNCTION__);
   
+#ifdef ENABLE_JSRUNTIME_PLAYER
+if (mModuleSettings.enablePlayer)
+{
 #ifdef ENABLE_AAMP_JSBINDINGS
+#ifdef ENABLE_AAMP_JSBINDINGS_STATIC
     AAMPPlayer_UnloadJS(mContext);
 #else
+    if (gAAMPJSBindings->fnUnloadJS)
+    {
+        gAAMPJSBindings->fnUnloadJS(mContext);
+    }
+    if ((nullptr != gAAMPJSBindings) && (gTopLevelContext == mContext))
+    {
+        unloadAAMPJSBindingsLib();
+        delete gAAMPJSBindings;
+        gAAMPJSBindings = nullptr;
+    }
+#endif
+#else
     deinitializePlayer(mContext);
+#endif
+}
 #endif
     if (gTopLevelContext == mContext)
     {
@@ -88,6 +116,42 @@ JavaScriptContext::~JavaScriptContext()
     JSContextGroupRelease(mContextGroup);
     rtLogInfo("%s end", __FUNCTION__);
 }
+
+#ifdef ENABLE_JSRUNTIME_PLAYER
+#ifdef ENABLE_AAMP_JSBINDINGS_DYNAMIC
+void JavaScriptContext::loadAAMPJSBindingsLib()
+{
+    if (nullptr == gAAMPJSBindings->PlayerLibHandle)
+    {
+        static const char *aampJSBindingsLib = "libaampjsbindings.so";
+        void *aampJSBindingsLibHandle = dlopen(aampJSBindingsLib, RTLD_NOW | RTLD_GLOBAL);
+        if (aampJSBindingsLibHandle)
+        {
+            gAAMPJSBindings->PlayerLibHandle = aampJSBindingsLibHandle;
+
+            gAAMPJSBindings->fnLoadJS =
+                    reinterpret_cast<typeof AAMPJSBindings::fnLoadJS>(
+                            dlsym(aampJSBindingsLibHandle, "_Z17AAMPPlayer_LoadJSPv"));
+            gAAMPJSBindings->fnUnloadJS =
+                    reinterpret_cast<typeof AAMPJSBindings::fnUnloadJS>(
+                            dlsym(aampJSBindingsLibHandle, "AAMPPlayer_UnloadJS"));
+        }
+        else
+        {
+            std::cout << "failed to load " << aampJSBindingsLib << " and error is " << dlerror();
+        }
+    }
+}
+
+void JavaScriptContext::unloadAAMPJSBindingsLib()
+{
+    if (nullptr != gAAMPJSBindings->PlayerLibHandle)
+    {
+        dlclose(gAAMPJSBindings->PlayerLibHandle);
+    }
+}
+#endif
+#endif
 
 rtError JavaScriptContext::add(const char *name, rtValue const& val)
 {
@@ -153,7 +217,7 @@ bool JavaScriptContext::has(const char *name)
     return ret;
 }
 
-bool JavaScriptContext::evaluateScript(const char* script, const char* name, const char *args)
+bool JavaScriptContext::evaluateScript(const char* script, const char* name, const char *args, bool module)
 {
     if (nullptr != name)
     {	  
@@ -170,19 +234,33 @@ bool JavaScriptContext::evaluateScript(const char* script, const char* name, con
         JSGlobalContextSetName(mContext, fileStr);
     } 
   
-    JSValueRef result = JSEvaluateScript(mContext, codeStr, globalObj, fileStr, 0, &exception);
-    JSStringRelease(codeStr);
-    if (nullptr != fileStr)
-    {	  
-        JSStringRelease(fileStr);
-    }
-    if (exception)
+    //MADANA BIG CHANGE
+    if (module)
     {
-        JSStringRef exceptStr = JSValueToStringCopy(mContext, exception, nullptr);
-        rtString errorStr = jsToRtString(exceptStr);
-        JSStringRelease(exceptStr);
-        rtLogError("Failed to eval, error='%s'", errorStr.cString());
-        return false;
+          JSStringRef fileNameProperty = JSStringCreateWithUTF8CString("entryPointModuleName");
+          JSStringRef fileName = JSStringCreateWithUTF8CString(name);
+          JSValueRef value = JSValueMakeString(mContext, fileName);
+          JSObjectSetProperty(mContext, globalObj, fileNameProperty, value, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete, nullptr);
+          JSStringRelease(fileNameProperty);
+          JSStringRelease(fileName);
+        functionLoadModule(mContext, globalObj, (char *) script, strlen(script), (char*)name);
+    }
+    else
+    {	    
+        JSValueRef result = JSEvaluateScript(mContext, codeStr, globalObj, fileStr, 0, &exception);
+        JSStringRelease(codeStr);
+        if (nullptr != fileStr)
+        {	  
+            JSStringRelease(fileStr);
+        }
+        if (exception)
+        {
+            JSStringRef exceptStr = JSValueToStringCopy(mContext, exception, nullptr);
+            rtString errorStr = jsToRtString(exceptStr);
+            JSStringRelease(exceptStr);
+            rtLogError("Failed to eval, error='%s'", errorStr.cString());
+            return false;
+        }
     }
     return true;
 }
@@ -252,6 +330,7 @@ void JavaScriptContext::registerUtils()
     m_clearIntervalBinding = new rtFunctionCallback(rtClearTimeoutBinding, nullptr);
     m_thunderTokenBinding = new rtFunctionCallback(getThunderTokenBinding, this);
     m_httpGetBinding = new rtFunctionCallback(rtHttpGetBinding, nullptr);
+    m_readBinaryBinding = new rtFunctionCallback(rtReadBinaryBinding, nullptr);
     add("webSocket", m_webSocketBinding.getPtr());
 #ifdef WS_SERVER_ENABLED
     if (mEnableWebSockerServer)
@@ -265,23 +344,30 @@ void JavaScriptContext::registerUtils()
     add("clearInterval", m_clearIntervalBinding.getPtr());
     add("thunderToken", m_thunderTokenBinding.getPtr());
     add("httpGet", m_httpGetBinding.getPtr());
+    add("readBinary", m_readBinaryBinding.getPtr());
   
+#ifdef ENABLE_JSRUNTIME_PLAYER
+if (mModuleSettings.enablePlayer)
+{
 #ifdef ENABLE_AAMP_JSBINDINGS
+#ifdef ENABLE_AAMP_JSBINDINGS_STATIC
     AAMPPlayer_LoadJS(mContext);
+#else
+    if ((nullptr == gAAMPJSBindings) && (gTopLevelContext == mContext))
+    {
+        gAAMPJSBindings = new AAMPJSBindings();
+        loadAAMPJSBindingsLib();
+    }
+    if (gAAMPJSBindings->fnLoadJS)
+    {
+        gAAMPJSBindings->fnLoadJS(mContext);
+    }
+#endif
 #else
     initializePlayer(mContext);
 #endif
-    runFile("modules/window.js", nullptr);
-    runFile("modules/ws.js", nullptr);
-#ifdef WS_SERVER_ENABLED
-    if (mEnableWebSockerServer)
-    {
-        std::cout << "enabling websocket server " << std::endl;
-        runFile("modules/wsserver.js", nullptr);
-    }
+}
 #endif
-    runFile("modules/http.js", nullptr);
-    runFile("modules/https.js", nullptr);
     auto injectFun =
       [](JSContextRef jsContext, const char* name, JSObjectCallAsFunctionCallback callback) {
           JSContextRef globalCtx = JSContextGetGlobalContext(jsContext);
@@ -292,6 +378,45 @@ void JavaScriptContext::registerUtils()
           JSStringRelease(funcName);
       };
     injectFun(mContext, "require", requireCallback);
-    runFile("modules/xhr.js", nullptr);
-    runFile("modules/url.js", nullptr);
+    if (mModuleSettings.enableXHR)
+    {
+        runFile("modules/xhr.js", nullptr);
+    }
+    if (mModuleSettings.enableHttp)
+    {
+        runFile("modules/http.js", nullptr);
+        runFile("modules/https.js", nullptr);
+    }
+    if (mModuleSettings.enableFetch)
+    {
+        runFile("modules/node-fetch.js", nullptr/*, true*/);
+    }
+    runFile("modules/utils.js", nullptr);
+    if (mModuleSettings.enableWebSocketEnhanced)
+    {
+        runFile("modules/event.js", nullptr);
+        runFile("modules/wsenhanced.js", nullptr);
+    }
+    else if(mModuleSettings.enableWebSocket)
+    {
+        runFile("modules/ws.js", nullptr);
+    }
+#ifdef WS_SERVER_ENABLED
+    if (mEnableWebSockerServer)
+    {
+        std::cout << "enabling websocket server " << std::endl;
+        runFile("modules/wsserver.js", nullptr);
+    }
+#endif
+    if (mModuleSettings.enableWindow)
+    {
+        runFile("modules/window.js", nullptr/*, true*/);
+        runFile("modules/windowwrapper.js", nullptr/*, true*/);
+    }
+    else if (mModuleSettings.enableJSDOM)
+    {
+        runFile("modules/linkedjsdom.js", nullptr/*, true*/);
+        runFile("modules/linkedjsdomwrapper.js", nullptr/*, true*/);
+        runFile("modules/windowwrapper.js", nullptr/*, true*/);
+    }
 }

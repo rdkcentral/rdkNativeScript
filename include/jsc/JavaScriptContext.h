@@ -37,14 +37,29 @@
 #include <KeyInput.h>
 
 #include <JavaScriptCore/JavaScript.h>
+#ifdef ENABLE_JSRUNTIME_PLAYER
+#ifdef ENABLE_AAMP_JSBINDINGS_STATIC
 #include <PlayerWrapper.h>
+#endif
+#endif
+
+#ifdef ENABLE_JSRUNTIME_PLAYER
+#ifdef ENABLE_AAMP_JSBINDINGS
+struct AAMPJSBindings
+{
+    void *PlayerLibHandle = nullptr;
+    void (*fnLoadJS)(JSGlobalContextRef context) = nullptr;
+    void (*fnUnloadJS)(JSGlobalContextRef context) = nullptr;
+};
+#endif
+#endif
 
 extern "C" JS_EXPORT void JSSynchronousGarbageCollectForDebugging(JSContextRef);
 
 class JavaScriptContext: public JavaScriptContextBase
 {
   public:
-    JavaScriptContext(bool embedThunderJS, bool embedWebBridge, bool enableWebSockerServer, std::string url, IJavaScriptEngine* jsEngine);
+    JavaScriptContext(JavaScriptContextFeatures& features, std::string url, IJavaScriptEngine* jsEngine);
     virtual ~JavaScriptContext();
   
     rtValue get(const char *name);
@@ -53,10 +68,15 @@ class JavaScriptContext: public JavaScriptContextBase
     JSGlobalContextRef getContext() { return mContext; }
 
   private:
-    bool evaluateScript(const char *script, const char *name, const char *args = nullptr);
+    bool evaluateScript(const char *script, const char *name, const char *args = nullptr, bool module = false);
     void processKeyEvent(struct JavaScriptKeyDetails& details, bool keyPress);
     void registerUtils();
-  
+#ifdef ENABLE_JSRUNTIME_PLAYER
+#ifdef ENABLE_AAMP_JSBINDINGS_DYNAMIC
+    void loadAAMPJSBindingsLib();
+    void unloadAAMPJSBindingsLib();
+#endif
+#endif
     JSContextGroupRef mContextGroup;
     JSGlobalContextRef mContext;
     rtRef<rtJSCContextPrivate> mPriv;

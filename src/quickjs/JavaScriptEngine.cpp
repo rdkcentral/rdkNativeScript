@@ -35,7 +35,9 @@ JavaScriptEngine::~JavaScriptEngine()
 
 bool JavaScriptEngine::initialize()
 {
+#ifdef ENABLE_JSRUNTIME_PLAYER
     gst_init(0, NULL);
+#endif
     mRuntime = JS_NewRuntime();
     if (!gMainLoop && g_main_depth() == 0)
     {
@@ -46,7 +48,9 @@ bool JavaScriptEngine::initialize()
 
 bool JavaScriptEngine::terminate()
 {
+#ifdef ENABLE_JSRUNTIME_PLAYER
     gst_deinit();
+#endif
     JS_FreeRuntime(mRuntime);
     mContexts.clear();
     return true;

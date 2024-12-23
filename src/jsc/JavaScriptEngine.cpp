@@ -17,7 +17,6 @@
 * limitations under the License.
 **/
 
-#include <JavaScriptCore/JSExportMacros.h>
 #ifdef REMOTE_INSPECTOR_ENABLED
 #include <JavaScriptCore/RemoteInspectorServer.h>
 #endif
@@ -31,8 +30,8 @@
 
 #define USE(WTF_FEATURE) (defined USE_##WTF_FEATURE  && USE_##WTF_FEATURE)
 #define ENABLE(WTF_FEATURE) (defined ENABLE_##WTF_FEATURE  && ENABLE_##WTF_FEATURE)
-#define JS_EXPORT_PRIVATE 
 #include <JavaScriptCore/JavaScript.h>
+#include <JavaScriptCore/JSRemoteInspector.h>
 
 #include "JavaScriptEngine.h"
 #include "JavaScriptUtils.h"
@@ -49,6 +48,8 @@ static bool sDisableGstStart = false;
 extern "C" JS_EXPORT void JSSynchronousGarbageCollectForDebugging(JSContextRef);
 extern JSGlobalContextRef gTopLevelContext;
 extern std::thread::id gMainThreadId;
+
+#define NATIVEJS_GC_DEFAULT_INTERVAL 60000
 
 #ifdef REMOTE_INSPECTOR_ENABLED
 #ifdef __cplusplus
@@ -67,7 +68,7 @@ namespace WTF {
 void initializeMainThread();
 };
 
-JavaScriptEngine::JavaScriptEngine(): mInspectorEnabled(false)
+JavaScriptEngine::JavaScriptEngine(): mInspectorEnabled(false), mGarbageCollectionTag(0)
 {
 }
 
@@ -77,6 +78,7 @@ JavaScriptEngine::~JavaScriptEngine()
 
 bool JavaScriptEngine::initialize()
 {
+#ifdef ENABLE_JSRUNTIME_PLAYER
     char* disableGstStartValue = getenv("NATIVEJS_GST_START_DISABLE");
     if (disableGstStartValue)
     {
@@ -88,6 +90,8 @@ bool JavaScriptEngine::initialize()
     {	    
       gst_init(0, nullptr);
     }
+#endif
+  setenv("JSC_useBigInt", "1", 1);
   WTF::initializeMainThread();
   if (!gMainLoop && g_main_depth() == 0) {
     gMainLoop = g_main_loop_new (nullptr, false);
@@ -124,15 +128,34 @@ bool JavaScriptEngine::initialize()
   }
 #endif
   gMainThreadId = std::this_thread::get_id();
+  JavaScriptEngine* engine = this;
+  char* garbageCollectInterval = getenv("NATIVEJS_GC_INTERVAL");
+  double garbageCollectIntervalValue = NATIVEJS_GC_DEFAULT_INTERVAL;
+  if (garbageCollectInterval)
+  {
+      garbageCollectIntervalValue = atof(garbageCollectInterval);
+      std::cout << "garbage collection interval value " << garbageCollectIntervalValue << std::endl;
+  }
+  mGarbageCollectionTag = installTimeout(garbageCollectIntervalValue, true,
+    [engine] () mutable {
+      engine->collectGarbage();
+      printf("Collecting Garbage !!!!!!!!!!!!! \n");
+      fflush(stdout);
+      return 0;
+    });
+  JSRemoteInspectorSetLogToSystemConsole(true);
   return true;
 }
 
 bool JavaScriptEngine::terminate()
 {
+#ifdef ENABLE_JSRUNTIME_PLAYER
   if (!sDisableGstStart)
   {	    
       gst_deinit();
   }
+#endif
+  clearTimeout(mGarbageCollectionTag);
   return true;
 }
 

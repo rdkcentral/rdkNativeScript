@@ -45,5 +45,6 @@ class JavaScriptEngine:public IJavaScriptEngine
 
   private:
     bool mInspectorEnabled;
+    uint32_t mGarbageCollectionTag;
 };
 #endif

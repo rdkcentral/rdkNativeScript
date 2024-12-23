@@ -36,13 +36,13 @@
 class JavaScriptContext: public JavaScriptContextBase
 {
   public:
-    JavaScriptContext(bool embedThunderJS, bool embedWebBridge, bool enableWebSockerServer, std::string url, IJavaScriptEngine* jsEngine);
+    JavaScriptContext(JavaScriptContextFeatures& features, std::string url, IJavaScriptEngine* jsEngine);
     virtual ~JavaScriptContext();
     JSContext* getContext() { return mContext; }
     void run();
 
   private:
-    virtual bool evaluateScript(const char *script, const char *name, const char *args = nullptr);
+    virtual bool evaluateScript(const char* script, const char* name, const char *args, bool module=false);
     virtual void processKeyEvent(struct JavaScriptKeyDetails& details, bool keyPress);
     JSContext* mContext;  
     JSRuntime *mRuntime;

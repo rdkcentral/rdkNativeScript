@@ -30,23 +30,34 @@
 
 #include <IJavaScriptContext.h>
 #include <IJavaScriptEngine.h>
+#include <ModuleSettings.h>
+
 //#include <JavaScriptCore/JavaScript.h>
 
 //extern "C" JS_EXPORT void JSSynchronousGarbageCollectForDebugging(JSContextRef);
 
+struct JavaScriptContextFeatures
+{
+    JavaScriptContextFeatures(bool embedThunderJS, bool embedWebBridge, bool enableWebSockerServer, ModuleSettings& moduleSettings);
+    bool mEmbedThunderJS;
+    bool mEmbedWebBridge;
+    bool mEnableWebSockerServer;
+    ModuleSettings mModuleSettings;
+};
+
 class JavaScriptContextBase:public IJavaScriptContext, public JavaScriptKeyListener
 {
   public:
-    JavaScriptContextBase(bool embdedThunderJS, bool embedWebBridge, bool enableWebSockerServer, std::string url, IJavaScriptEngine* jsEngine);
+    JavaScriptContextBase(JavaScriptContextFeatures& features, std::string url, IJavaScriptEngine* jsEngine);
     virtual ~JavaScriptContextBase();
-    virtual bool runScript(const char *script, std::string name="", const char *args = nullptr, bool isApplication=false);
+    virtual bool runScript(const char *script, bool isModule=true, std::string name="", const char *args = nullptr, bool isApplication=false);
     virtual bool runFile(const char *file, const char* args, bool isApplication=false);
     std::string getUrl();
     virtual void onKeyPress(struct JavaScriptKeyDetails& details);
     virtual void onKeyRelease(struct JavaScriptKeyDetails& details);
   protected:
     virtual void processKeyEvent(struct JavaScriptKeyDetails& details, bool keyPress) = 0;
-    virtual bool evaluateScript(const char* script, const char* name, const char *args) = 0;
+    virtual bool evaluateScript(const char* script, const char* name, const char *args, bool module=false) = 0;
     void registerCommonUtils();
     std::string readFile(const char *file);
     static std::string sThunderJSCode;
@@ -56,5 +67,6 @@ class JavaScriptContextBase:public IJavaScriptContext, public JavaScriptKeyListe
     bool mEmbedThunderJS;
     bool mEmbedWebBridge;
     bool mEnableWebSockerServer;
+    ModuleSettings mModuleSettings;
 };
 #endif
