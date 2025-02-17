@@ -26,3 +26,83 @@ Licensed under the MIT License
 
 whatwg-url is Copyright (c) Sebastian May
 Licensed under the MIT License
+
+event.js is credited:
+Copyright - Node.js Foundation and other contributors
+Licensed under the MIT License
+
+linkedjsdom.js, linkedjsdom_minified.js and likedjsdomwrapper.js
+Copyright (c) 2010 Elijah Insua
+Licensed under the MIT License
+
+node-fetch.js is credited:
+Copyright (c) 2016 - 2020 Node Fetch Team
+Licensed under the MIT License
+
+window.js is credited:
+Copyright (c) 2016 - 2020 Node Fetch Team
+Licensed under the MIT License
+
+Copyright 2010 LearnBoost <dev@learnboost.com>
+Copyright 2011 Mark Cavage <mcavage@gmail.com>
+Copyright 2015 Joyent, Inc.
+Copyright (c) 2009 Thomas Robinson <280north.com>
+Copyright 2010 LearnBoost <dev@learnboost.com>
+Copyright 2010-2012 Mikeal Rogers
+Licensed under the Apache License
+
+OpenBSD blowfish.c and bcrypt_pbkdf.c
+Credit for the actual porting work goes to: Devi Mandiri <me@devi.web.id>
+
+Blowfish block cipher for OpenBSD
+Copyright 1997 Niels Provos <provos@physnet.uni-hamburg.de>
+
+The bcrypt_pbkdf portions are under the following license:
+Copyright (c) 2013 Ted Unangst <tedu@openbsd.org>
+
+Performance improvements (Javascript-specific):
+Copyright 2016, Joyent Inc Author: Alex Wilson <alex.wilson@joyent.com>
+
+An arbitrary-precision Decimal type for JavaScript.
+Copyright (c) 2022 Michael Mclaughlin <M8ch88l@gmail.com>
+Licensed under the MIT License
+
+BSD-3-Clause
+Copyright 2011 Mozilla Foundation and contributors
+Licensed under the New BSD license
+
+Copyright (C) 2012-2013 Yusuke Suzuki <utatane.tea@gmail.com>
+Copyright (C) 2012 Ariya Hidayat <ariya.hidayat@gmail.com>
+Copyright (C) 2013 Yusuke Suzuki <utatane.tea@gmail.com>
+Copyright (C) 2014 Ivan Nikulin <ifaaan@gmail.com>
+
+Basic JavaScript BN library - subset useful for RSA encryption
+Copyright (c) 2005  Tom Wu
+
+Copyright (c) 2015, Salesforce.com, Inc.
+
+mime-db, mime-types, 
+Copyright(c) 2014 Jonathan Ong
+Copyright(c) 2015-2022 Douglas Christopher Wilson
+Licensed under the MIT License
+
+nwsapi.js - Fast CSS Selectors API Engine
+Copyright (C) 2007-2023 Diego Perini <diego.perini@gmail.com>
+Licensed under the MIT License
+
+Path module from nodejs
+Copyright Joyent, Inc.
+Licensed under the MIT License
+
+URI parsing/validating/resolving library for JavaScript
+Copyright 2011 Gary Court. All rights reserved.
+Licensed under the MIT License
+
+Character classes and associated utilities for the 5th edition of XML 1.0.
+Copyright Louis-Dominique Dubeau
+Licensed under the MIT License
+
+The default style sheet used to render HTML
+Copyright (C) 2000 Lars Knoll (knoll@kde.org)
+Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Apple Inc. All rights reserved.
+Licensed under the LGPL License
