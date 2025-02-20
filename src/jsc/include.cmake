@@ -21,7 +21,7 @@ set (JSRUNTIME_ENGINE_FILES
         ${JSRUNTIME_SOURCE_DIRECTORY}/JavaScriptUtils.cpp
         ${JSRUNTIME_SOURCE_DIRECTORY}/JavaScriptWrapper.cpp
         ${JSRUNTIME_SOURCE_DIRECTORY}/rtScriptJSCPrivate.cpp
-        ${JSRUNTIME_SOURCE_DIRECTORY}/jsc_lib.cpp
+        ${JSRUNTIME_SOURCE_DIRECTORY}/jsc_lib/jsc_lib.cpp
         ${JSRUNTIME_COMMON_SOURCE_DIRECTORY}/rtWebSocket.cpp
 )
 
