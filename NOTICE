@@ -7,6 +7,12 @@ listed below. Your use of this material within the component is also subject to 
 conditions of these licenses. The LICENSE file contains the text of all the licenses which apply
 within this component.
 
+The extra_modules directory tree within this component contains some software which is
+Copyright (C) 2000 Lars Knoll (knoll@kde.org) and Copyright (C) 2003, 2004, 2005, 2006,
+2007, 2008, 2009, 2010, 2011 Apple Inc. All rights reserved. And licensed to you under the LGPL License.  
+The extra_modules directory contains its own license file, called LICENSE, which describes the licensing of the
+software under the extra_modules directory.
+
 Based on pxCore, Copyright 2015-2018 John Robinson
 Licensed under the Apache License, Version 2.0
 
@@ -27,82 +33,105 @@ Licensed under the MIT License
 whatwg-url is Copyright (c) Sebastian May
 Licensed under the MIT License
 
-event.js is credited:
+event.js is credited to:
 Copyright - Node.js Foundation and other contributors
 Licensed under the MIT License
 
-linkedjsdom.js, linkedjsdom_minified.js and likedjsdomwrapper.js
+linkedjsdom.js, linkedjsdom_minified.js and likedjsdomwrapper.js credited to:
 Copyright (c) 2010 Elijah Insua
 Licensed under the MIT License
 
-node-fetch.js is credited:
+node-fetch.js is credited to:
 Copyright (c) 2016 - 2020 Node Fetch Team
 Licensed under the MIT License
 
-window.js is credited:
+windows.js is concatetion of multiple files and components. Credited to multiple teams below:
 Copyright (c) 2016 - 2020 Node Fetch Team
-Licensed under the MIT License
-
-Copyright 2010 LearnBoost <dev@learnboost.com>
-Copyright 2011 Mark Cavage <mcavage@gmail.com>
-Copyright 2015 Joyent, Inc.
-Copyright (c) 2009 Thomas Robinson <280north.com>
-Copyright 2010 LearnBoost <dev@learnboost.com>
 Copyright 2010-2012 Mikeal Rogers
+Licensed under the MIT License
+
+lib/assert.js component credited to:
+Originally from narwhal.js (http://narwhaljs.org)
+Copyright (c) 2009 Thomas Robinson <280north.com>
+Licensed under the MIT License
+
+The buffer module from node.js, for the browser credited to:
+Feross Aboukhadijeh <feross@feross.org>
+Licensed under the MIT License
+
+Learnboost credited to:
+Copyright 2010 LearnBoost <dev@learnboost.com>
 Licensed under the Apache License
 
-OpenBSD blowfish.c and bcrypt_pbkdf.c
-Credit for the actual porting work goes to: Devi Mandiri <me@devi.web.id>
-
-Blowfish block cipher for OpenBSD
-Copyright 1997 Niels Provos <provos@physnet.uni-hamburg.de>
-
-The bcrypt_pbkdf portions are under the following license:
-Copyright (c) 2013 Ted Unangst <tedu@openbsd.org>
-
-Performance improvements (Javascript-specific):
-Copyright 2016, Joyent Inc Author: Alex Wilson <alex.wilson@joyent.com>
-
-An arbitrary-precision Decimal type for JavaScript.
-Copyright (c) 2022 Michael Mclaughlin <M8ch88l@gmail.com>
+OpenBSD blowfish.c and bcrypt_pbkdf.c credited to:
+Devi Mandiri <me@devi.web.id>
 Licensed under the MIT License
 
-BSD-3-Clause
-Copyright 2011 Mozilla Foundation and contributors
-Licensed under the New BSD license
+Blowfish block cipher for OpenBSD credited to:
+Copyright 1997 Niels Provos <provos@physnet.uni-hamburg.de>
+Implementation advice by David Mazieres <dm@lcs.mit.edu>
+Licensed under the MIT License
 
+The bcrypt_pbkdf portions are credited to:
+Copyright (c) 2013 Ted Unangst <tedu@openbsd.org>
+Licensed under the MIT License
+
+Performance improvements (Javascript-specific) credited to:
+Copyright 2016, Joyent Inc Author: Alex Wilson <alex.wilson@joyent.com>
+Licensed under the MIT License
+
+Base 64 VLQ implementation in Closure Compiler credited to:
+Copyright 2011 Mozilla Foundation and contributors
+Copyright 2011 The Closure Compiler Authors
+Licensed under the MIT License
+
+Below components are credited to:
+Copyright 2011 Mozilla Foundation and contributors under the New BSD license / the MIT License
+A. Encode an integer in the range of 0 to 63 to a single base 64 digit
+B. Recursive implementation of binary search.
+C. Determine whether mappingB is after mappingA with respect to generated position.
+D. Swap the elements indexed by x and y in the array ary
+E. The version of the source mapping spec that we are consuming.
+F. SourceMapGenerator
+
+LLVM libc++ upper_bound / lower_bound credited to:
 Copyright (C) 2012-2013 Yusuke Suzuki <utatane.tea@gmail.com>
 Copyright (C) 2012 Ariya Hidayat <ariya.hidayat@gmail.com>
-Copyright (C) 2013 Yusuke Suzuki <utatane.tea@gmail.com>
-Copyright (C) 2014 Ivan Nikulin <ifaaan@gmail.com>
+Licensed under the MIT License
 
-Basic JavaScript BN library - subset useful for RSA encryption
+ieee754 credited to:
+Copyright Feross Aboukhadijeh <https://feross.org/opensource>
+Licensed under the MIT License
+
+Basic JavaScript BN library - subset useful for RSA encryption credited to:
 Copyright (c) 2005  Tom Wu
+Licensed under the MIT License
 
-Copyright (c) 2015, Salesforce.com, Inc.
+JSONSchema Validator - Validates JavaScript objects using JSON Schemas credited to:
+Author Dave Romero and Phoenix Zerin
+Licensed under the MIT License and BSD License
 
-mime-db, mime-types, 
+mime-db and mime-types credited to:
 Copyright(c) 2014 Jonathan Ong
 Copyright(c) 2015-2022 Douglas Christopher Wilson
 Licensed under the MIT License
 
-nwsapi.js - Fast CSS Selectors API Engine
+nwsapi.js - Fast CSS Selectors API Engine credited to:
 Copyright (C) 2007-2023 Diego Perini <diego.perini@gmail.com>
 Licensed under the MIT License
 
-Path module from nodejs
+Path module from nodejs credited to:
 Copyright Joyent, Inc.
 Licensed under the MIT License
 
-URI parsing/validating/resolving library for JavaScript
+URI parsing/validating/resolving library for JavaScript credited to:
 Copyright 2011 Gary Court. All rights reserved.
 Licensed under the MIT License
 
-Character classes and associated utilities for the 5th edition of XML 1.0.
+Character classes and associated utilities for the 5th edition of XML 1.0 credited to:
 Copyright Louis-Dominique Dubeau
 Licensed under the MIT License
 
-The default style sheet used to render HTML
-Copyright (C) 2000 Lars Knoll (knoll@kde.org)
-Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Apple Inc. All rights reserved.
-Licensed under the LGPL License
+An arbitrary-precision Decimal type for JavaScript credited to:
+Copyright (c) 2022 Michael Mclaughlin <M8ch88l@gmail.com>
+Licensed under the MIT License
