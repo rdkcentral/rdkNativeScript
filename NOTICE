@@ -32,14 +32,6 @@ Licensed under the MIT License
 whatwg-url is Copyright (c) Sebastian May
 Licensed under the MIT License
 
-event.js is credited to:
-Copyright - Node.js Foundation and other contributors
-Licensed under the MIT License
-
-linkedjsdom.js, linkedjsdom_minified.js and likedjsdomwrapper.js credited to:
-Copyright (c) 2010 Elijah Insua
-Licensed under the MIT License
-
 XRegExp module in linkedjsdom.js credited to:
 Copyright (c) 2007-2020 Steven Levithan
 Licensed under the MIT License
@@ -47,6 +39,7 @@ Licensed under the MIT License
 node-fetch.js is credited to:
 Copyright (c) 2016 - 2020 Node Fetch Team
 Copyright Joyent, Inc. and other Node contributors.
+Modifed by RDK Management to remove unnecessary parts and webpack
 Licensed under the MIT License
 
 wsenhanced.js is credited to:
@@ -93,6 +86,6 @@ event.js is credited to:
 Copyright Joyent, Inc. and other Node contributors
 Licensed under the MIT License
 
-linkedjsdom.js is credited to:
+linkedjsdom.js and linkedjsdom_minified.js credited to:
 Copyright (c) 2021, Andrea Giammarchi, @WebReflection
 Licensed under the MIT License
