@@ -84,3 +84,15 @@ Licensed under the MIT License
 urlsearchparams.js is credited to:
 Copyright (C) 2015-2017 Andrea Giammarchi - @WebReflection
 Licensed under the MIT License
+
+punycode.js is credited to:
+Copyright Mathias Bynens <https://mathiasbynens.be/>
+Licensed under the MIT License
+
+event.js is credited to:
+Copyright Joyent, Inc. and other Node contributors
+Licensed under the MIT License
+
+linkedjsdom.js is credited to:
+Copyright (c) 2021, Andrea Giammarchi, @WebReflection
+Licensed under the MIT License

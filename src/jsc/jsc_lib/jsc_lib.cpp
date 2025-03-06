@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2024 RDK Management.
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation;
@@ -186,7 +187,7 @@ struct MemoryStruct
     size_t readSize;
 };
 
-static size_t HeaderCallback(void *contents, size_t size, size_t nmemb, void *userp)
+static size_t CallbackHeader(void *contents, size_t size, size_t nmemb, void *userp)
 {
   size_t downloadSize = size * nmemb;
   struct MemoryStruct *mem = (struct MemoryStruct *)userp;
@@ -204,7 +205,7 @@ static size_t HeaderCallback(void *contents, size_t size, size_t nmemb, void *us
   return downloadSize;
 }
 
-static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
+static size_t CallbackOnMemoryWrite(void *contents, size_t size, size_t nmemb, void *userp)
 {
   size_t downloadSize = size * nmemb;
   struct MemoryStruct *mem = (struct MemoryStruct *)userp;
@@ -232,9 +233,9 @@ bool downloadFile(std::string& url, MemoryStruct& chunk)
     {
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
-        curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCallback);
+        curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, CallbackHeader);
         curl_easy_setopt(curl, CURLOPT_HEADERDATA, (void *)&chunk);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CallbackOnMemoryWrite);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
         curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
         curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
@@ -311,6 +312,13 @@ static inline String stringFromUTF(const Vector& utf8)
 {
     return String::fromUTF8WithLatin1Fallback(utf8.data(), utf8.size());
 }
+
+/*
+Copyright (C) 1999-2000 Harri Porten ([porten@kde.org](mailto:porten@kde.org))
+Copyright (C) 2004-2020 Apple Inc. All rights reserved.
+Copyright (C) 2006 Bjoern Graf ([bjoern.graf@gmail.com](mailto:bjoern.graf@gmail.com))
+Licensed under the LGPL License, Version 2.0
+*/
 
 static UChar pathSeparator()
 {

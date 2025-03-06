@@ -1,4 +1,9 @@
 /**
+*
+* Modifications by RDK Management
+* Changes: Webpacking - Removing unnecessary parts and shrinking the code
+* load application faster.
+* 
 * If not stated otherwise in this file or this component's LICENSE
 * file the following copyright and licenses apply:
 *
