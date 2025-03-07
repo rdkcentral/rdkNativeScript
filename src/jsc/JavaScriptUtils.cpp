@@ -20,7 +20,7 @@
 #include "JavaScriptUtils.h"
 #include "JavaScriptWrapper.h"
 #include "rtLog.h"
-
+#include "jsc_lib.h"
 #include <unistd.h>
 #include <stdio.h>
 #include <errno.h>

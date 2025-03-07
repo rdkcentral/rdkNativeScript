@@ -12,7 +12,7 @@ console.log("hello world");
 
 player.js:
 var player = new AAMPMediaPlayer();
-var url = "https://cpetestutility.stb.r53.xcal.tv/VideoTestStream/main.mpd";
+var url = <"use some video url">;
 var t = player.load(url, false);
 setTimeout(function() {
 	player.play();
@@ -20,7 +20,7 @@ setTimeout(function() {
 
 playerq.js:
 var player = new AAMPMediaPlayer();
-var url = "https://cpetestutility.stb.r53.xcal.tv/VideoTestStream/main.mpd";
+var url = <"use some video url">;;
 var t = player.load(url);
 
 #### Hello world example:

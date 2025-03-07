@@ -17,6 +17,7 @@
 * limitations under the License.
 **/
 
+#include "jsc_lib.h"
 #include "JavaScriptEngine.h"
 #include "JavaScriptWrapper.h"
 #include <cassert>

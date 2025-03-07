@@ -17,7 +17,7 @@
 * limitations under the License.
 **/
 #include <JSRuntimeClient.h>
-
+#include "jsc_lib.h"
 #include <iostream>
 #include <sstream>
 #include <thread>

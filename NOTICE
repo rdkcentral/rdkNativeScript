@@ -18,18 +18,17 @@ Licensed under the Apache License, Version 2.0
 Copyright 2021 Metrological
 Licensed under the Apache License, Version 2.0
 
-xhr.js is credited:
-author Dan DeFelippi <dan@driverdan.com
+xhr.js is credited to:
+author Dan DeFelippi <dan@driverdan.com>
 contributor David Ellis <d.f.ellis@ieee.org>
 Licensed under the MIT License
 
-punycode.js is Copyright Mathias Bynens https://mathiasbynens.be/
+TextEncoder.js is credited to:
+Copyright (c) 2016 Till Affeldt
 Licensed under the MIT License
 
-TextEncoder.js is Copyright (c) 2016 Till Affeldt
-Licensed under the MIT License
-
-whatwg-url is Copyright (c) Sebastian May
+whatwg-url, infra.js, percent-encoding.js, url-state-machine.js, URL.js, urlencoded.js, URLSearchParams.js credited to:
+Copyright (c) Sebastian May
 Licensed under the MIT License
 
 XRegExp module in linkedjsdom.js credited to:
@@ -50,32 +49,8 @@ encoding.js is credited to:
 Copyright (c) 2012-2014 Andris Reinman
 Licensed under the MIT License
 
-infra.js is credited to:
-Copyright (c) 2014 Mario Gutierrez <mario@mgutz.com>
-Licensed under the MIT License
-
-percent-encoding.js is credited to: 
-Copyright (c) 2016-2024 The Stdlib Authors.
-Licensed under the MIT License
-
 TextEncoder.js is credited to:
 Copyright (c) 2016 Till Affeldt
-Licensed under the MIT License
-
-url-state-machine.js is credited to:
-Copyright (c) 2012, 2013, 2014, 2015, 2016, 2017, 2018, Jake Gordon and contributors
-Licensed under the MIT License
-
-url.js is credited to:
-Copyright 2014 Joyent, Inc. and other Node contributors.
-Licensed under the MIT License
-
-urlencoded.js is credited to:
-Copyright (c) Bumblehead <chris@bumblehead.com>
-Licensed under the MIT License
-
-urlsearchparams.js is credited to:
-Copyright (C) 2015-2017 Andrea Giammarchi - @WebReflection
 Licensed under the MIT License
 
 punycode.js is credited to:
