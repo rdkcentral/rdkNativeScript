@@ -28,16 +28,20 @@
 std::string JavaScriptContextBase::sThunderJSCode = "";
 std::string JavaScriptContextBase::sWebBridgeCode = "";
 
-JavaScriptContextBase::JavaScriptContextBase(bool embedThunderJS, bool embedWebBridge, bool enableWebSockerServer, std::string url, IJavaScriptEngine* jsEngine): mApplicationUrl(url), mEngine(jsEngine), mEmbedThunderJS(embedThunderJS), mEmbedWebBridge(embedWebBridge), mEnableWebSockerServer(enableWebSockerServer)
+JavaScriptContextFeatures::JavaScriptContextFeatures(bool embedThunderJS, bool embedWebBridge, bool enableWebSockerServer, ModuleSettings& moduleSettings):mEmbedThunderJS(embedThunderJS), mEmbedWebBridge(embedWebBridge), mEnableWebSockerServer(enableWebSockerServer), mModuleSettings(moduleSettings)
 {
-    if (embedThunderJS)
+}
+
+JavaScriptContextBase::JavaScriptContextBase(JavaScriptContextFeatures& features, std::string url, IJavaScriptEngine* jsEngine): mApplicationUrl(url), mEngine(jsEngine), mEmbedThunderJS(features.mEmbedThunderJS), mEmbedWebBridge(features.mEmbedWebBridge), mEnableWebSockerServer(features.mEnableWebSockerServer), mModuleSettings(features.mModuleSettings)
+{
+    if (mEmbedThunderJS)
     {
         if (sThunderJSCode.empty())
         {		
             sThunderJSCode = readFile("modules/thunderJS.js");
         }
     }
-    if (embedWebBridge)
+    if (mEmbedWebBridge)
     {
         if (sWebBridgeCode.empty())
         {		
@@ -89,16 +93,23 @@ bool JavaScriptContextBase::runFile(const char *file, const char* args, bool isA
     scriptToRun = readFile(file);
     if(scriptToRun.empty())
     {
-        printf(" %s  ... load error / not found. %s",__PRETTY_FUNCTION__, file);
-        fflush(stdout);
-        return false;
+        std::string fileName("/home/root/");
+	fileName.append(file);
+        scriptToRun = readFile(fileName.c_str());
+        printf("checking in [%s] \n", fileName.c_str());
+        if(scriptToRun.empty())
+        {
+            printf(" %s  ... load error / not found. %s",__PRETTY_FUNCTION__, file);
+            fflush(stdout);
+            return false;
+        }
     }
-    return evaluateScript(scriptToRun.c_str(), isApplication?file:nullptr, args);
+    return evaluateScript(scriptToRun.c_str(), isApplication?file:nullptr, args, isApplication);
 }
 
-bool JavaScriptContextBase::runScript(const char *script, std::string name, const char *args, bool isApplication)
+bool JavaScriptContextBase::runScript(const char *script, bool isModule, std::string name, const char *args, bool isApplication)
 {
-    return evaluateScript(script, isApplication?name.c_str():nullptr, args);
+    return evaluateScript(script, isApplication?name.c_str():nullptr, args, isModule);
 }
 
 std::string JavaScriptContextBase::getUrl()

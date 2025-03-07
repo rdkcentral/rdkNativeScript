@@ -1,0 +1,6 @@
+Files in this directory are licensed under the GNU Library General Public License, Version 2.0 as per COPYING.LGPL.
+
+jsc_lib.cpp is:
+Copyright (C) 1999-2000 Harri Porten ([porten@kde.org](mailto:porten@kde.org))
+Copyright (C) 2004-2022 Apple Inc. All rights reserved.
+Copyright (C) 2006 Bjoern Graf ([bjoern.graf@gmail.com](mailto:bjoern.graf@gmail.com))

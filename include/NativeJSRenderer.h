@@ -22,8 +22,14 @@
 #include <vector>
 #include <map>
 #include <mutex>
+#include <deque>
+#include <atomic>
+#include <memory>
 #include <IJavaScriptEngine.h>
 #include <IJavaScriptContext.h>
+#include <ModuleSettings.h>
+#include <condition_variable>
+
 namespace JsRuntime {
 
         struct MemoryStruct
@@ -60,6 +66,16 @@ namespace JsRuntime {
             size_t readSize;
         };
 
+        struct ConsoleState {
+          std::atomic_bool isProcessing = false;
+          std::condition_variable isProcessing_cv{};
+          std::mutex isProcessing_cv_m{};
+          std::deque<std::string> codeToExecute{};
+          std::mutex inputMutex{};
+          IJavaScriptContext* consoleContext = nullptr;
+          ModuleSettings moduleSettings{};
+        };
+
         class NativeJSRenderer
 	{
             public:
@@ -68,23 +84,29 @@ namespace JsRuntime {
                 bool initialize();
                 bool terminate();
                 void run();
-                void launchApplication(std::string url);
+                void launchApplication(std::string url, ModuleSettings& moduleSettings);
                 void terminateApplication(std::string url);
+                void setEnvForConsoleMode(ModuleSettings& moduleSettings);
 		std::vector<std::string> getApplications();
 
             private:
-                void loadApplication(std::string url);
+                void loadApplication(std::string url, ModuleSettings& moduleSettings);
                 void unloadApplication(std::string url);
                 bool downloadFile(std::string& url, MemoryStruct& chunk);
+                void processDevConsoleRequests();
+                void runDeveloperConsole(ModuleSettings moduleSettings);
                 static size_t write_data(void *ptr, size_t size, size_t nmemb, FILE *stream);
                 IJavaScriptEngine* mEngine;
 		std::map<std::string, IJavaScriptContext*> mContextMap;
                 bool mRunning;
                 std::string mTestFileName;
+                std::unique_ptr<ConsoleState> mConsoleState;
+                bool mEnableTestFileDOMSupport;
                 bool mEmbedThunderJS;
                 bool mEmbedRdkWebBridge;
                 bool mEnableWebSocketServer;
                 bool mEssosInitialized;
+                bool mConsoleMode;
                 std::mutex mUserMutex;
 	};
 }

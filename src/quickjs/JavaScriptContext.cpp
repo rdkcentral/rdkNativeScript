@@ -48,7 +48,7 @@ static JSContext *JS_NewCustomContext(JSRuntime *rt)
     return ctx;
 }
 
-JavaScriptContext::JavaScriptContext(bool embedThunderJS, bool embedWebBridge, bool enableWebSockerServer, std::string url, IJavaScriptEngine* jsEngine):JavaScriptContextBase(embedThunderJS, embedWebBridge, enableWebSockerServer, url, jsEngine)
+JavaScriptContext::JavaScriptContext(JavaScriptContextFeatures& features, std::string url, IJavaScriptEngine* jsEngine):JavaScriptContextBase(features, url, jsEngine)
 {
     mRuntime = ((JavaScriptEngine*)jsEngine)->getRuntime();
     js_std_set_worker_new_context_func(JS_NewCustomContext);
@@ -59,6 +59,7 @@ JavaScriptContext::JavaScriptContext(bool embedThunderJS, bool embedWebBridge, b
     #ifdef ENABLE_JSRUNTIME_THUNDER_SECURITYAGENT
     registerThunderTokenInterface(mContext, this);
     #endif
+    registerRequireInterface(mContext, this);
     js_std_init_handlers(mRuntime);
     JS_SetModuleLoaderFunc(mRuntime, NULL, js_module_loader, NULL);
     js_std_add_helpers(mContext, 0, nullptr);
@@ -67,10 +68,28 @@ JavaScriptContext::JavaScriptContext(bool embedThunderJS, bool embedWebBridge, b
         "globalThis.std = std;\n"
         "globalThis.os = os;\n";
     JSValue retValue = JS_Eval(mContext, str, strlen(str), "<input>", JS_EVAL_TYPE_MODULE);
-    runFile("modules/init.js", nullptr);
-    runFile("modules/timers.js", nullptr);
-    runFile("modules/ws.js", nullptr);
-    runFile("modules/window.js", nullptr);
+    //runFile("modules/init.js", nullptr);
+    //runFile("modules/timers.js", nullptr);
+    runFile("modules/utils.js", nullptr);
+    if (mModuleSettings.enableXHR)
+    {
+        runFile("modules/xhr.js", nullptr);
+    }
+    if(mModuleSettings.enableWebSocket)
+    {
+        runFile("modules/ws.js", nullptr);
+    }
+    if (mModuleSettings.enableWindow)
+    {
+        runFile("modules/window.js", nullptr/*, true*/);
+        runFile("modules/windowwrapper.js", nullptr/*, true*/);
+    }
+    if (mModuleSettings.enableJSDOM)
+    {
+        runFile("modules/linkedjsdom.js", nullptr/*, true*/);
+        runFile("modules/linkedjsdomwrapper.js", nullptr/*, true*/);
+        runFile("modules/windowwrapper.js", nullptr/*, true*/);
+    }
     registerCommonUtils();
     JavaScriptEngine* engine = (JavaScriptEngine*)mEngine;
     engine->addContext(this);
@@ -85,7 +104,7 @@ JavaScriptContext::~JavaScriptContext()
     JS_FreeContext(mContext);
 }
 
-bool JavaScriptContext::evaluateScript(const char* script, const char* name, const char *args)
+bool JavaScriptContext::evaluateScript(const char* script, const char* name, const char *args, bool module)
 {
     if (nullptr != name)
     {	  

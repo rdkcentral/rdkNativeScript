@@ -17,34 +17,22 @@
 * limitations under the License.
 **/
 
-#ifndef JAVASCRIPTENGINE_H
-#define JAVASCRIPTENGINE_H
-
-#include <unistd.h>
-#include <errno.h>
-
-//#include <algorithm>
+#ifndef MODULESETTINGS_H
+#define MODULESETTINGS_H
 #include <string>
-#include <vector>
-#include <utility>
 
-#include <JavaScriptCore/JavaScript.h>
-#include <IJavaScriptEngine.h>
-#include <IJavaScriptContext.h>
-
-class JavaScriptEngine:public IJavaScriptEngine
+struct ModuleSettings
 {
-  public:
-    JavaScriptEngine();
-    virtual ~JavaScriptEngine();
-  
-    bool initialize() override;
-    bool terminate() override;
-    void run() override;
-    void collectGarbage() override;
-
-  private:
-    bool mInspectorEnabled;
-    uint32_t mGarbageCollectionTag;
+    ModuleSettings();
+    ModuleSettings(ModuleSettings& settings);
+    void fromString(std::string& options);
+    bool enableHttp;
+    bool enableXHR;
+    bool enableWebSocket;
+    bool enableWebSocketEnhanced;
+    bool enableFetch;
+    bool enableJSDOM;
+    bool enableWindow;
+    bool enablePlayer;
 };
 #endif

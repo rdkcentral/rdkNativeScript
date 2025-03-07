@@ -25,7 +25,7 @@
 class IJavaScriptContext
 {
   public:
-    virtual bool runScript(const char *script, std::string name="", const char *args = nullptr, bool isApplication=false) = 0;
+    virtual bool runScript(const char *script, bool isModule=true, std::string name="", const char *args = nullptr, bool isApplication=false) = 0;
     virtual bool runFile(const char *file, const char* args, bool isApplication=false) = 0;
     virtual std::string getUrl()  = 0;
   protected:

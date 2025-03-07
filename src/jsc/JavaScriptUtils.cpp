@@ -20,7 +20,7 @@
 #include "JavaScriptUtils.h"
 #include "JavaScriptWrapper.h"
 #include "rtLog.h"
-
+#include "jsc_lib.h"
 #include <unistd.h>
 #include <stdio.h>
 #include <errno.h>
@@ -266,6 +266,29 @@ rtError rtHttpGetBinding(int numArgs, const rtValue* args, rtValue* result, void
   return RT_OK;
 }
 
+rtError rtReadBinaryBinding(int numArgs, const rtValue* args, rtValue* result, void* context)
+{
+  char *buffer = nullptr;
+  FILE *ptr = nullptr;
+  ptr = fopen("hello.wasm","rb");  // r for read, b for binary
+
+  char *fd = "hello.wasm";
+  struct stat buf;          
+  
+  stat(fd, &buf);
+  int size = buf.st_size;
+  
+  buffer = (char*)malloc(size);
+  fread(buffer,size,1,ptr); // read 10 bytes to our buffer
+  fclose(ptr);
+
+  if (result)
+  {
+      result->setString(buffer);
+  }
+  return RT_OK;
+}
+
 rtError rtWebSocketBinding(int numArgs, const rtValue* args, rtValue* result, void* context)
 {
   UNUSED_PARAM(context);
@@ -486,8 +509,11 @@ JSValueRef requireCallback(JSContextRef ctx, JSObjectRef, JSObjectRef thisObject
     rtString path;
 
     dirs.push_back(""); // this dir
+    dirs.push_back("/home/root/"); // this dir
     dirs.push_back("modules/");
     dirs.push_back("modules/lib");
+    dirs.push_back("/home/root/modules/");
+    dirs.push_back("/home/root/modules/lib");
     endings.push_back(".js");
 
     std::list<rtString>::const_iterator it, jt;
@@ -590,4 +616,14 @@ JSValueRef requireCallback(JSContextRef ctx, JSObjectRef, JSObjectRef thisObject
   } while(0);
 
   return JSValueMakeNull(ctx);
+}
+
+char* JSValueToCString(JSContextRef context, JSValueRef value, JSValueRef* exception)
+{
+        JSStringRef jsstr = JSValueToStringCopy(context, value, exception);
+        size_t len = JSStringGetMaximumUTF8CStringSize(jsstr);
+        char* src = new char[len];
+        JSStringGetUTF8CString(jsstr, src, len);
+        JSStringRelease(jsstr);
+        return src;
 }
