@@ -88,5 +88,6 @@ class JavaScriptContext: public JavaScriptContextBase
     rtRef<rtFunctionCallback> m_clearIntervalBinding;
     rtRef<rtFunctionCallback> m_thunderTokenBinding;
     rtRef<rtFunctionCallback> m_httpGetBinding;
+    rtRef<rtFunctionCallback> m_readBinaryBinding;
 };
 #endif
