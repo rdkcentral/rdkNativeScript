@@ -168,6 +168,7 @@ if (BUILD_JSRUNTIME_CLIENT)
     add_executable(jsruntime_client ${JSRUNTIME_CLIENT_FILES})
     target_include_directories(jsruntime_client PRIVATE ${JSRUNTIME_INCLUDE_DIRECTORIES})
     set_target_properties(jsruntime_client PROPERTIES OUTPUT_NAME "JSRuntimeClient")
+    target_link_libraries(jsruntime_client ${JSRUNTIME_LIBRARY_LINK_DIRECTORIES} -lpthread)
 endif (BUILD_JSRUNTIME_CLIENT)
 
 set(UWEBSOCKETS_TARGET "Linux")
