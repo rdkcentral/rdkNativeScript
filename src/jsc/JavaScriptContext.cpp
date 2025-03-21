@@ -378,6 +378,10 @@ if (mModuleSettings.enablePlayer)
           JSStringRelease(funcName);
       };
     injectFun(mContext, "require", requireCallback);
+    if(mModuleSettings.enablePlayer)
+    {
+	runFile("modules/video.js", nullptr);
+    }
     if (mModuleSettings.enableXHR)
     {
         runFile("modules/xhr.js", nullptr);
