@@ -121,9 +121,16 @@ if (mModuleSettings.enablePlayer)
 #ifdef ENABLE_AAMP_JSBINDINGS_DYNAMIC
 void JavaScriptContext::loadAAMPJSBindingsLib()
 {
+    std::cout<<"Dynamic mode is enabled"<<std::endl;
     if (nullptr == gAAMPJSBindings->PlayerLibHandle)
     {
         static const char *aampJSBindingsLib = "libaampjsbindings.so";
+	static const char *jscLib = "libJavaScriptCore.so";
+	void *jscLibHandle = dlopen(jscLib, RTLD_NOW | RTLD_GLOBAL);
+	if (!jscLibHandle)
+	{
+	    std::cout<<"dlopen error for jsc library " << dlerror() << std::endl;
+	}
         void *aampJSBindingsLibHandle = dlopen(aampJSBindingsLib, RTLD_NOW | RTLD_GLOBAL);
         if (aampJSBindingsLibHandle)
         {
@@ -140,6 +147,8 @@ void JavaScriptContext::loadAAMPJSBindingsLib()
         {
             std::cout << "failed to load " << aampJSBindingsLib << " and error is " << dlerror();
         }
+	
+	dlclose(jscLibHandle);
     }
 }
 
