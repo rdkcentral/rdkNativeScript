@@ -25,8 +25,15 @@
 #include <EssosInstance.h>
 #endif
 
+//newly added
+#include <sys/stat.h>
+#include <cstdlib>
+
 std::string JavaScriptContextBase::sThunderJSCode = "";
 std::string JavaScriptContextBase::sWebBridgeCode = "";
+
+//newly added
+std::string JavaScriptContextBase::sModulesPath = "" ;
 
 JavaScriptContextFeatures::JavaScriptContextFeatures(bool embedThunderJS, bool embedWebBridge, bool enableWebSockerServer, ModuleSettings& moduleSettings):mEmbedThunderJS(embedThunderJS), mEmbedWebBridge(embedWebBridge), mEnableWebSockerServer(enableWebSockerServer), mModuleSettings(moduleSettings)
 {
@@ -34,18 +41,24 @@ JavaScriptContextFeatures::JavaScriptContextFeatures(bool embedThunderJS, bool e
 
 JavaScriptContextBase::JavaScriptContextBase(JavaScriptContextFeatures& features, std::string url, IJavaScriptEngine* jsEngine): mApplicationUrl(url), mEngine(jsEngine), mEmbedThunderJS(features.mEmbedThunderJS), mEmbedWebBridge(features.mEmbedWebBridge), mEnableWebSockerServer(features.mEnableWebSockerServer), mModuleSettings(features.mModuleSettings)
 {
+//newly added
+    JavaScriptContextBase::setEnvVariable("JSRUNTIME_MODULES_PATH", "");
+    
+    sModulesPath = std::getenv("JSRUNTIME_MODULES_PATH");
+    getModulesPath();
+
     if (mEmbedThunderJS)
     {
         if (sThunderJSCode.empty())
         {		
-            sThunderJSCode = readFile("modules/thunderJS.js");
+            sThunderJSCode = readFile(sModulesPath.c_str());
         }
     }
     if (mEmbedWebBridge)
     {
         if (sWebBridgeCode.empty())
         {		
-            sWebBridgeCode = readFile("modules/webbridgesdk.js");
+            sWebBridgeCode = readFile(sModulesPath.c_str());
         }
     }
 #ifdef ENABLE_ESSOS
@@ -93,10 +106,13 @@ bool JavaScriptContextBase::runFile(const char *file, const char* args, bool isA
     scriptToRun = readFile(file);
     if(scriptToRun.empty())
     {
-        std::string fileName("/home/root/");
+        //newly added
+	std::string fileName=sModulesPath;
 	fileName.append(file);
-        scriptToRun = readFile(fileName.c_str());
-        printf("checking in [%s] \n", fileName.c_str());
+        std::cout << "File:" << fileName << std::endl;
+
+	scriptToRun = readFile(fileName.c_str());
+        //printf("checking in [%s] \n", fileName.c_str());
         if(scriptToRun.empty())
         {
             printf(" %s  ... load error / not found. %s",__PRETTY_FUNCTION__, file);
@@ -104,6 +120,9 @@ bool JavaScriptContextBase::runFile(const char *file, const char* args, bool isA
             return false;
         }
     }
+    //newly added
+    std::cout<<"File:" << file << std::endl;
+        
     return evaluateScript(scriptToRun.c_str(), isApplication?file:nullptr, args, isApplication);
 }
 
@@ -125,4 +144,46 @@ void JavaScriptContextBase::onKeyPress(struct JavaScriptKeyDetails& details)
 void JavaScriptContextBase::onKeyRelease(struct JavaScriptKeyDetails& details)
 {
     processKeyEvent(details, false);
+}
+
+//newly added
+void JavaScriptContextBase::setEnvVariable(const char* name, const char* value) {
+    if (setenv(name, value, 1) == 0) {
+        std::cout << "Environment variable set: " << name << std::endl;
+    } else {
+        std::cerr << "Failed to set environment variable!" << std::endl;
+    }
+}
+std::string JavaScriptContextBase::getModulesPath(){
+	if(!sModulesPath.empty()){
+		return sModulesPath;
+	}
+	else{
+		struct stat info;
+		std::string home;
+		char* cwd = getcwd(nullptr,0);
+		std::string PWD=cwd;
+		if (stat("/home/root/modules/", &info) == 0 && (info.st_mode & S_IFDIR)){
+			home =PWD + "/home/root/modules/";
+		}
+		else if(stat("/runtime/modules/", &info) == 0 && (info.st_mode & S_IFDIR)){
+			home = PWD + "/runtime/modules/";
+		}
+		else if("/modules/", &info) == 0 && (info.st_mode & S_IFDIR)){
+			home = PWD +"/modules/";
+		}
+        else{
+                std::cerr << "Modules Directory not found!" << std::endl;
+        }
+		sModulesPath = home;
+		if(setenv("JSRUNTIME_MODULES_PATH",home.c_str(),1)==0){
+			std::cout<<"JSRUNTIME_MODULES_PATH:"<<std::getenv("JSRUNTIME_MODULES_PATH")<<std::endl;
+			std::cout<<"Modules path variable set successfully"<<std::endl;
+		}
+		else{
+			std::cout<<"Modules path variable cannot be set!"<<std::endl;
+		}
+		return sModulesPath;
+	}
+
 }
