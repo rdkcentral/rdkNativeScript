@@ -404,6 +404,10 @@ if (mModuleSettings.enablePlayer)
       };
     injectFun(mContext, "require", requireCallback);
     //Module Path Changes
+    if(mModuleSettings.enablePlayer)
+    {
+	runFile("video.js", nullptr);
+    }
     if (mModuleSettings.enableXHR)
     {
 	std::string xhr = "xhr.js";

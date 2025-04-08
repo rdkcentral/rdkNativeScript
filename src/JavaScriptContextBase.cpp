@@ -52,14 +52,16 @@ JavaScriptContextBase::JavaScriptContextBase(JavaScriptContextFeatures& features
     {
         if (sThunderJSCode.empty())
         {		
-            sThunderJSCode = readFile(sModulesPath.c_str());
+	    std::string ThunderJS= sModulesPath + "thunderJS.js"
+	    sThunderJSCode = readFile(ThunderJS.c_str());
         }
     }
     if (mEmbedWebBridge)
     {
         if (sWebBridgeCode.empty())
-        {		
-            sWebBridgeCode = readFile(sModulesPath.c_str());
+        {
+	    std::string WebBridge = sModulesPath + "webbridgesdk.js" 
+	    sWebBridgeCode = readFile(WebBridge.c_str());
         }
     }
 #ifdef ENABLE_ESSOS
