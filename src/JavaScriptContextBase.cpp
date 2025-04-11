@@ -25,14 +25,11 @@
 #include <EssosInstance.h>
 #endif
 
-//newly added
 #include <sys/stat.h>
 #include <cstdlib>
 
 std::string JavaScriptContextBase::sThunderJSCode = "";
 std::string JavaScriptContextBase::sWebBridgeCode = "";
-
-//newly added
 std::string JavaScriptContextBase::sModulesPath = "" ;
 
 JavaScriptContextFeatures::JavaScriptContextFeatures(bool embedThunderJS, bool embedWebBridge, bool enableWebSockerServer, ModuleSettings& moduleSettings):mEmbedThunderJS(embedThunderJS), mEmbedWebBridge(embedWebBridge), mEnableWebSockerServer(enableWebSockerServer), mModuleSettings(moduleSettings)
@@ -41,7 +38,6 @@ JavaScriptContextFeatures::JavaScriptContextFeatures(bool embedThunderJS, bool e
 
 JavaScriptContextBase::JavaScriptContextBase(JavaScriptContextFeatures& features, std::string url, IJavaScriptEngine* jsEngine): mApplicationUrl(url), mEngine(jsEngine), mEmbedThunderJS(features.mEmbedThunderJS), mEmbedWebBridge(features.mEmbedWebBridge), mEnableWebSockerServer(features.mEnableWebSockerServer), mModuleSettings(features.mModuleSettings)
 {
-//newly added
     JavaScriptContextBase::setEnvVariable("JSRUNTIME_MODULES_PATH", "");
     
     sModulesPath = std::getenv("JSRUNTIME_MODULES_PATH");
@@ -108,12 +104,11 @@ bool JavaScriptContextBase::runFile(const char *file, const char* args, bool isA
     scriptToRun = readFile(file);
     if(scriptToRun.empty())
     {
-        //newly added
-	std::string fileName=sModulesPath;
-	fileName.append(file);
+	    std::string fileName=sModulesPath;
+	    fileName.append(file);
         std::cout << "File:" << fileName << std::endl;
 
-	scriptToRun = readFile(fileName.c_str());
+	    scriptToRun = readFile(fileName.c_str());
         //printf("checking in [%s] \n", fileName.c_str());
         if(scriptToRun.empty())
         {
@@ -122,7 +117,7 @@ bool JavaScriptContextBase::runFile(const char *file, const char* args, bool isA
             return false;
         }
     }
-    //newly added
+
     std::cout<<"File:" << file << std::endl;
         
     return evaluateScript(scriptToRun.c_str(), isApplication?file:nullptr, args, isApplication);
@@ -148,7 +143,6 @@ void JavaScriptContextBase::onKeyRelease(struct JavaScriptKeyDetails& details)
     processKeyEvent(details, false);
 }
 
-//newly added
 void JavaScriptContextBase::setEnvVariable(const char* name, const char* value) {
     if (setenv(name, value, 1) == 0) {
         std::cout << "Environment variable set: " << name << std::endl;

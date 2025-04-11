@@ -55,8 +55,6 @@ class JavaScriptContextBase:public IJavaScriptContext, public JavaScriptKeyListe
     std::string getUrl();
     virtual void onKeyPress(struct JavaScriptKeyDetails& details);
     virtual void onKeyRelease(struct JavaScriptKeyDetails& details);
- 
- //newly added
     static void setEnvVariable(const char* name, const char* value);
     
   protected:
@@ -72,8 +70,6 @@ class JavaScriptContextBase:public IJavaScriptContext, public JavaScriptKeyListe
     bool mEmbedWebBridge;
     bool mEnableWebSockerServer;
     ModuleSettings mModuleSettings;
-
-    //newly added
     static std::string sModulesPath;
     std::string getModulesPath();
 };
