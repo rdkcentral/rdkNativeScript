@@ -387,66 +387,53 @@ if (mModuleSettings.enablePlayer)
           JSStringRelease(funcName);
       };
     injectFun(mContext, "require", requireCallback);
-    //Module Path Changes
     if(mModuleSettings.enablePlayer)
     {
-	runFile("video.js", nullptr);
+       runFile("video.js", nullptr);
     }
     if (mModuleSettings.enableXHR)
     {
-	std::string xhr = "xhr.js";
-        runFile(xhr.c_str(), nullptr);
+        runFile("xhr.js", nullptr);
     }
     if (mModuleSettings.enableHttp)
     {
-    	std::string http = "http.js";
-    	std::string https = "https.js";
-    	runFile(http.c_str(), nullptr);
-        runFile(https.c_str(), nullptr);
-        
+        runFile("http.js", nullptr);
+        runFile("https.js", nullptr);
+
     }
     if (mModuleSettings.enableFetch)
     {
-        std::string node = "node-fetch.js";
-        runFile(node.c_str() , nullptr/*, true*/);
+        runFile("node-fetch.js" , nullptr/*, true*/);
     }
-    std::string utils = "utils.js";
-    runFile(utils.c_str(), nullptr);
+    runFile("utils.js", nullptr);
 
     if (mModuleSettings.enableWebSocketEnhanced)
     {
-    	std::string event = "event.js";
-    	std::string wsenhanced = "wsenhanced.js";
-    	runFile(event.c_str(), nullptr);
-        runFile(wsenhanced.c_str(), nullptr);
-    }
+        runFile("event.js", nullptr);
+        runFile("wsenhanced.js", nullptr);
+}
     else if(mModuleSettings.enableWebSocket)
     {
-        std::string ws = "ws.js";
-        runFile(ws.c_str(), nullptr);
+        runFile("ws.js", nullptr);
     }
 #ifdef WS_SERVER_ENABLED
     if (mEnableWebSockerServer)
     {
         std::cout << "enabling websocket server " << std::endl;
-        std::string wsserver = "wsserver.js";
-        runFile(wsserver.c_str(), nullptr);
+        runFile("wsserver.js", nullptr);
     }
 #endif
     if (mModuleSettings.enableWindow)
     {
-        std::string window = "window.js"; 
-        std::string windowwrapper = "windowwrapper.js";
-        runFile(window.c_str(), nullptr/*, true*/);
-        runFile(windowwrapper.c_str(), nullptr/*, true*/);
+        runFile("window.js", nullptr/*, true*/);
+        runFile("windowwrapper.js", nullptr/*, true*/);
     }
     else if (mModuleSettings.enableJSDOM)
     {
-        std:: string linkedjs = "linkedjsdom.js";
-        std:: string linkedjsw = "linkedjsdomwrapper.js";
-        std:: string windowwrapper = "windowwrapper.js";
-        runFile(linkedjs.c_str(), nullptr/*, true*/);
-        runFile(linkedjsw.c_str(), nullptr/*, true*/);
-        runFile(windowwrapper.c_str(), nullptr/*, true*/);     
+
+        runFile("linkedjsdom.js", nullptr/*, true*/);
+        runFile("linkedjsdomwrapper.js", nullptr/*, true*/);
+        runFile("windowwrapper.js", nullptr/*, true*/);
     }
 }
+
