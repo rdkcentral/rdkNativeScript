@@ -36,6 +36,7 @@
 #include <KeyListener.h>
 #include <KeyInput.h>
 
+#include <rtHttpRequest.h>
 #include <JavaScriptCore/JavaScript.h>
 #ifdef ENABLE_JSRUNTIME_PLAYER
 #ifdef ENABLE_AAMP_JSBINDINGS_STATIC
@@ -56,7 +57,7 @@ struct AAMPJSBindings
 
 extern "C" JS_EXPORT void JSSynchronousGarbageCollectForDebugging(JSContextRef);
 
-class JavaScriptContext: public JavaScriptContextBase
+class JavaScriptContext: public JavaScriptContextBasei, public NetworkMetricsListener
 {
   public:
     JavaScriptContext(JavaScriptContextFeatures& features, std::string url, IJavaScriptEngine* jsEngine);
@@ -67,6 +68,8 @@ class JavaScriptContext: public JavaScriptContextBase
     bool    has(const char *name);
     JSGlobalContextRef getContext() { return mContext; }
 
+    virtual void onMetricsData (NetworkMetrics *net) override;
+    rtMapObject* getObjectMap() const { return mObjectMap; }
   private:
     bool evaluateScript(const char *script, const char *name, const char *args = nullptr, bool module = false);
     void processKeyEvent(struct JavaScriptKeyDetails& details, bool keyPress);
@@ -79,6 +82,7 @@ class JavaScriptContext: public JavaScriptContextBase
 #endif
     JSContextGroupRef mContextGroup;
     JSGlobalContextRef mContext;
+    rtMapObject* mObjectMap;
     rtRef<rtJSCContextPrivate> mPriv;
     rtRef<rtFunctionCallback> m_webSocketBinding;
     rtRef<rtFunctionCallback> m_webSocketServerBinding;
@@ -89,5 +93,7 @@ class JavaScriptContext: public JavaScriptContextBase
     rtRef<rtFunctionCallback> m_thunderTokenBinding;
     rtRef<rtFunctionCallback> m_httpGetBinding;
     rtRef<rtFunctionCallback> m_readBinaryBinding;
+    rtRef<rtFunctionCallback> m_JSRuntimeDownloadMetrics;
+
 };
 #endif

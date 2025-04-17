@@ -184,6 +184,11 @@ public:
     : rtHttpRequest(options)
   { }
 
+  void setNetworkMetricsListener(NetworkMetricsListener* listener)
+  {
+    mMetricsListener = listener;
+  }
+
   void onDownloadProgressImpl(double progress) final
   {
     AddRef();
@@ -221,6 +226,20 @@ public:
       resp->setErrorMessage(downloadRequest->errorString());
       resp->setHeaders(downloadRequest->headerData(), downloadRequest->headerDataSize());
       resp->setDownloadedData(downloadRequest->downloadedData(), downloadRequest->downloadedDataSize());
+      
+      if (mMetricsListener)
+      {
+ 	rtLogWarn("metriclistener");
+        NetworkMetrics *metrics = new NetworkMetrics();
+	
+	metrics->url = this->url();
+	metrics->method = this->method();
+	std::vector<rtString> headerValues = this->headers();
+	metrics->headers = headerValues; 
+
+	mMetricsListener->onMetricsData(metrics);
+
+      }
 
       rtObjectRef protectedRef = resp;
       dispatchOnMainLoop(
@@ -244,6 +263,11 @@ rtError rtHttpGetBinding(int numArgs, const rtValue* args, rtValue* result, void
     return RT_ERROR_INVALID_ARG;
   }
 
+  JavaScriptContext* jscContext = (JavaScriptContext*)context;
+  if (!jscContext) {
+    rtLogError("context is null!");
+  }
+
   rtHttpRequest* req;
   if (args[0].getType() == RT_stringType) {
     req = new rtHttpRequestEx(args[0].toString());
@@ -261,6 +285,8 @@ rtError rtHttpGetBinding(int numArgs, const rtValue* args, rtValue* result, void
     req->addListener("response", args[1].toFunction());
   }
 
+  req->setNetworkMetricsListener(jscContext)
+  
   rtObjectRef ref = req;
   *result = ref;
   return RT_OK;
@@ -627,3 +653,69 @@ char* JSValueToCString(JSContextRef context, JSValueRef value, JSValueRef* excep
         JSStringRelease(jsstr);
         return src;
 }
+
+rtError rtJSRuntimeDownloadMetrics(int numArgs, const rtValue* args, rtValue* result, void* context) 
+{
+  JavaScriptContext* jscContext = (JavaScriptContext*)context;
+  if (jscContext == nullptr) {
+    rtLogError("context null");
+    return RT_FAIL;
+  }
+
+  rtMapObject* map = jscContext->getObjectMap();
+  if (!map) {
+    return RT_FAIL;
+  }
+
+  rtArrayObject* netMetricsArray = new rtArrayObject();
+
+  rtValue keys;
+  if (map->Get("allKeys", &keys) != RT_OK) {
+    rtLogWarn("Could not retrieve keys for the object map.");
+    return RT_FAIL;
+  }
+  rtObjectRef objRef = keys.toObject();
+  rtArrayObject* keysArray = static_cast<rtArrayObject*>(objRef.getPtr());
+
+  if (!keysArray) {
+    rtLogWarn("No keys found in the map.");
+    return RT_FAIL;
+  }
+  
+  size_t count = keysArray->length();
+
+  for (size_t i = 0; i < count; ++i) {
+    rtValue keyValue;
+    rtString key = keysArray->get<rtString>(i);
+
+    keysArray->Get(key, &keyValue);
+    rtValue storedValue;
+    if (map->Get(key.cString(), &storedValue) == RT_OK) {
+      NetworkMetrics* metrics = (NetworkMetrics*)storedValue.toVoidPtr();
+      if (!metrics) {
+        rtLogError("Failed to cast stored value to NetworkMetrics structure for key: %s.", key.cString());
+        return RT_FAIL;
+      }
+      rtMapObject* metricsMap = new rtMapObject();
+      metricsMap->set("url", metrics->url);
+      metricsMap->set("method", metrics->method);
+
+      rtArrayObject* headersArray = new rtArrayObject();
+      for (const auto& header : metrics->headers) {
+        headersArray->pushBack(rtValue(header));
+      }
+      metricsMap->set("headers", rtValue(headersArray));
+
+      netMetricsArray->pushBack(rtValue(metricsMap));
+    }
+    else {
+      rtLogWarn("Key not found in map: %s", key.cString());
+    }
+  }
+
+  rtLogWarn("Array object populated successfully.");
+  *result = rtValue(netMetricsArray);
+
+  return RT_OK;
+}
+

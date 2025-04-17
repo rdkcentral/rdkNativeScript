@@ -74,6 +74,7 @@ JavaScriptContext::JavaScriptContext(JavaScriptContextFeatures& features, std::s
       gTopLevelContext = mContext;
     registerUtils();
     registerCommonUtils();
+    mObjectMap = new rtMapObject();
 }
 
 JavaScriptContext::~JavaScriptContext()
@@ -338,8 +339,9 @@ void JavaScriptContext::registerUtils()
     m_setIntervalBinding = new rtFunctionCallback(rtSetItervalBinding, nullptr);
     m_clearIntervalBinding = new rtFunctionCallback(rtClearTimeoutBinding, nullptr);
     m_thunderTokenBinding = new rtFunctionCallback(getThunderTokenBinding, this);
-    m_httpGetBinding = new rtFunctionCallback(rtHttpGetBinding, nullptr);
+    m_httpGetBinding = new rtFunctionCallback(rtHttpGetBinding, this);
     m_readBinaryBinding = new rtFunctionCallback(rtReadBinaryBinding, nullptr);
+    m_JSRuntimeDownloadMetrics = new rtFunctionCallback(rtJSRuntimeDownloadMetrics, this);
     add("webSocket", m_webSocketBinding.getPtr());
 #ifdef WS_SERVER_ENABLED
     if (mEnableWebSockerServer)
@@ -354,6 +356,7 @@ void JavaScriptContext::registerUtils()
     add("thunderToken", m_thunderTokenBinding.getPtr());
     add("httpGet", m_httpGetBinding.getPtr());
     add("readBinary", m_readBinaryBinding.getPtr());
+    add("JSRuntimeDownloadMetrics", m_JSRuntimeDownloadMetrics.getPtr());
   
 #ifdef ENABLE_JSRUNTIME_PLAYER
 if (mModuleSettings.enablePlayer)
@@ -433,3 +436,16 @@ if (mModuleSettings.enablePlayer)
         runFile("modules/windowwrapper.js", nullptr/*, true*/);
     }
 }
+
+void JavaScriptContext::onMetricsData (NetworkMetrics *net)
+{
+   if (!net) {
+        rtLogError("onMetricsData: Received null NetworkMetrics structure.");
+        return;
+    }
+    rtString key = net->url;
+    mObjectMap->set(key, rtValue((void *)net));
+
+}
+
+
