@@ -57,6 +57,9 @@ static AAMPJSBindings* gAAMPJSBindings = nullptr;
 #endif
 //BIG CHANGE
 extern void functionLoadModule(JSGlobalContextRef ref, JSObjectRef globalObjectRef, char* buffer, int len, char* name);
+
+static const char* envValue = std::getenv("NATIVEJS_DUMP_NETWORKMETRIC");
+
 JSContextGroupRef globalContextGroup()
 {
     static JSContextGroupRef gGroupRef = JSContextGroupCreate();
@@ -75,6 +78,7 @@ JavaScriptContext::JavaScriptContext(JavaScriptContextFeatures& features, std::s
       gTopLevelContext = mContext;
     registerUtils();
     registerCommonUtils();
+    mNetworkMetricsData = new rtMapObject();
 }
 
 JavaScriptContext::~JavaScriptContext()
@@ -354,9 +358,10 @@ void JavaScriptContext::registerUtils()
     m_setIntervalBinding = new rtFunctionCallback(rtSetItervalBinding, nullptr);
     m_clearIntervalBinding = new rtFunctionCallback(rtClearTimeoutBinding, nullptr);
     m_thunderTokenBinding = new rtFunctionCallback(getThunderTokenBinding, this);
-    m_httpGetBinding = new rtFunctionCallback(rtHttpGetBinding, nullptr);
+    m_httpGetBinding = new rtFunctionCallback(rtHttpGetBinding, this);
     m_readBinaryBinding = new rtFunctionCallback(rtReadBinaryBinding, nullptr);
     m_setVideoStartTimeBinding = new rtFunctionCallback(rtSetVideoStartTimeBinding, this);
+    m_JSRuntimeDownloadMetrics = new rtFunctionCallback(rtJSRuntimeDownloadMetrics, this);
     add("webSocket", m_webSocketBinding.getPtr());
 #ifdef WS_SERVER_ENABLED
     if (mEnableWebSockerServer)
@@ -372,6 +377,7 @@ void JavaScriptContext::registerUtils()
     add("httpGet", m_httpGetBinding.getPtr());
     add("readBinary", m_readBinaryBinding.getPtr());
     add("setVideoStartTime", m_setVideoStartTimeBinding.getPtr());
+    add("JSRuntimeDownloadMetrics", m_JSRuntimeDownloadMetrics.getPtr());
   
 #ifdef ENABLE_JSRUNTIME_PLAYER
 if (mModuleSettings.enablePlayer)
@@ -451,3 +457,63 @@ if (mModuleSettings.enablePlayer)
         runFile("modules/windowwrapper.js", nullptr/*, true*/);
     }
 }
+
+void JavaScriptContext::onMetricsData (NetworkMetrics *net)
+{
+   if (!net) {
+        rtLogError("onMetricsData: Received null NetworkMetrics structure.");
+        return;
+    }
+    rtString key = net->url;
+    mNetworkMetricsData->set(key, rtValue((void *)net));
+
+    if (envValue) {
+        dumpNetworkMetricData(net, this->getUrl());
+    }
+}
+
+void JavaScriptContext::dumpNetworkMetricData(NetworkMetrics *metrics, std::string appUrl)
+{
+    std::ofstream file("/tmp/jsruntimenetworkmetrics.log", std::ios::app);
+
+    if (!file.is_open()) 
+    {
+        rtLogError("Failed to open jsruntimenetworkmetrics log file");
+        return;
+    }
+    static bool isAppUrlLogged = false; 
+    if(!isAppUrlLogged)
+    {
+	isAppUrlLogged = true;    
+	    file << appUrl << ":";
+    }
+    auto now = std::chrono::system_clock::now();
+    std::time_t t = std::chrono::system_clock::to_time_t(now);
+    std::tm tm = *std::localtime(&t);
+    char timestampBuffer[20];
+    std::strftime(timestampBuffer, sizeof(timestampBuffer), "%Y-%m-%d %H:%M:%S", &tm);
+    std::stringstream ss;
+    ss << "  [" << std::endl;
+    ss << "  timestamp: " << timestampBuffer << std::endl;
+    ss << "  url: " << metrics->url << "," << std::endl;
+    ss << "  method: " << metrics->method << "," << std::endl;
+    ss << "  headers: [";
+    for (size_t j = 0; j < metrics->headers.size(); ++j) 
+    {
+	ss << metrics->headers[j];
+        if (j != metrics->headers.size() - 1) 
+        {
+           ss << ", ";
+        }
+    }
+    ss << "]," << std::endl;
+    ss << "  statusCode: " << metrics->statusCode << std::endl;
+    for (const auto& pair : metrics->timeMetricsData) 
+    {              
+	ss << "  " << pair.first.cString() << ": " << pair.second.toString().cString() << "\n";
+    }
+    ss << "]" << std::endl;
+    file << ss.str();
+    file.close();
+}
+

@@ -70,6 +70,7 @@ rtError getThunderTokenBinding(int numArgs, const rtValue* args, rtValue* result
 rtError rtHttpGetBinding(int numArgs, const rtValue* args, rtValue* result, void* context);
 rtError rtReadBinaryBinding(int numArgs, const rtValue* args, rtValue* result, void* context);
 rtError rtSetVideoStartTimeBinding(int numArgs, const rtValue* args, rtValue* result, void* context);
+rtError rtJSRuntimeDownloadMetrics(int numArgs, const rtValue* args, rtValue* result, void* context);
 JSValueRef requireCallback(JSContextRef ctx, JSObjectRef, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef *exception);
 
 #endif /* JAVASCRIPTMISC_H */
