@@ -211,6 +211,9 @@ void NativeJSRenderer::setEnvForConsoleMode(ModuleSettings& moduleSettings)
 
 void NativeJSRenderer::launchApplication(std::string url, ModuleSettings& moduleSettings)
 {
+    metrics.startTime = getTimeInMilliSec();
+    std::cout << "\n-----START TIME-----: " << std::fixed << std::setprecision(3) << metrics.startTime << " ms\n";
+
     mUserMutex.lock();
     ApplicationRequest request(url, moduleSettings.enableHttp, moduleSettings.enableXHR, moduleSettings.enableWebSocket, moduleSettings.enableWebSocketEnhanced, moduleSettings.enableFetch, moduleSettings.enableJSDOM, moduleSettings.enableWindow, moduleSettings.enablePlayer);
     gPendingUrlRequests.push_back(request);

@@ -64,6 +64,16 @@ JSContextGroupRef globalContextGroup()
 
 JSGlobalContextRef gTopLevelContext = nullptr;
 
+double getTimeInMilliSec()
+ {
+        // In milliseconds
+        timespec ts;
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        return ((double)(ts.tv_sec * 1000) + ((double)ts.tv_nsec/1000000));
+  }
+
+performanceMetrics metrics;
+
 JavaScriptContext::JavaScriptContext(JavaScriptContextFeatures& features, std::string url, IJavaScriptEngine* jsEngine):JavaScriptContextBase(features, url, jsEngine)
 {
     rtLogInfo("%s", __FUNCTION__);
@@ -228,6 +238,10 @@ bool JavaScriptContext::has(const char *name)
 
 bool JavaScriptContext::evaluateScript(const char* script, const char* name, const char *args, bool module)
 {
+    //execution start time
+    metrics.executionStartTime = getTimeInMilliSec();
+    std::cout << "\n-----EXECUTION_START_TIME-----: " << std::fixed << std::setprecision(3) << metrics.executionStartTime<< " ms\n";
+
     if (nullptr != name)
     {	  
       rtLogInfo("JavaScriptContext::evaluateScript name=%s", name);
@@ -271,6 +285,19 @@ bool JavaScriptContext::evaluateScript(const char* script, const char* name, con
             return false;
         }
     }
+
+    //execution end time
+    metrics.executionEndTime = getTimeInMilliSec();
+    std::cout << "\n-----EXECUTION_END_TIME-----: " << std::fixed << std::setprecision(3) << metrics.executionEndTime<< " ms\n";
+
+    // execution duration
+    double executionDuration = metrics.executionEndTime - metrics.executionStartTime;
+    std::cout << "\n-----EXECUTION_DURATION-----: " << std::fixed << std::setprecision(3) << executionDuration<< " ms\n";
+
+    //Total duration from start to execution end
+    double totalDuration = metrics.executionEndTime - metrics.startTime;
+    std::cout << "\n-----TOTAL_DURATION-----: " << std::fixed << std::setprecision(3) << totalDuration<< " ms\n";
+
     return true;
 }
 

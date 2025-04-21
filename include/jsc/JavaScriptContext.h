@@ -56,6 +56,16 @@ struct AAMPJSBindings
 
 extern "C" JS_EXPORT void JSSynchronousGarbageCollectForDebugging(JSContextRef);
 
+extern double getTimeInMilliSec();
+
+struct performanceMetrics {          
+	double startTime=0.0;  
+	double executionStartTime=0.0;
+	double executionEndTime=0.0;	
+	double PlaybackStartTime=0.0;
+};
+extern performanceMetrics metrics;
+
 class JavaScriptContext: public JavaScriptContextBase
 {
   public:
