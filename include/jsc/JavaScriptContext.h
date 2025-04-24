@@ -56,15 +56,12 @@ struct AAMPJSBindings
 
 extern "C" JS_EXPORT void JSSynchronousGarbageCollectForDebugging(JSContextRef);
 
-extern double getTimeInMilliSec();
-
-struct performanceMetrics {          
+struct PerformanceMetrics {          
 	double startTime=0.0;  
 	double executionStartTime=0.0;
 	double executionEndTime=0.0;	
-	double PlaybackStartTime=0.0;
+	double playbackStartTime=0.0;
 };
-extern performanceMetrics metrics;
 
 class JavaScriptContext: public JavaScriptContextBase
 {
@@ -76,6 +73,18 @@ class JavaScriptContext: public JavaScriptContextBase
     rtError add(const char *name, rtValue  const& val);
     bool    has(const char *name);
     JSGlobalContextRef getContext() { return mContext; }
+    
+    //for startTime
+    void setStartTime(double time){
+    	mPerformanceMetrics.startTime=time;
+    }
+    
+    //for playbackStartTime and launch Time calculation
+    void setPlaybackStartTime(double time) {
+    	mPerformanceMetrics.playbackStartTime = time;
+    	double launchTime = mPerformanceMetrics.playbackStartTime - mPerformanceMetrics.startTime;
+	std::cout << "\n-----LAUNCH TIME-----: " << std::fixed << std::setprecision(3) << launchTime << " ms\n"; 
+    }
 
   private:
     bool evaluateScript(const char *script, const char *name, const char *args = nullptr, bool module = false);
@@ -89,6 +98,7 @@ class JavaScriptContext: public JavaScriptContextBase
 #endif
     JSContextGroupRef mContextGroup;
     JSGlobalContextRef mContext;
+    PerformanceMetrics mPerformanceMetrics;
     rtRef<rtJSCContextPrivate> mPriv;
     rtRef<rtFunctionCallback> m_webSocketBinding;
     rtRef<rtFunctionCallback> m_webSocketServerBinding;
@@ -99,5 +109,6 @@ class JavaScriptContext: public JavaScriptContextBase
     rtRef<rtFunctionCallback> m_thunderTokenBinding;
     rtRef<rtFunctionCallback> m_httpGetBinding;
     rtRef<rtFunctionCallback> m_readBinaryBinding;
+    rtRef<rtFunctionCallback> m_setVideoStartTimeBinding;
 };
 #endif

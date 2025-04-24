@@ -17,6 +17,7 @@
 * limitations under the License.
 **/
 
+#include<TimeUtils.h>
 #include "NativeJSRenderer.h"
 //#include "utils.h"
 #include <iostream>
@@ -211,9 +212,6 @@ void NativeJSRenderer::setEnvForConsoleMode(ModuleSettings& moduleSettings)
 
 void NativeJSRenderer::launchApplication(std::string url, ModuleSettings& moduleSettings)
 {
-    metrics.startTime = getTimeInMilliSec();
-    std::cout << "\n-----START TIME-----: " << std::fixed << std::setprecision(3) << metrics.startTime << " ms\n";
-
     mUserMutex.lock();
     ApplicationRequest request(url, moduleSettings.enableHttp, moduleSettings.enableXHR, moduleSettings.enableWebSocket, moduleSettings.enableWebSocketEnhanced, moduleSettings.enableFetch, moduleSettings.enableJSDOM, moduleSettings.enableWindow, moduleSettings.enablePlayer);
     gPendingUrlRequests.push_back(request);
@@ -305,6 +303,8 @@ void NativeJSRenderer::run()
 
 void NativeJSRenderer::loadApplication(std::string url, ModuleSettings& moduleSettings)
 {
+    double startTime = getTimeInMilliSec();
+
     if (mContextMap.find(url) != mContextMap.end())
     {
         unloadApplication(url);
@@ -328,6 +328,9 @@ void NativeJSRenderer::loadApplication(std::string url, ModuleSettings& moduleSe
                 std::cout << "nativeJS application " << url << " cannot be loaded" << std::endl;
 	        return;
             }
+	    std::cout << "Start Time for Non-local app"<< std::endl;
+            context->setStartTime(startTime);
+
             mContextMap[url] = context;
             std::cout << "nativeJS application thunder execution url " << url << " result " << ret << std::endl;
             ret = context->runScript(chunk.contentsBuffer, true, url, nullptr, true);
@@ -343,6 +346,9 @@ void NativeJSRenderer::loadApplication(std::string url, ModuleSettings& moduleSe
                 std::cout << "nativeJS application " << url << " cannot be loaded" << std::endl;
                 return;
             }
+	    std::cout << "Start Time for local app"<< std::endl;  
+            context->setStartTime(startTime);
+
             mContextMap[url] = context;
             std::cout << "running test application " << url << std::endl;
             bool ret = context->runFile(url.c_str(), nullptr, true);
