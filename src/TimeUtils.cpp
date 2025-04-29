@@ -17,9 +17,8 @@
 * limitations under the License.
 **/
 
-
-#include<chrono>
 #include<TimeUtils.h>
+#include<chrono>
 
 double getTimeInMilliSec()
   {
