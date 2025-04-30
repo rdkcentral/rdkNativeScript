@@ -29,6 +29,7 @@
 #include <IJavaScriptContext.h>
 #include <ModuleSettings.h>
 #include <condition_variable>
+#include <list>
 
 namespace JsRuntime {
 
@@ -75,29 +76,62 @@ namespace JsRuntime {
           IJavaScriptContext* consoleContext = nullptr;
           ModuleSettings moduleSettings{};
         };
-
+        
+        struct ApplicationDetails{
+        	uint32_t id;
+        	std::string url;
+        };
+        
+        enum RequestType{
+          CREATE=0,
+          RUN,
+          TERMINATE,
+          RUNSCRIPT
+		    };
+        
+        struct ApplicationRequest
+        {
+          ApplicationRequest(uint32_t id, RequestType requestType, std::string url="", bool enableHttp=false, bool enableXHR=false, bool enableWebSocket=false, bool enableWebSocketEnhanced=false, bool enableFetch=false, bool enableJSDOM=false, bool enableWindow=false, bool enablePlayer=false): mId(id), mRequestType(requestType), mUrl(url), mEnableHttp(enableHttp), mEnableXHR(enableXHR), mEnableWebSocket(enableWebSocket), mEnableWebSocketEnhanced(enableWebSocketEnhanced), mEnableFetch(enableFetch), mEnableJSDOM(enableJSDOM), mEnableWindow(enableWindow), mEnablePlayer(enablePlayer)
+          {
+          }
+          uint32_t mId;
+	  RequestType mRequestType;
+          std::string mUrl;
+          bool mEnableHttp;
+          bool mEnableXHR;
+          bool mEnableWebSocket;
+          bool mEnableWebSocketEnhanced;
+          bool mEnableFetch;
+          bool mEnableJSDOM;
+          bool mEnableWindow;
+          bool mEnablePlayer;
+          //ModuleSettings mModuleSettings;
+        };        
         class NativeJSRenderer
-	{
+        {
             public:
-	        ~NativeJSRenderer();
+	              ~NativeJSRenderer();
                 NativeJSRenderer(std::string waylandDisplay="");
                 bool initialize();
                 bool terminate();
                 void run();
-                void launchApplication(std::string url, ModuleSettings& moduleSettings);
-                void terminateApplication(std::string url);
                 void setEnvForConsoleMode(ModuleSettings& moduleSettings);
-		std::vector<std::string> getApplications();
-
-            private:
-                void loadApplication(std::string url, ModuleSettings& moduleSettings);
-                void unloadApplication(std::string url);
+                bool runApplication(uint32_t id, std::string url);
+                bool runJavaScript(uint32_t id, std::string code); 
+                bool createApplication(ModuleSettings& moduleSettings) ; 
+                bool terminateApplication(uint32_t id);
+                std::list<ApplicationDetails> getApplications();
+                uint32_t mId;   		
+            private:           	 
                 bool downloadFile(std::string& url, MemoryStruct& chunk);
                 void processDevConsoleRequests();
                 void runDeveloperConsole(ModuleSettings moduleSettings);
+                void createApplicationInternal(ApplicationRequest& appRequest);
+                void runApplicationInternal(ApplicationRequest& appRequest);
+                void terminateApplicationInternal(ApplicationRequest& appRequest);
+                void runJavaScriptInternal(ApplicationRequest& appRequest);           	
                 static size_t write_data(void *ptr, size_t size, size_t nmemb, FILE *stream);
                 IJavaScriptEngine* mEngine;
-		std::map<std::string, IJavaScriptContext*> mContextMap;
                 bool mRunning;
                 std::string mTestFileName;
                 std::unique_ptr<ConsoleState> mConsoleState;
@@ -107,6 +141,18 @@ namespace JsRuntime {
                 bool mEnableWebSocketServer;
                 bool mEssosInitialized;
                 bool mConsoleMode;
-                std::mutex mUserMutex;
-	};
-}
+                std::mutex mUserMutex;                                  	
+                struct ApplicationData{
+                std::string url;
+                IJavaScriptContext* context;
+                };
+                std::map<uint32_t, ApplicationData> mContextMap;
+                std::vector<ApplicationRequest> gPendingRequests;
+		
+		    };
+};
+		
+		
+            	       	
+           
+
