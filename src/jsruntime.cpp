@@ -28,7 +28,7 @@
 #include <iostream>
 #include <memory>
 #include <string.h>
-#include <thread>
+#include <vector>
 #include <unistd.h>
 
 using namespace std;
@@ -126,14 +126,32 @@ int main(int argc, char* argv[])
     }
 #endif
 
-    for (int j=0; j<applications.size(); j++)
-    {
+    std::vector<std::thread> applicationThreads;
+
+    for (int j = 0; j < applications.size(); j++) {
         std::string url = applications[j];
+        
+        applicationThreads.emplace_back([renderer, url, &moduleSettings]() {
         NativeJSLogger::log(INFO, "Application URL is %s\n", (url.size() ? url.c_str() : "empty"));
-        renderer->launchApplication(url, moduleSettings);
-    } 
+	uint32_t id = renderer->createApplication(moduleSettings);
+        renderer->runApplication(id, url);
+        //renderer->runJavaScript(id,url);
+#if defined(NATIVEJS_DEVELOPER_MODE)
+        std::this_thread::sleep_for(std::chrono::milliseconds(500)); 
+        renderer->getApplications();
+        sleep(10);	
+        renderer->terminateApplication(id);
+#endif
+        });
+    }
 
-    renderer->run();
+    renderer->run(); 
 
+    for (auto& t : applicationThreads) {
+        if (t.joinable()) {
+        t.join();
+        }
+    }
+    
     return 0;
 }
