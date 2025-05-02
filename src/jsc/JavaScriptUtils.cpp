@@ -266,6 +266,28 @@ rtError rtHttpGetBinding(int numArgs, const rtValue* args, rtValue* result, void
   return RT_OK;
 }
 
+rtError rtSetVideoStartTimeBinding(int numArgs, const rtValue* args, rtValue* result, void* context)
+{
+    if (context == nullptr || numArgs < 1) {
+        rtLogError("Invalid context or missing arguments");
+        return RT_ERROR_INVALID_ARG;
+    }
+
+    JavaScriptContext* jscContext = (JavaScriptContext*)context;
+
+    if (args[0].getType() != RT_intType && args[0].getType() != RT_doubleType) {
+    	rtLogError("%s: invalid argument type", __FUNCTION__);
+    	return RT_ERROR_INVALID_ARG;
+    }
+    double playbackStartTime = args[0].toDouble();
+    jscContext->setPlaybackStartTime(playbackStartTime);
+
+    if (result)
+        *result = true;
+
+    return RT_OK;
+}
+
 rtError rtReadBinaryBinding(int numArgs, const rtValue* args, rtValue* result, void* context)
 {
   char *buffer = nullptr;

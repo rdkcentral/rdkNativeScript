@@ -81,7 +81,10 @@ class Video {
         this.player.addEventListener("bitrateChanged", this.handleBitrateChanged.bind(this)); 
         
         /* Fired with metadata of the asset currently played */
-        this.player.addEventListener("mediaMetadata", this.handleMediaMetadata.bind(this)); 
+        this.player.addEventListener("mediaMetadata", this.handleMediaMetadata.bind(this));
+
+	/* To get metrics data */
+	this.player.addEventListener("tuneMetricsData", this.handleTuneMetrics.bind(this));
     }
 /* Method mutes the volume when playback starts if the player is muted */
     handlePlay() {
@@ -112,6 +115,21 @@ class Video {
 
     handleMediaMetadata(event) {
         console.log("Media metadata:", event);
+    }
+
+    handleTuneMetrics(event) {
+        console.log("********Tune Metrics Data event received***********");
+
+    	const metrics = JSON.parse(event.tuneMetricsData);
+    	const tbu = metrics.tbu;
+    	const gff = metrics.gff;
+
+    	console.log("Tune Start (ms):", tbu);
+    	console.log("Gap to First Frame (ms):", gff);
+    	console.log("Full Tune Metrics Data:", JSON.stringify(metrics, null, 2));
+    	let playbackStartTime = tbu + gff;
+    	console.log("Playback Start Time (ms):", playbackStartTime);
+    	setVideoStartTime(playbackStartTime);
     }
     
 /* Method loads the media from given url, sets the autoplay property and sets volume to 0 if player is muted */
