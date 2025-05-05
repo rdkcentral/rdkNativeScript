@@ -121,6 +121,18 @@ NativeJSRenderer::NativeJSRenderer(std::string waylandDisplay): mEngine(nullptr)
         mEssosInitialized = EssosInstance::instance()->initialize(true);
 #endif
     }
+
+    const char* levelFromEnv = getenv("NATIVEJS_LOG_LEVEL");
+    if(levelFromEnv)
+    {
+    	NativeJSLogger::setLogLevel(levelFromEnv);
+    	NativeJSLogger::log(INFO, "Log level is set to: %s", levelFromEnv);
+    }
+    else
+    {
+    	NativeJSLogger::log(INFO, "Log level isn't set. Using default loglevel: INFO");
+    }
+
     mEngine = new JavaScriptEngine();
     mEngine->initialize();
     char* testfile = getenv("NATIVEJS_TEST_FILE");

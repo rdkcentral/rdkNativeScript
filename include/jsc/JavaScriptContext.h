@@ -32,6 +32,7 @@
 
 #include <JavaScriptCore/JavaScript.h>
 #include <JavaScriptContextBase.h>
+#include <NativeJSLogger.h>
 #include "rtScriptJSCPrivate.h"
 #include <KeyListener.h>
 #include <KeyInput.h>
@@ -84,7 +85,7 @@ class JavaScriptContext: public JavaScriptContextBase, public NetworkMetricsList
     void setPlaybackStartTime(double time) {
     	mPerformanceMetrics.playbackStartTime = time;
     	double launchTime = mPerformanceMetrics.playbackStartTime - mPerformanceMetrics.startTime;
-	std::cout << "\n-----LAUNCH TIME-----: " << std::fixed << std::setprecision(3) << launchTime << " ms\n"; 
+	NativeJSLogger::log(INFO, "------LAUNCH_TIME-----:%.3f ms\n", launchTime);
     }
 
     virtual void onMetricsData (NetworkMetrics *net) override;

@@ -32,6 +32,7 @@
 #define ENABLE(WTF_FEATURE) (defined ENABLE_##WTF_FEATURE  && ENABLE_##WTF_FEATURE)
 #include <JavaScriptCore/JavaScript.h>
 #include <JavaScriptCore/JSRemoteInspector.h>
+#include <NativeJSLogger.h>
 
 #include "JavaScriptEngine.h"
 #include "JavaScriptUtils.h"
@@ -83,7 +84,7 @@ bool JavaScriptEngine::initialize()
     if (disableGstStartValue)
     {
         sDisableGstStart = true;
-        std::cout << "disabled gst start " << std::endl;
+	NativeJSLogger::log(INFO, "disabled gst start\n");
     }
 
     if (!sDisableGstStart)
@@ -113,7 +114,7 @@ bool JavaScriptEngine::initialize()
     else
     {
         isFailedParsing = true;
-        std::cout << "failed to start remote inspector server due to parsing issues" << std::endl;
+	NativeJSLogger::log(ERROR, "failed to start remote inspector server due to parsing issues\n");
     }		
     if (!isFailedParsing)
     {	    
@@ -134,12 +135,13 @@ bool JavaScriptEngine::initialize()
   if (garbageCollectInterval)
   {
       garbageCollectIntervalValue = atof(garbageCollectInterval);
-      std::cout << "garbage collection interval value " << garbageCollectIntervalValue << std::endl;
+      NativeJSLogger::log(INFO, "garbage collection interval value: %d\n", garbageCollectIntervalValue);
   }
   mGarbageCollectionTag = installTimeout(garbageCollectIntervalValue, true,
     [engine] () mutable {
       engine->collectGarbage();
-      printf("Collecting Garbage !!!!!!!!!!!!! \n");
+      NativeJSLogger::log(INFO, "Collecting Garbage !!!!!!!!!!!!!\n");
+
       fflush(stdout);
       return 0;
     });

@@ -19,6 +19,7 @@
 
 #include "jsc_lib.h"
 #include <JSRuntimeServer.h>
+#include <NativeJSLogger.h>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -35,8 +36,8 @@ public:
         mPtr = cJSON_Parse(jsonStr.c_str());
         if (mPtr == nullptr)
         {
-            std::cerr << "Error parsing JSON" << std::endl;
-        }
+             NativeJSLogger::log(ERROR, "Error parsing JSON\n");
+	}
     }
     JsonWrap(JsonWrap &root, const char *name)
     {
@@ -44,8 +45,8 @@ public:
         cJSON *itm = cJSON_GetObjectItem(root.get(), name);
         if (!itm || !cJSON_IsObject(itm))
         {
-            std::cerr << "Error: " << name << "is not an object" << std::endl;
-            itm = nullptr;
+            NativeJSLogger::log(ERROR, "Error: %s is not an object\n", name);
+	    itm = nullptr;
         }
         mPtr = itm;
     }
@@ -61,8 +62,8 @@ public:
         cJSON *itm = cJSON_GetObjectItem(mPtr, name);
         if (!itm || !cJSON_IsString(itm))
         {
-            std::cerr << "Error: " << name << "is not a string" << std::endl;
-            err = true;
+	     NativeJSLogger::log(ERROR, "Error: %s is not a string\n", name);
+	     err = true;
         }
         else
         {
@@ -94,7 +95,7 @@ JSRuntimeServer::JSRuntimeServer() : mServerPort(0)
 
 void JSRuntimeServer::initialize(int serverport, std::shared_ptr<JsRuntime::NativeJSRenderer> renderer)
 {
-    std::cout << "Enter: " << __func__ << std::endl;
+    NativeJSLogger::log(INFO, "Enter: %s\n", __func__);
 
     mServerPort = serverport;
     mRenderer = renderer;
@@ -102,7 +103,7 @@ void JSRuntimeServer::initialize(int serverport, std::shared_ptr<JsRuntime::Nati
 
 bool JSRuntimeServer::start()
 {
-    std::cout << "Enter: " << __func__ << std::endl;
+    NativeJSLogger::log(INFO, "Enter: %s\n", __func__);
 
     mServer.set_access_channels(websocketpp::log::alevel::all);
     mServer.clear_access_channels(websocketpp::log::alevel::frame_payload);
@@ -126,8 +127,7 @@ bool JSRuntimeServer::start()
 
 bool JSRuntimeServer::stop()
 {
-    std::cout << "Enter: " << __func__ << std::endl;
-
+    NativeJSLogger::log(INFO, "Enter: %s\n", __func__);
     mServer.stop_listening();
 
     // Close all existing connections
@@ -153,14 +153,15 @@ void JSRuntimeServer::send(websocketpp::connection_hdl hdl, const std::string &m
     }
     catch (websocketpp::exception const &e)
     {
-        std::cout << "Send failure: " << e.what() << std::endl;
+	NativeJSLogger::log(ERROR, "Send failure: %s\n", e.what());
     }
+
 }
 
 void JSRuntimeServer::onMessage(websocketpp::connection_hdl hdl, message_ptr msg)
 {
     std::string msgstr = msg->get_payload();
-    std::cout << "Enter: " << __func__ << ": " << msgstr << std::endl;
+    NativeJSLogger::log(INFO, "Enter: %s : %s\n", __func__, msgstr.c_str());
 
     // Example input:
     // {"method": "launchApplication", "params":{"url":"/opt/www/demo/player.js", "options":"player,xhr"}}
@@ -252,7 +253,7 @@ void JSRuntimeServer::onMessage(websocketpp::connection_hdl hdl, message_ptr msg
 
 void JSRuntimeServer::onOpen(websocketpp::connection_hdl hdl)
 {
-    std::cout << "Enter: " << __func__ << std::endl;
+    NativeJSLogger::log(INFO, "Enter: %s\n", __func__);
 
     std::lock_guard<std::mutex> lock(mDataMutex);
     mConnections.insert(hdl);
@@ -260,7 +261,7 @@ void JSRuntimeServer::onOpen(websocketpp::connection_hdl hdl)
 
 void JSRuntimeServer::onClose(websocketpp::connection_hdl hdl)
 {
-    std::cout << "Enter: " << __func__ << std::endl;
+    NativeJSLogger::log(INFO, "Enter: %s\n", __func__);
 
     std::lock_guard<std::mutex> lock(mDataMutex);
     mConnections.erase(hdl);

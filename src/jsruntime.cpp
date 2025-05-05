@@ -18,6 +18,7 @@
 **/
 
 #include <NativeJSRenderer.h>
+#include <NativeJSLogger.h>
 #if defined(ENABLE_JSRUNTIME_SERVER)
 #include <JSRuntimeServer.h>
 #endif
@@ -37,7 +38,7 @@ int main(int argc, char* argv[])
 {
     if (argc < 2)
     {
-        std::cout << "pass the url to run" << std::endl;
+        NativeJSLogger::log(WARN, "Pass the URL to run\n");
 	return -1;
     }
 
@@ -112,7 +113,7 @@ int main(int argc, char* argv[])
     }
     if (!renderer)
     {
-        std::cout << "unable to run application" << std::endl;
+        NativeJSLogger::log(ERROR, "Unable to run application\n");
         return -1;
     }
 
@@ -128,7 +129,7 @@ int main(int argc, char* argv[])
     for (int j=0; j<applications.size(); j++)
     {
         std::string url = applications[j];
-        std::cout << "application url is " << (url.size() ? url.c_str() : "empty") << std::endl;
+        NativeJSLogger::log(INFO, "Application URL is %s\n", (url.size() ? url.c_str() : "empty"));
         renderer->launchApplication(url, moduleSettings);
     } 
 

@@ -18,6 +18,7 @@
 **/
 
 #include "KeyInput.h"
+#include "NativeJSLogger.h"
 #include <iostream>
 
 #include <map>
@@ -638,7 +639,7 @@ static std::string getJavaScriptKeyValue(uint32_t waylandKeyCode, uint32_t wayla
 
 bool keyCodeFromWayland(uint32_t waylandKeyCode, uint32_t waylandFlags, struct JavaScriptKeyDetails& details)
 {
-    std::cout << "key event - keyCode:" << waylandKeyCode <<  " flags: " << waylandFlags;
+    NativeJSLogger::log(INFO, "key event - keyCode: %d flags: %d\n", waylandKeyCode, waylandFlags);
 /*
     if (keyMappings.find(waylandKeyCode) == keyMappings.end() || keyMappings.find(waylandKeyCode) == keyMappings.end())
     {
@@ -653,8 +654,8 @@ bool keyCodeFromWayland(uint32_t waylandKeyCode, uint32_t waylandFlags, struct J
 
     if (keyCode.size() == 0)
     {
-        std::cout << "error in key mapping " << std::endl; 
-        return false;
+        NativeJSLogger::log(ERROR, "error in key mapping\n");
+	return false;
     } 
     details.code = keyCode;
     details.keyCode = keyCodeValue;
@@ -663,8 +664,8 @@ bool keyCodeFromWayland(uint32_t waylandKeyCode, uint32_t waylandFlags, struct J
 
     if (keyValue.size() == 0)
     {
-        std::cout << "error in key value mapping " << std::endl;
-        return false;
+        NativeJSLogger::log(ERROR, "error in key value mapping\n");
+	return false;
     }
     details.key = keyValue;
     

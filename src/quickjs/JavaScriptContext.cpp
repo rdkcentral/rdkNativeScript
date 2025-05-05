@@ -108,14 +108,14 @@ bool JavaScriptContext::evaluateScript(const char* script, const char* name, con
 {
     if (nullptr != name)
     {	  
-      printf("JavaScriptContext::evaluateScript name=%s", name);
+      NativeJSLogger::log(INFO, "JavaScriptContext::evaluateScript name=%s\n", name);
       fflush(stdout);
     }
     //JSValue retValue = JS_Eval(mContext, script, strlen(script), name==nullptr?"":name, JS_EVAL_TYPE_MODULE);
     JSValue retValue = JS_Eval(mContext, script, strlen(script), name==nullptr?"":name, 0);
     if (JS_IsException(retValue))
     {
-        printf("Error evaluating script\r\n");
+	NativeJSLogger::log(ERROR, "Error evaluating script\n");
         js_std_dump_error(mContext);
         return false;
     }
@@ -129,7 +129,7 @@ void JavaScriptContext::processKeyEvent(struct JavaScriptKeyDetails& details, bo
     JSValue keyFunction = JS_Eval(mContext, keyFunctionString.c_str(), keyFunctionString.length(), "", 0);
     if (JS_IsException(keyFunction))
     {
-        printf("Error evaluating key function\r\n");
+	NativeJSLogger::log(ERROR, "Error evaluating key function\n");
         js_std_dump_error(mContext);
         return;
     }
@@ -171,7 +171,7 @@ void JavaScriptContext::processKeyEvent(struct JavaScriptKeyDetails& details, bo
 
         if (JS_IsException(ret))
         {
-           std::cout << "received exception during key handling ";
+	   NativeJSLogger::log(ERROR, "received exception during key handling\n");
         }
     }
 }
