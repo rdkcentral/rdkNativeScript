@@ -36,6 +36,7 @@
 #include <KeyListener.h>
 #include <KeyInput.h>
 
+#include <rtHttpRequest.h>
 #include <JavaScriptCore/JavaScript.h>
 #ifdef ENABLE_JSRUNTIME_PLAYER
 #ifdef ENABLE_AAMP_JSBINDINGS_STATIC
@@ -63,7 +64,7 @@ struct PerformanceMetrics {
 	double playbackStartTime=0.0;
 };
 
-class JavaScriptContext: public JavaScriptContextBase
+class JavaScriptContext: public JavaScriptContextBase, public NetworkMetricsListener
 {
   public:
     JavaScriptContext(JavaScriptContextFeatures& features, std::string url, IJavaScriptEngine* jsEngine);
@@ -86,6 +87,10 @@ class JavaScriptContext: public JavaScriptContextBase
 	std::cout << "\n-----LAUNCH TIME-----: " << std::fixed << std::setprecision(3) << launchTime << " ms\n"; 
     }
 
+    virtual void onMetricsData (NetworkMetrics *net) override;
+    rtMapObject* getNetworkMetricsData() const { return mNetworkMetricsData; }
+    void dumpNetworkMetricData(NetworkMetrics *metrics, std::string appUrl);
+
   private:
     bool evaluateScript(const char *script, const char *name, const char *args = nullptr, bool module = false);
     void processKeyEvent(struct JavaScriptKeyDetails& details, bool keyPress);
@@ -99,6 +104,7 @@ class JavaScriptContext: public JavaScriptContextBase
     JSContextGroupRef mContextGroup;
     JSGlobalContextRef mContext;
     PerformanceMetrics mPerformanceMetrics;
+    rtMapObject* mNetworkMetricsData;
     rtRef<rtJSCContextPrivate> mPriv;
     rtRef<rtFunctionCallback> m_webSocketBinding;
     rtRef<rtFunctionCallback> m_webSocketServerBinding;
@@ -110,5 +116,7 @@ class JavaScriptContext: public JavaScriptContextBase
     rtRef<rtFunctionCallback> m_httpGetBinding;
     rtRef<rtFunctionCallback> m_readBinaryBinding;
     rtRef<rtFunctionCallback> m_setVideoStartTimeBinding;
+    rtRef<rtFunctionCallback> m_JSRuntimeDownloadMetrics;
+
 };
 #endif
