@@ -138,8 +138,8 @@ bool JSWebSocket::connect()
             }
             else
 	    {
-                printf("no event handlers registered for open\n");
-	        fflush(stdout);
+	        NativeJSLogger::log(WARNING, "no event handlers registered for open\n");
+		fflush(stdout);
 	    } 
 	});
   
@@ -165,8 +165,8 @@ bool JSWebSocket::connect()
             }
             else
 	    {
-                printf("no event handlers registered for message\n");
-	        fflush(stdout);
+	        NativeJSLogger::log(WARNING, "no event handlers registered for message\n");
+		fflush(stdout);
 	    } 
         });
   
@@ -188,8 +188,8 @@ bool JSWebSocket::connect()
             }
             else
 	    {
-                printf("no event handlers registered for error\n");
-	        fflush(stdout);
+	        NativeJSLogger::log(WARNING, "no event handlers registered for error\n");
+		fflush(stdout);
 	    } 
         });
   
@@ -215,12 +215,12 @@ bool JSWebSocket::connect()
             }
             else
 	    {
-                printf("no event handlers registered for close\n");
-	        fflush(stdout);
+	        NativeJSLogger::log(WARNING, "no event handlers registered for close\n");
+		fflush(stdout);
 	    } 
         });
   
-    printf("[%s]\n", mUri.c_str());
+    NativeJSLogger::log(INFO, "[%s]\n", mUri.c_str());
     hub.connect(mUri, nullptr, mHeaders);
     return true;
 }
@@ -241,7 +241,7 @@ bool JSWebSocket::send(const string& chunk)
 {
     if (mWs == nullptr)
     {
-        printf("webSocket still in connecting, cannot send message now.");
+	NativeJSLogger::log(WARNING, "webSocket still in connecting, cannot send message now.\n");
 	fflush(stdout);
         return false;
     }
@@ -284,13 +284,13 @@ static JSValue js_websocket_ctor(JSContext *ctx,
        class is extended. */
     if (argc == 0)
     {
-        printf("insufficient number of arguments !!");
+	NativeJSLogger::log(ERROR, "insufficient number of arguments !!\n");
 	fflush(stdout);
         goto fail;
     }
     if (!JS_IsObject(argv[0]) && !JS_IsString(argv[0]))
     {
-        printf("invalid type for constructor !!");
+	NativeJSLogger::log(ERROR, "invalid type for constructor !!\n");
 	fflush(stdout);
         goto fail;
     }

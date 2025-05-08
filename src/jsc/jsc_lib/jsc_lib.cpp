@@ -16,6 +16,7 @@
  */
  
 #include "jsc_lib.h"
+#include "NativeJSLogger.h"
 
 using namespace JSC;
 
@@ -25,7 +26,7 @@ static bool shouldInterruptScriptBeforeTimeout(const JSGlobalObject*) { return f
 static RuntimeFlags javaScriptRuntimeFlags(const JSGlobalObject*) { return RuntimeFlags(); }
 static void reportUncaughtExceptionAtEventLoop(JSGlobalObject*, Exception* exception)
 {
-    printf("Uncaught Exception at run loop: ", exception->value());
+    NativeJSLogger::log(ERROR, "Uncaught Exception at run loop: %s\n", exception->value());
 }
 static JSObject* currentScriptExecutionOwner(JSGlobalObject* global) { return global; }
 static ScriptExecutionStatus scriptExecutionStatus(JSGlobalObject*, JSObject*) { return ScriptExecutionStatus::Running; }
@@ -100,7 +101,7 @@ static size_t CallbackHeader(void *contents, size_t size, size_t nmemb, void *us
 
   mem->headerBuffer = (char*)realloc(mem->headerBuffer, mem->headerSize + downloadSize + 1);
   if(mem->headerBuffer == NULL) {
-    std::cout << "out of memory when downloading image\n";
+    NativeJSLogger::log(ERROR, "out of memory when downloading image\n");
     return 0;
   }
 
@@ -118,7 +119,7 @@ static size_t CallbackOnMemoryWrite(void *contents, size_t size, size_t nmemb, v
 
   mem->contentsBuffer = (char*)realloc(mem->contentsBuffer, mem->contentsSize + downloadSize + 1);
   if(mem->contentsBuffer == NULL) {
-    std::cout << "out of memory when downloading image\n";
+    NativeJSLogger::log(ERROR, "out of memory when downloading image\n");
     return 0;
   }
 
@@ -158,17 +159,17 @@ bool downloadFile(std::string& url, MemoryStruct& chunk)
         curl_easy_cleanup(curl);
         if ((res == 0) && (httpCode == 200))
         {
-            std::cout << "download operation success" << std::endl;
-            ret = true;
+            NativeJSLogger::log(INFO, "download operation success\n");
+	    ret = true;
         }
         else
         {
-            std::cout << "download operation failed" << std::endl;
+	    NativeJSLogger::log(ERROR, "download operation failed\n");
         }
     }
     else
     {
-        std::cout << "unable to perform download " << std::endl;
+	NativeJSLogger::log(ERROR, "unable to perform download\n");
     }
     return ret;
 }
@@ -619,9 +620,9 @@ static void dumpException1(JSGlobalObject* globalObject, JSValue exception)
     CHECK_EXCEPTION();
     Expected<CString, UTF8ConversionError> expectedCString = exceptionString.tryGetUtf8();
     if (expectedCString)
-        printf("Exception: %s\n", expectedCString.value().data());
+    	NativeJSLogger::log(ERROR, "Exception: %s\n", expectedCString.value().data());
     else
-        printf("Exception: <out of memory while extracting exception string>\n");
+    	NativeJSLogger::log(ERROR, "Exception: <out of memory while extracting exception string>\n");
 
     Identifier nameID = Identifier::fromString(vm, "name"_s);
     CHECK_EXCEPTION();
@@ -649,7 +650,7 @@ static void dumpException1(JSGlobalObject* globalObject, JSValue exception)
         CHECK_EXCEPTION();
         auto lineNumberString = lineNumberValue.toWTFString(globalObject);
         CHECK_EXCEPTION();
-        printf("at %s:%s\n", fileNameString.utf8().data(), lineNumberString.utf8().data());
+	NativeJSLogger::log(INFO, "at %s:%s\n", fileNameString.utf8().data(), lineNumberString.utf8().data());
     }
     
     if (!stackValue.isUndefinedOrNull()) {
@@ -657,6 +658,7 @@ static void dumpException1(JSGlobalObject* globalObject, JSValue exception)
         CHECK_EXCEPTION();
         if (stackString.length())
             printf("%s\n", stackString.utf8().data());
+	    NativeJSLogger::log(INFO, "%s\n", stackString.utf8().data());
     }
 
 #undef CHECK_EXCEPTION

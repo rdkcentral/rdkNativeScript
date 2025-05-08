@@ -19,6 +19,7 @@
 
 #include "EssosInstance.h"
 #include "KeyInput.h"
+#include "NativeJSLogger.h"
 
 #include <iostream>
 
@@ -196,7 +197,7 @@ bool EssosInstance::initialize(bool useWayland)
         if ( essosError )
         {
             const char *errorDetail = EssContextGetLastErrorDetail(mEssosContext);
-	    std::cout << "Essos error during initialization: " <<  errorDetail;
+	    NativeJSLogger::log(ERROR, "Essos error during initialization: %s\n", errorDetail);
         }
     }
     return !essosError;

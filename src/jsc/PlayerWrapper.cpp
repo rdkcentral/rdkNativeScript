@@ -18,6 +18,7 @@
 **/
 
 #include <PlayerWrapper.h>
+#include <NativeJSLogger.h>
 
 struct EventTypeMap
 {
@@ -261,26 +262,26 @@ std::vector<std::string> JSStringArrayToCStringArray(JSContextRef context, JSVal
 
     if(!arrayRef)
     {
-        printf("Error: array is null \n");
+	NativeJSLogger::log(ERROR, "Error: array is null\n");
 	fflush(stdout);
         return retval;
     }
     if (!JSValueIsObject(context, arrayRef))
     {
-        printf("Error: value is not an object.\n");
+	NativeJSLogger::log(ERROR, "Error: value is not an object\n");
 	fflush(stdout);
         return retval;
     }
     if(!JSValueIsArray(context, arrayRef))
     {
-        printf("Error: value is not an array\n");
+	NativeJSLogger::log(ERROR, "Error: value is not an array\n");
 	fflush(stdout);
         return retval;
     }
     JSObjectRef arrayObj = JSValueToObject(context, arrayRef, &exception);
     if(exception)
     {
-        printf("Error: exception accesing array object.\n");
+	NativeJSLogger::log(ERROR, "Error: exception accessing array object\n");
 	fflush(stdout);
         return retval;
     }
@@ -289,14 +290,14 @@ std::vector<std::string> JSStringArrayToCStringArray(JSContextRef context, JSVal
     JSValueRef lengthRef = JSObjectGetProperty(context, arrayObj, lengthStrRef, &exception);
     if(exception)
     {
-        printf("Error: exception accesing array length.\n");
+	NativeJSLogger::log(ERROR, "Error: exception accessing array length\n");
 	fflush(stdout);
         return retval;
     }
     int length = JSValueToNumber(context, lengthRef, &exception);
     if(exception)
     {
-        printf("Error: exception array length in not a number. \n");
+	NativeJSLogger::log(ERROR, "Error: exception array length is not a number\n");
 	fflush(stdout);
         return retval;
     }
@@ -338,12 +339,12 @@ JSValueRef AAMPMediaPlayerJS_initConfig (JSContextRef ctx, JSObjectRef function,
                 }
 		else
 		{
-        	    printf("Failed to create JSON String");
+		    NativeJSLogger::log(ERROR, "Failed to create JSON String\n");
 		    fflush(stdout);
 		}
 		if (!success)
 		{
-        	    printf("Failed to parse json string [%s]\n", configData);
+		    NativeJSLogger::log(ERROR, "Failed to parse JSON string [%s]\n", configData.c_str());
 		    fflush(stdout);
 	        }
                 if (configData)
@@ -353,7 +354,7 @@ JSValueRef AAMPMediaPlayerJS_initConfig (JSContextRef ctx, JSObjectRef function,
 	}
 	else
 	{
-		printf("wrong number of arguments or type to initConfig");
+		NativeJSLogger::log(ERROR, "wrong number of arguments or type to initConfig\n");
 		fflush(stdout);
 		*exception = GetException(ctx, "wrong number of arguments or type to initConfig");
 	}
@@ -454,7 +455,7 @@ JSValueRef AAMPMediaPlayerJS_setVolume (JSContextRef ctx, JSObjectRef function, 
 		int volume = (int) JSValueToNumber(ctx, arguments[0], exception);
 		if (volume >= 0)
 		{
-            		printf("Setting AudioVolume(%d)", volume);
+			NativeJSLogger::log(INFO, "Setting AudioVolume(%d)\n", volume);
 			fflush(stdout);
 			privObj->mPlayer->SetAudioVolume(volume);
 		}
@@ -900,7 +901,7 @@ JSValueRef AAMPMediaPlayerJS_getAudioTrackInfo (JSContextRef ctx, JSObjectRef fu
 	}
 	else
         {
-                printf("GetAudioTrackInfo() value is NULL \n");
+		NativeJSLogger::log(ERROR, "GetAudioTrackInfo() value is NULL\n");
 		fflush(stdout);
         }
 	return JSValueMakeUndefined(ctx);
@@ -931,7 +932,7 @@ JSValueRef AAMPMediaPlayerJS_getTextTrackInfo (JSContextRef ctx, JSObjectRef fun
 	}
 	else
 	{
-                printf("GetTextTrackInfo() value is NULL \n");
+		NativeJSLogger::log(ERROR, "GetTextTrackInfo() value is NULL\n");
 		fflush(stdout);
 	}
 	return JSValueMakeUndefined(ctx);
@@ -1315,7 +1316,7 @@ static JSValueRef AAMPMediaPlayerJS_setAlternateContent(JSContextRef ctx, JSObje
 		}
 		else
 		{
-                        printf("Unable to parse the promiseCallback argument\n");
+			NativeJSLogger::log(ERROR, "Unable to parse the promiseCallback argument\n");
 			fflush(stdout);
 		}
 	
@@ -1512,8 +1513,8 @@ void AAMPMediaPlayer_JS_finalize(JSObjectRef object)
         }
         else
         {
-                printf("called finalize on empty object\n");
-                fflush(stdout);
+                NativeJSLogger::log(WARN, "called finalize on empty object\n");
+		fflush(stdout);
         }
 }
 

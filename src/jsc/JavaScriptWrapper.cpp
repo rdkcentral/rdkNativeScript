@@ -20,6 +20,7 @@
 #include "jsc_lib.h"
 #include "JavaScriptEngine.h"
 #include "JavaScriptWrapper.h"
+#include <NativeJSLogger.h>
 #include <cassert>
 #include <memory>
 #include <map>
@@ -309,7 +310,7 @@ static bool rtObjectWrapper_hasProperty(JSContextRef ctx, JSObjectRef object, JS
   {
     rtMethodMap* objMap = objectRef->getMap();
     const char* className = objMap ? objMap->className : "<unknown>";
-    printf("rtObjectWrapper_hasProperty class=%s prop=%s\n", className, propName.cString());
+    NativeJSLogger::log(INFO, "rtObjectWrapper_hasProperty class=%s prop=%s\n", className, propName.cString());
   }
 
   if ( !strcmp(propName.cString(), "Symbol.iterator") ||
@@ -321,7 +322,7 @@ static bool rtObjectWrapper_hasProperty(JSContextRef ctx, JSObjectRef object, JS
   {
     if ( isIndex )
       break;
-
+    
     rtMethodMap* objMap = objectRef->getMap();
     if ( !objMap || !objMap->className )
       break;
@@ -389,7 +390,7 @@ static JSValueRef rtObjectWrapper_getProperty(JSContextRef context, JSObjectRef 
   {
     rtMethodMap* objMap = objectRef->getMap();
     const char* className = objMap ? objMap->className : "<unknown>";
-    printf("rtObjectWrapper_getProperty class=%s prop=%s\n", className, propName.cString());
+    NativeJSLogger::log(INFO, "rtObjectWrapper_getProperty class=%s prop=%s\n", className, propName.cString());
   }
 
   if (!strcmp(propName.cString(), "Symbol.iterator")) {

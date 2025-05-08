@@ -150,7 +150,7 @@ void JavaScriptContext::loadAAMPJSBindingsLib()
         }
         else
         {
-            std::cout << "failed to load " << aampJSBindingsLib << " and error is " << dlerror();
+            NativeJSLogger::log(ERROR, "failed to load %s and error is %s\n", aampJSBindingsLib, dlerror());
         }
 	
 	dlclose(jscLibHandle);
@@ -285,11 +285,11 @@ bool JavaScriptContext::evaluateScript(const char* script, const char* name, con
 
     // execution duration
     double executionDuration = mPerformanceMetrics.executionEndTime - mPerformanceMetrics.executionStartTime;
-    std::cout << "\n-----EXECUTION_DURATION-----: " << std::fixed << std::setprecision(3) << executionDuration<< " ms\n";
+    NativeJSLogger::log(INFO, "-----EXECUTION_DURATION-----: %.3f ms\n", executionDuration);
 
     //Total duration from start to execution end
     double totalDuration = mPerformanceMetrics.executionEndTime - mPerformanceMetrics.startTime;
-    std::cout << "\n-----TOTAL_DURATION-----: " << std::fixed << std::setprecision(3) << totalDuration<< " ms\n";
+    NativeJSLogger::log(INFO, "-----TOTAL_DURATION-----: %.3f ms\n", totalDuration);
 
     return true;
 }
@@ -333,7 +333,7 @@ void JavaScriptContext::processKeyEvent(struct JavaScriptKeyDetails& details, bo
   
             if (exception)
 	    {
-                std::cout << "received exception during key handling ";
+		 NativeJSLogger::log(ERROR, "received exception during key handling\n");
             }
             
             if (result)
@@ -441,8 +441,8 @@ if (mModuleSettings.enablePlayer)
 #ifdef WS_SERVER_ENABLED
     if (mEnableWebSockerServer)
     {
-        std::cout << "enabling websocket server " << std::endl;
-        runFile("modules/wsserver.js", nullptr);
+        NativeJSLogger::log(INFO, "enabling websocket server\n");
+	runFile("modules/wsserver.js", nullptr);
     }
 #endif
     if (mModuleSettings.enableWindow)
