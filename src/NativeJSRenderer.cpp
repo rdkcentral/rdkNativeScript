@@ -200,7 +200,7 @@ uint32_t createID()
 bool NativeJSRenderer::createApplication(ModuleSettings& moduleSettings)
 {
 	mUserMutex.lock();
-    mId = createID();
+    	mId = createID();
 	ApplicationRequest request(mId, CREATE, "", moduleSettings.enableHttp, moduleSettings.enableXHR, moduleSettings.enableWebSocket, moduleSettings.enableWebSocketEnhanced, moduleSettings.enableFetch, moduleSettings.enableJSDOM, moduleSettings.enableWindow, moduleSettings.enablePlayer);
 	gPendingRequests.push_back(request);
 	mUserMutex.unlock();

@@ -72,6 +72,23 @@ public:
         return res;
     }
 
+    uint32_t getUint32(const char *name, bool &err)
+    {
+        uint32_t res;
+        cJSON *itm = cJSON_GetObjectItem(mPtr, name);
+        if (!itm || !cJSON_IsNumber(itm))
+        {
+            std::cerr << "Error: " << name << "is not a Uint32_t" << std::endl;
+            err = true;
+        }
+        else
+        {
+            res = (uint32_t) itm->valuedouble;
+            err = false;
+        }
+        return res;
+    }
+
     cJSON *get() { return mPtr; }
 
 private:
@@ -81,7 +98,6 @@ private:
     cJSON *mPtr;
     bool mIsRoot;
 };
-
 JSRuntimeServer *JSRuntimeServer::getInstance()
 {
     static JSRuntimeServer instance;
@@ -180,7 +196,6 @@ void JSRuntimeServer::onMessage(websocketpp::connection_hdl hdl, message_ptr msg
         {
             break;
         }
-
         if (method == "launchApplication")
         {
             JsonWrap jParams(jRoot, "params");
@@ -193,40 +208,72 @@ void JSRuntimeServer::onMessage(websocketpp::connection_hdl hdl, message_ptr msg
             {
                 break;
             }
-            std::string options = jParams.getString("options", error);
-            ModuleSettings settings;
-            settings.fromString(options);
-            mRenderer->launchApplication(url, settings);
-            result = "ok";
+            std::string options = jParams.getString("moduleSettings", error);
+            ModuleSettings moduleSettings;
+            moduleSettings.fromString(options);
+            mRenderer->createApplication(moduleSettings);
+	    uint32_t id = mRenderer->mId;
+            mRenderer->runApplication(id, url);
+            std::ostringstream oss;
+	    oss<< "ID : " << id;
+	    result = oss.str();
         }
-        else if (method == "terminateApplication")
+	else if (method == "runJavaScript")
+	{
+	    JsonWrap jParams(jRoot, "params");
+	    if ( jParams.get() == nullptr)
+	    {
+	        break;
+	    }
+            uint32_t id = jParams.getUint32("id", error);
+            if (error)
+            {
+                break;
+            }
+            std::string code = jParams.getString("code", error);
+            if (error)
+            {
+                break;
+            }
+	    mRenderer->runJavaScript(id, code);
+            result = "ok";
+
+	}
+        else if (method == "destroyApplication")
         {
             JsonWrap jParams(jRoot, "params");
             if (jParams.get() == nullptr)
             {
                 break;
             }
-            std::string url = jParams.getString("url", error);
-            if (error)
+            uint32_t id = jParams.getUint32("id", error);  
+ 	    if (error)
             {
                 break;
             }
-            mRenderer->terminateApplication(url);
+            mRenderer->terminateApplication(id);
             result = "ok";
         }
+
         else if (method == "getApplications")
         {
-            std::vector<std::string> apps = mRenderer->getApplications();
-            std::ostringstream oss;
-            for (size_t i = 0; i < apps.size(); ++i)
-            {
-                if (i != 0)
-                {
-                    oss << ' ';
-                }
-                oss << apps[i];
-            }
-            result = oss.str();
+            std::list<JsRuntime::ApplicationDetails> apps = mRenderer->getApplications();
+	    if(!apps.empty())
+	    {
+                std::ostringstream oss;
+                for (const auto& app : apps) 
+	        {
+                    if (!oss.str().empty()) 
+		    { 
+                        oss << " ";
+                    }
+                    oss << "ID: " << app.id << ", URL: " << app.url;
+                } 
+	        result = oss.str();
+	    }
+	    else
+		result = "No ID found";
+
         }
         else if (method == "ping")
         {
