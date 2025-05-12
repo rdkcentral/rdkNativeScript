@@ -17,6 +17,7 @@
 * limitations under the License.
 **/
 
+#include<TimeUtils.h>
 #include <unistd.h>
 #include <errno.h>
 
@@ -56,6 +57,9 @@ static AAMPJSBindings* gAAMPJSBindings = nullptr;
 #endif
 //BIG CHANGE
 extern void functionLoadModule(JSGlobalContextRef ref, JSObjectRef globalObjectRef, char* buffer, int len, char* name);
+
+static const char* envValue = std::getenv("NATIVEJS_DUMP_NETWORKMETRIC");
+
 JSContextGroupRef globalContextGroup()
 {
     static JSContextGroupRef gGroupRef = JSContextGroupCreate();
@@ -74,6 +78,7 @@ JavaScriptContext::JavaScriptContext(JavaScriptContextFeatures& features, std::s
       gTopLevelContext = mContext;
     registerUtils();
     registerCommonUtils();
+    mNetworkMetricsData = new rtMapObject();
 }
 
 JavaScriptContext::~JavaScriptContext()
@@ -121,9 +126,16 @@ if (mModuleSettings.enablePlayer)
 #ifdef ENABLE_AAMP_JSBINDINGS_DYNAMIC
 void JavaScriptContext::loadAAMPJSBindingsLib()
 {
+    std::cout<<"Dynamic mode is enabled"<<std::endl;
     if (nullptr == gAAMPJSBindings->PlayerLibHandle)
     {
         static const char *aampJSBindingsLib = "libaampjsbindings.so";
+	static const char *jscLib = "libJavaScriptCore.so";
+	void *jscLibHandle = dlopen(jscLib, RTLD_NOW | RTLD_GLOBAL);
+	if (!jscLibHandle)
+	{
+	    std::cout<<"dlopen error for jsc library " << dlerror() << std::endl;
+	}
         void *aampJSBindingsLibHandle = dlopen(aampJSBindingsLib, RTLD_NOW | RTLD_GLOBAL);
         if (aampJSBindingsLibHandle)
         {
@@ -138,8 +150,10 @@ void JavaScriptContext::loadAAMPJSBindingsLib()
         }
         else
         {
-            std::cout << "failed to load " << aampJSBindingsLib << " and error is " << dlerror();
+            NativeJSLogger::log(ERROR, "failed to load %s and error is %s\n", aampJSBindingsLib, dlerror());
         }
+	
+	dlclose(jscLibHandle);
     }
 }
 
@@ -219,6 +233,9 @@ bool JavaScriptContext::has(const char *name)
 
 bool JavaScriptContext::evaluateScript(const char* script, const char* name, const char *args, bool module)
 {
+    //execution start time
+    mPerformanceMetrics.executionStartTime = getTimeInMilliSec();
+
     if (nullptr != name)
     {	  
       rtLogInfo("JavaScriptContext::evaluateScript name=%s", name);
@@ -262,6 +279,18 @@ bool JavaScriptContext::evaluateScript(const char* script, const char* name, con
             return false;
         }
     }
+
+    //execution end time
+    mPerformanceMetrics.executionEndTime = getTimeInMilliSec();
+
+    // execution duration
+    double executionDuration = mPerformanceMetrics.executionEndTime - mPerformanceMetrics.executionStartTime;
+    NativeJSLogger::log(INFO, "-----EXECUTION_DURATION-----: %.3f ms\n", executionDuration);
+
+    //Total duration from start to execution end
+    double totalDuration = mPerformanceMetrics.executionEndTime - mPerformanceMetrics.startTime;
+    NativeJSLogger::log(INFO, "-----TOTAL_DURATION-----: %.3f ms\n", totalDuration);
+
     return true;
 }
 
@@ -304,7 +333,7 @@ void JavaScriptContext::processKeyEvent(struct JavaScriptKeyDetails& details, bo
   
             if (exception)
 	    {
-                std::cout << "received exception during key handling ";
+		 NativeJSLogger::log(ERROR, "received exception during key handling\n");
             }
             
             if (result)
@@ -329,8 +358,10 @@ void JavaScriptContext::registerUtils()
     m_setIntervalBinding = new rtFunctionCallback(rtSetItervalBinding, nullptr);
     m_clearIntervalBinding = new rtFunctionCallback(rtClearTimeoutBinding, nullptr);
     m_thunderTokenBinding = new rtFunctionCallback(getThunderTokenBinding, this);
-    m_httpGetBinding = new rtFunctionCallback(rtHttpGetBinding, nullptr);
+    m_httpGetBinding = new rtFunctionCallback(rtHttpGetBinding, this);
     m_readBinaryBinding = new rtFunctionCallback(rtReadBinaryBinding, nullptr);
+    m_setVideoStartTimeBinding = new rtFunctionCallback(rtSetVideoStartTimeBinding, this);
+    m_JSRuntimeDownloadMetrics = new rtFunctionCallback(rtJSRuntimeDownloadMetrics, this);
     add("webSocket", m_webSocketBinding.getPtr());
 #ifdef WS_SERVER_ENABLED
     if (mEnableWebSockerServer)
@@ -345,6 +376,8 @@ void JavaScriptContext::registerUtils()
     add("thunderToken", m_thunderTokenBinding.getPtr());
     add("httpGet", m_httpGetBinding.getPtr());
     add("readBinary", m_readBinaryBinding.getPtr());
+    add("setVideoStartTime", m_setVideoStartTimeBinding.getPtr());
+    add("JSRuntimeDownloadMetrics", m_JSRuntimeDownloadMetrics.getPtr());
   
 #ifdef ENABLE_JSRUNTIME_PLAYER
 if (mModuleSettings.enablePlayer)
@@ -408,8 +441,8 @@ if (mModuleSettings.enablePlayer)
 #ifdef WS_SERVER_ENABLED
     if (mEnableWebSockerServer)
     {
-        std::cout << "enabling websocket server " << std::endl;
-        runFile("modules/wsserver.js", nullptr);
+        NativeJSLogger::log(INFO, "enabling websocket server\n");
+	runFile("modules/wsserver.js", nullptr);
     }
 #endif
     if (mModuleSettings.enableWindow)
@@ -424,3 +457,63 @@ if (mModuleSettings.enablePlayer)
         runFile("modules/windowwrapper.js", nullptr/*, true*/);
     }
 }
+
+void JavaScriptContext::onMetricsData (NetworkMetrics *net)
+{
+   if (!net) {
+        rtLogError("onMetricsData: Received null NetworkMetrics structure.");
+        return;
+    }
+    rtString key = net->url;
+    mNetworkMetricsData->set(key, rtValue((void *)net));
+
+    if (envValue) {
+        dumpNetworkMetricData(net, this->getUrl());
+    }
+}
+
+void JavaScriptContext::dumpNetworkMetricData(NetworkMetrics *metrics, std::string appUrl)
+{
+    std::ofstream file("/tmp/jsruntimenetworkmetrics.log", std::ios::app);
+
+    if (!file.is_open()) 
+    {
+        rtLogError("Failed to open jsruntimenetworkmetrics log file");
+        return;
+    }
+    static bool isAppUrlLogged = false; 
+    if(!isAppUrlLogged)
+    {
+	isAppUrlLogged = true;    
+	    file << appUrl << ":";
+    }
+    auto now = std::chrono::system_clock::now();
+    std::time_t t = std::chrono::system_clock::to_time_t(now);
+    std::tm tm = *std::localtime(&t);
+    char timestampBuffer[20];
+    std::strftime(timestampBuffer, sizeof(timestampBuffer), "%Y-%m-%d %H:%M:%S", &tm);
+    std::stringstream ss;
+    ss << "  [" << std::endl;
+    ss << "  timestamp: " << timestampBuffer << std::endl;
+    ss << "  url: " << metrics->url << "," << std::endl;
+    ss << "  method: " << metrics->method << "," << std::endl;
+    ss << "  headers: [";
+    for (size_t j = 0; j < metrics->headers.size(); ++j) 
+    {
+	ss << metrics->headers[j];
+        if (j != metrics->headers.size() - 1) 
+        {
+           ss << ", ";
+        }
+    }
+    ss << "]," << std::endl;
+    ss << "  statusCode: " << metrics->statusCode << std::endl;
+    for (const auto& pair : metrics->timeMetricsData) 
+    {              
+	ss << "  " << pair.first.cString() << ": " << pair.second.toString().cString() << "\n";
+    }
+    ss << "]" << std::endl;
+    file << ss.str();
+    file.close();
+}
+

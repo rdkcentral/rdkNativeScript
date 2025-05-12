@@ -17,6 +17,7 @@
 * limitations under the License.
 **/
 #include <JSRuntimeClient.h>
+#include <NativeJSLogger.h>
 #include "jsc_lib.h"
 #include <iostream>
 #include <sstream>
@@ -58,7 +59,7 @@ bool JSRuntimeClient::run()
     WsClient::connection_ptr con = mEndPoint.get_connection(uri, ec);
     if (ec)
     {
-        std::cout << "Could not create connection because: " << ec.message() << std::endl;
+	NativeJSLogger::log(ERROR, "Could not create connection because: %s\n", ec.message().c_str());
         return false;
     }
 
@@ -75,12 +76,11 @@ bool JSRuntimeClient::run()
 
 bool JSRuntimeClient::send(const std::string &message)
 {
-    std::cout << "Enter: " << __func__ << " : " << message << std::endl;
-
+    NativeJSLogger::log(INFO, "Enter: %s : %s\n", __func__, message.c_str());
     if (message.empty())
     {
-        std::cout << "Can't send empty message\n";
-        return false;
+        NativeJSLogger::log(WARN, "Can't send empty message\n");
+	return false;
     }
 
     try
@@ -89,7 +89,7 @@ bool JSRuntimeClient::send(const std::string &message)
     }
     catch (websocketpp::exception const &e)
     {
-        std::cout << "Send failure: " << e.what() << std::endl;
+    	NativeJSLogger::log(ERROR, "Send failure: %s\n", e.what());
     }
 
     return true;
@@ -97,7 +97,7 @@ bool JSRuntimeClient::send(const std::string &message)
 
 bool JSRuntimeClient::close()
 {
-    std::cout << "Enter: " << __func__ << std::endl;
+    NativeJSLogger::log(INFO, "Enter: %s\n", __func__);
 
     websocketpp::lib::error_code ec;
     mEndPoint.close(mConnectionHdl, websocketpp::close::status::going_away, "", ec);
@@ -120,26 +120,26 @@ void JSRuntimeClient::setState(const std::string &state)
 void JSRuntimeClient::onMessage(websocketpp::connection_hdl hdl, message_ptr msg)
 {
     std::string msgstr = msg->get_payload();
-    std::cout << "Enter: " << __func__ << " : " << msgstr << std::endl;
+    NativeJSLogger::log(INFO, "Enter: %s : %s\n", __func__, msgstr.c_str());
 
     CommandInterface<JSRuntimeClient>::onMessage(msgstr);
 }
 
 void JSRuntimeClient::onOpen(websocketpp::connection_hdl hdl)
 {
-    std::cout << "Enter: " << __func__ << std::endl;
+    NativeJSLogger::log(INFO, "Enter: %s\n", __func__);
     setState("open");
 }
 
 void JSRuntimeClient::onFail(websocketpp::connection_hdl hdl)
 {
-    std::cout << "Enter: " << __func__ << std::endl;
+    NativeJSLogger::log(INFO, "Enter: %s\n", __func__);
     setState("fail");
 }
 
 void JSRuntimeClient::onClose(websocketpp::connection_hdl hdl)
 {
-    std::cout << "Enter: " << __func__ << std::endl;
+    NativeJSLogger::log(INFO, "Enter: %s\n", __func__);
     setState("close");
 }
 
@@ -150,7 +150,7 @@ int main(int argc, char **argv)
 
     if (argc > 1)
     {
-        std::cout << "Send input commands at ws://localhost:" << std::to_string(WS_SERVER_PORT) << std::endl;
+	NativeJSLogger::log(INFO, "Send input commands at ws://localhost:%s\n", std::to_string(WS_SERVER_PORT).c_str());
         return -1;
     }
 
@@ -158,7 +158,7 @@ int main(int argc, char **argv)
     client->initialize(WS_SERVER_PORT);
     if (!client->run())
     {
-        std::cout << "Unable to connect server" << std::endl;
+	NativeJSLogger::log(ERROR, "Unable to connect to server\n");
         return -1;
     }
 
@@ -167,11 +167,11 @@ int main(int argc, char **argv)
         client->sendCommand(command, response);
         if (!response.empty())
         {
-            std::cout << "Response: " << response << std::endl;
+	     NativeJSLogger::log(INFO, "Response: %s\n", response.c_str());
         }
         else
         {
-            std::cout << "Missing response" << std::endl;
+            NativeJSLogger::log(WARN, "Missing response\n");
             break;
         }
     }

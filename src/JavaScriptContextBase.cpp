@@ -18,6 +18,7 @@
 **/
 
 #include <JavaScriptContextBase.h>
+#include <NativeJSLogger.h>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -62,12 +63,12 @@ void JavaScriptContextBase::registerCommonUtils()
 {
     if (mEmbedThunderJS)
     {
-        std::cout << "executing thunder js code " << std::endl;
+        NativeJSLogger::log(INFO, "Executing Thunder JS code\n");
         runScript(sThunderJSCode.c_str());
     }
     if (mEmbedWebBridge)
     {
-        std::cout << "executing rdk webbridge js code " << std::endl;
+        NativeJSLogger::log(INFO, "Executing rdk webbridge JS code\n");
         runScript(sWebBridgeCode.c_str());
     }
 }
@@ -84,7 +85,7 @@ bool JavaScriptContextBase::runFile(const char *file, const char* args, bool isA
 {
     if (!file)
     {
-        printf(" %s  ... no script given.",__PRETTY_FUNCTION__);
+        NativeJSLogger::log(WARN, "%s ... no script given.\n", __PRETTY_FUNCTION__);
         fflush(stdout);
         return false;
     }
@@ -96,10 +97,10 @@ bool JavaScriptContextBase::runFile(const char *file, const char* args, bool isA
         std::string fileName("/home/root/");
 	fileName.append(file);
         scriptToRun = readFile(fileName.c_str());
-        printf("checking in [%s] \n", fileName.c_str());
+        NativeJSLogger::log(INFO, "Checking in [%s]\n", fileName.c_str());
         if(scriptToRun.empty())
         {
-            printf(" %s  ... load error / not found. %s",__PRETTY_FUNCTION__, file);
+            NativeJSLogger::log(ERROR, "%s ... load error / not found. %s\n", __PRETTY_FUNCTION__, file);
             fflush(stdout);
             return false;
         }

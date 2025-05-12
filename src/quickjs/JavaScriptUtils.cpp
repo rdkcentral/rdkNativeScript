@@ -47,8 +47,8 @@ static JSValue getThunderToken(JSContext *ctx, JSValueConst this_val, int argc, 
     JavaScriptContext* jsccontext = (JavaScriptContext*) data;
     if (!ctx)
     {
-        printf("context is empty !!! \n");
-        fflush(stdout);
+        NativeJSLogger::log(WARN, "context is empty !!!\n");
+	fflush(stdout);
         return JS_NewString(ctx, "");
     }
     unsigned char tokenBuffer[MAX_TOKEN_BUFFER_LENGTH];
@@ -57,17 +57,17 @@ static JSValue getThunderToken(JSContext *ctx, JSValueConst this_val, int argc, 
     size_t paramsLength = (size_t)appUrl.size();
     if(!memcpy(tokenBuffer,appUrl.c_str(),paramsLength))
     {
-        printf("unable to copy url buffer for token");
-        return JS_NewString(ctx, "");
+        NativeJSLogger::log(ERROR, "unable to copy URL buffer for token\n");
+	return JS_NewString(ctx, "");
     }
 
-    printf("thunder request: %s length: %d", (char*)tokenBuffer, (int)paramsLength);
+    NativeJSLogger::log(INFO, "thunder request: %s length: %d\n", (char*)tokenBuffer, (int)paramsLength);
     fflush(stdout);
     int tokenResult = GetToken(MAX_TOKEN_BUFFER_LENGTH, paramsLength, tokenBuffer);
     if (tokenResult < 0)
     {
-        printf("unable to get token for app\n");
-        fflush(stdout);
+        NativeJSLogger::log(ERROR, "unable to get token for app\n");
+	fflush(stdout);
         return JS_NewString(ctx, "");
     }
     return JS_NewString(ctx, (const char*)tokenBuffer);
@@ -91,7 +91,7 @@ static JSValue requireCallback(JSContext *ctx, JSValueConst thisObject, int argc
   JavaScriptContext* jsccontext = (JavaScriptContext*) data;
   if (!ctx)
   {
-      printf("context is empty !!! \n");
+      NativeJSLogger::log(WARN, "context is empty !!!\n");
       fflush(stdout);
       return JS_NewString(ctx, "");
   }
@@ -149,7 +149,7 @@ static JSValue requireCallback(JSContext *ctx, JSValueConst thisObject, int argc
     string path;
     if (!resolveModulePath(moduleName, path)) {
       //need to release memory for modulename ??
-      printf("Module '%s' not found", moduleName.c_str());
+      NativeJSLogger::log(ERROR, "Module '%s' not found\n", moduleName.c_str());
       break;
     }
     /*
@@ -171,7 +171,7 @@ static JSValue requireCallback(JSContext *ctx, JSValueConst thisObject, int argc
     {
       //need to see if to release ??
       //JSStringRelease(reqArgStr);
-      printf(" %s  ... load error / not found.",__PRETTY_FUNCTION__);
+      NativeJSLogger::log(ERROR, "%s ... load error / not found.\n", __PRETTY_FUNCTION__);
       break;
     }
 
@@ -184,8 +184,8 @@ static JSValue requireCallback(JSContext *ctx, JSValueConst thisObject, int argc
     JSValue retValue = JS_Eval(ctx, codeStr.c_str(), codeStr.length(), module==nullptr?"":module, 0);
     if (JS_IsException(retValue))
     {
-        printf("Error evaluating script\r\n");
-        js_std_dump_error(ctx);
+        NativeJSLogger::log(ERROR, "Error evaluating script\n");
+	js_std_dump_error(ctx);
         return JS_NewString(ctx, "");
         //return false;
     }

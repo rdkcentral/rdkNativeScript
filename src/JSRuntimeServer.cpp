@@ -19,6 +19,7 @@
 
 #include "jsc_lib.h"
 #include <JSRuntimeServer.h>
+#include <NativeJSLogger.h>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -35,8 +36,8 @@ public:
         mPtr = cJSON_Parse(jsonStr.c_str());
         if (mPtr == nullptr)
         {
-            std::cerr << "Error parsing JSON" << std::endl;
-        }
+             NativeJSLogger::log(ERROR, "Error parsing JSON\n");
+	}
     }
     JsonWrap(JsonWrap &root, const char *name)
     {
@@ -44,8 +45,8 @@ public:
         cJSON *itm = cJSON_GetObjectItem(root.get(), name);
         if (!itm || !cJSON_IsObject(itm))
         {
-            std::cerr << "Error: " << name << "is not an object" << std::endl;
-            itm = nullptr;
+            NativeJSLogger::log(ERROR, "Error: %s is not an object\n", name);
+	    itm = nullptr;
         }
         mPtr = itm;
     }
@@ -61,12 +62,29 @@ public:
         cJSON *itm = cJSON_GetObjectItem(mPtr, name);
         if (!itm || !cJSON_IsString(itm))
         {
-            std::cerr << "Error: " << name << "is not a string" << std::endl;
-            err = true;
+	     NativeJSLogger::log(ERROR, "Error: %s is not a string\n", name);
+	     err = true;
         }
         else
         {
             res = itm->valuestring;
+            err = false;
+        }
+        return res;
+    }
+
+    uint32_t getUint32(const char *name, bool &err)
+    {
+        uint32_t res;
+        cJSON *itm = cJSON_GetObjectItem(mPtr, name);
+        if (!itm || !cJSON_IsNumber(itm))
+        {
+            std::cerr << "Error: " << name << "is not a Uint32_t" << std::endl;
+            err = true;
+        }
+        else
+        {
+            res = (uint32_t) itm->valuedouble;
             err = false;
         }
         return res;
@@ -81,7 +99,6 @@ private:
     cJSON *mPtr;
     bool mIsRoot;
 };
-
 JSRuntimeServer *JSRuntimeServer::getInstance()
 {
     static JSRuntimeServer instance;
@@ -94,7 +111,7 @@ JSRuntimeServer::JSRuntimeServer() : mServerPort(0)
 
 void JSRuntimeServer::initialize(int serverport, std::shared_ptr<JsRuntime::NativeJSRenderer> renderer)
 {
-    std::cout << "Enter: " << __func__ << std::endl;
+    NativeJSLogger::log(INFO, "Enter: %s\n", __func__);
 
     mServerPort = serverport;
     mRenderer = renderer;
@@ -102,7 +119,7 @@ void JSRuntimeServer::initialize(int serverport, std::shared_ptr<JsRuntime::Nati
 
 bool JSRuntimeServer::start()
 {
-    std::cout << "Enter: " << __func__ << std::endl;
+    NativeJSLogger::log(INFO, "Enter: %s\n", __func__);
 
     mServer.set_access_channels(websocketpp::log::alevel::all);
     mServer.clear_access_channels(websocketpp::log::alevel::frame_payload);
@@ -126,8 +143,7 @@ bool JSRuntimeServer::start()
 
 bool JSRuntimeServer::stop()
 {
-    std::cout << "Enter: " << __func__ << std::endl;
-
+    NativeJSLogger::log(INFO, "Enter: %s\n", __func__);
     mServer.stop_listening();
 
     // Close all existing connections
@@ -153,14 +169,15 @@ void JSRuntimeServer::send(websocketpp::connection_hdl hdl, const std::string &m
     }
     catch (websocketpp::exception const &e)
     {
-        std::cout << "Send failure: " << e.what() << std::endl;
+	NativeJSLogger::log(ERROR, "Send failure: %s\n", e.what());
     }
+
 }
 
 void JSRuntimeServer::onMessage(websocketpp::connection_hdl hdl, message_ptr msg)
 {
     std::string msgstr = msg->get_payload();
-    std::cout << "Enter: " << __func__ << ": " << msgstr << std::endl;
+    NativeJSLogger::log(INFO, "Enter: %s : %s\n", __func__, msgstr.c_str());
 
     // Example input:
     // {"method": "launchApplication", "params":{"url":"/opt/www/demo/player.js", "options":"player,xhr"}}
@@ -180,7 +197,6 @@ void JSRuntimeServer::onMessage(websocketpp::connection_hdl hdl, message_ptr msg
         {
             break;
         }
-
         if (method == "launchApplication")
         {
             JsonWrap jParams(jRoot, "params");
@@ -193,16 +209,43 @@ void JSRuntimeServer::onMessage(websocketpp::connection_hdl hdl, message_ptr msg
             {
                 break;
             }
-            std::string options = jParams.getString("options", error);
-            ModuleSettings settings;
-            settings.fromString(options);
-            mRenderer->launchApplication(url, settings);
-            result = "ok";
+            std::string options = jParams.getString("moduleSettings", error);
+            ModuleSettings moduleSettings;
+            moduleSettings.fromString(options);
+	    uint32_t id = mRenderer->createApplication(moduleSettings);
+            mRenderer->runApplication(id, url);
+            std::ostringstream oss;
+	    oss<< "ID : " << id;
+	    result = oss.str();
         }
-        else if (method == "terminateApplication")
+        if (method == "createApplication")
         {
             JsonWrap jParams(jRoot, "params");
             if (jParams.get() == nullptr)
+            {
+                break;
+            }
+	    std::string options = jParams.getString("moduleSettings", error);
+            if (error)
+            {
+                break;
+            }
+            ModuleSettings moduleSettings;
+            moduleSettings.fromString(options);
+            uint32_t id = mRenderer->createApplication(moduleSettings);
+            std::ostringstream oss;
+            oss<< "ID : " << id;
+            result = oss.str();
+        }
+        if (method == "runApplication")
+        {
+            JsonWrap jParams(jRoot, "params");
+            if (jParams.get() == nullptr)
+            {
+                break;
+            }
+            uint32_t id = jParams.getUint32("id", error);
+	    if (error)
             {
                 break;
             }
@@ -211,22 +254,67 @@ void JSRuntimeServer::onMessage(websocketpp::connection_hdl hdl, message_ptr msg
             {
                 break;
             }
-            mRenderer->terminateApplication(url);
+            mRenderer->runApplication(id, url);
+            std::ostringstream oss;
             result = "ok";
         }
+	
+	else if (method == "runJavaScript")
+	{
+	    JsonWrap jParams(jRoot, "params");
+	    if ( jParams.get() == nullptr)
+	    {
+	        break;
+	    }
+            uint32_t id = jParams.getUint32("id", error);
+            if (error)
+            {
+                break;
+            }
+            std::string code = jParams.getString("code", error);
+            if (error)
+            {
+                break;
+            }
+	    mRenderer->runJavaScript(id, code);
+            result = "ok";
+
+	}
+        else if (method == "destroyApplication")
+        {
+            JsonWrap jParams(jRoot, "params");
+            if (jParams.get() == nullptr)
+            {
+                break;
+            }
+            uint32_t id = jParams.getUint32("id", error);  
+ 	    if (error)
+            {
+                break;
+            }
+            mRenderer->terminateApplication(id);
+            result = "ok";
+        }
+
         else if (method == "getApplications")
         {
-            std::vector<std::string> apps = mRenderer->getApplications();
-            std::ostringstream oss;
-            for (size_t i = 0; i < apps.size(); ++i)
-            {
-                if (i != 0)
-                {
-                    oss << ' ';
-                }
-                oss << apps[i];
-            }
-            result = oss.str();
+            std::list<JsRuntime::ApplicationDetails> apps = mRenderer->getApplications();
+	    if(!apps.empty())
+	    {
+                std::ostringstream oss;
+                for (const auto& app : apps) 
+	        {
+                    if (!oss.str().empty()) 
+		    { 
+                        oss << " ";
+                    }
+                    oss << "ID: " << app.id << ", URL: " << app.url;
+                } 
+	        result = oss.str();
+	    }
+	    else
+		result = "No ID found";
+
         }
         else if (method == "ping")
         {
@@ -252,7 +340,7 @@ void JSRuntimeServer::onMessage(websocketpp::connection_hdl hdl, message_ptr msg
 
 void JSRuntimeServer::onOpen(websocketpp::connection_hdl hdl)
 {
-    std::cout << "Enter: " << __func__ << std::endl;
+    NativeJSLogger::log(INFO, "Enter: %s\n", __func__);
 
     std::lock_guard<std::mutex> lock(mDataMutex);
     mConnections.insert(hdl);
@@ -260,7 +348,7 @@ void JSRuntimeServer::onOpen(websocketpp::connection_hdl hdl)
 
 void JSRuntimeServer::onClose(websocketpp::connection_hdl hdl)
 {
-    std::cout << "Enter: " << __func__ << std::endl;
+    NativeJSLogger::log(INFO, "Enter: %s\n", __func__);
 
     std::lock_guard<std::mutex> lock(mDataMutex);
     mConnections.erase(hdl);

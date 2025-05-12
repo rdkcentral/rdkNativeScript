@@ -221,6 +221,37 @@ public:
       resp->setErrorMessage(downloadRequest->errorString());
       resp->setHeaders(downloadRequest->headerData(), downloadRequest->headerDataSize());
       resp->setDownloadedData(downloadRequest->downloadedData(), downloadRequest->downloadedDataSize());
+      
+      if (mMetricsListener)
+      {
+ 	rtLogWarn("metriclistener");
+        NetworkMetrics *metrics = new NetworkMetrics();
+        if (!metrics){
+            rtLogError("Failed to allocate NetworkMetrics");
+            return;
+        }	
+	metrics->url = this->url();
+	metrics->method = this->method();
+	std::vector<rtString> headerValues = this->headers();
+	metrics->headers = headerValues; 
+        
+	rtObjectRef timeMetrics = downloadRequest->downloadMetrics();
+        rtValue keys;
+        if (timeMetrics->Get("allKeys", &keys) == RT_OK) {
+            rtArrayObject* keysArray = (rtArrayObject*) keys.toObject().getPtr();
+            for (size_t i = 0; i < keysArray->length(); ++i) {
+                rtString key = keysArray->get<rtString>(i);
+                rtValue value;
+                if (timeMetrics->Get(key, &value) == RT_OK) {
+                    metrics->timeMetricsData[key] = value;
+        	}
+    	    }
+	}
+
+	mMetricsListener->onMetricsData(metrics);
+	delete metrics;
+	metrics = nullptr;
+      }
 
       rtObjectRef protectedRef = resp;
       dispatchOnMainLoop(
@@ -244,6 +275,11 @@ rtError rtHttpGetBinding(int numArgs, const rtValue* args, rtValue* result, void
     return RT_ERROR_INVALID_ARG;
   }
 
+  JavaScriptContext* jscContext = (JavaScriptContext*)context;
+  if (!jscContext) {
+    rtLogError("context is null!");
+  }
+
   rtHttpRequest* req;
   if (args[0].getType() == RT_stringType) {
     req = new rtHttpRequestEx(args[0].toString());
@@ -261,9 +297,33 @@ rtError rtHttpGetBinding(int numArgs, const rtValue* args, rtValue* result, void
     req->addListener("response", args[1].toFunction());
   }
 
+  req->setNetworkMetricsListener(jscContext);
+  
   rtObjectRef ref = req;
   *result = ref;
   return RT_OK;
+}
+
+rtError rtSetVideoStartTimeBinding(int numArgs, const rtValue* args, rtValue* result, void* context)
+{
+    if (context == nullptr || numArgs < 1) {
+        rtLogError("Invalid context or missing arguments");
+        return RT_ERROR_INVALID_ARG;
+    }
+
+    JavaScriptContext* jscContext = (JavaScriptContext*)context;
+
+    if (args[0].getType() != RT_intType && args[0].getType() != RT_doubleType) {
+    	rtLogError("%s: invalid argument type", __FUNCTION__);
+    	return RT_ERROR_INVALID_ARG;
+    }
+    double playbackStartTime = args[0].toDouble();
+    jscContext->setPlaybackStartTime(playbackStartTime);
+
+    if (result)
+        *result = true;
+
+    return RT_OK;
 }
 
 rtError rtReadBinaryBinding(int numArgs, const rtValue* args, rtValue* result, void* context)
@@ -293,17 +353,18 @@ rtError rtWebSocketBinding(int numArgs, const rtValue* args, rtValue* result, vo
 {
   UNUSED_PARAM(context);
   if (numArgs < 1) {
-    rtLogError("%s: invalid args", __FUNCTION__);
+    rtLogError("%s: is invalid args", __FUNCTION__);
     return RT_ERROR_INVALID_ARG;
   }
 
   if (args[0].getType() != RT_objectType) {
-    rtLogError("%s: invalid arg type", __FUNCTION__);
+    rtLogError("%s: is invalid arg type ", __FUNCTION__);
     return RT_ERROR_INVALID_ARG;
   }
 
   rtObjectRef ref = new rtWebSocket(args[0].toObject());
   *result = ref;
+
   return RT_OK;
 }
 #ifdef WS_SERVER_ENABLED
@@ -516,16 +577,16 @@ JSValueRef requireCallback(JSContextRef ctx, JSObjectRef, JSObjectRef thisObject
     dirs.push_back("/home/root/modules/lib");
     endings.push_back(".js");
 
-    std::list<rtString>::const_iterator it, jt;
-    for (it = dirs.begin(); !found && it != dirs.end(); ++it) {
-      rtString s = *it;
+    std::list<rtString>::const_iterator current, next;
+    for (current = dirs.begin(); !found && current != dirs.end(); ++current) {
+      rtString s = *current;
       if (!s.isEmpty() && !s.endsWith("/"))
         s.append("/");
       s.append(name.beginsWith("./") ? name.substring(2) : name);
-      for (jt = endings.begin(); !found && jt != endings.end(); ++jt) {
+      for (next = endings.begin(); !found && next != endings.end(); ++next) {
         path = s;
-        if (!path.endsWith((*jt).cString()))
-          path.append(*jt);
+        if (!path.endsWith((*next).cString()))
+          path.append(*next);
         found = fileExists(path.cString());
       }
     }
@@ -627,3 +688,81 @@ char* JSValueToCString(JSContextRef context, JSValueRef value, JSValueRef* excep
         JSStringRelease(jsstr);
         return src;
 }
+
+rtError rtJSRuntimeDownloadMetrics(int numArgs, const rtValue* args, rtValue* result, void* context) 
+{
+  JavaScriptContext* jscContext = (JavaScriptContext*)context;
+  if (jscContext == nullptr) {
+    rtLogError("context null");
+    return RT_FAIL;
+  }
+
+  rtMapObject* map = jscContext->getNetworkMetricsData();
+  if (!map) {
+    return RT_FAIL;
+  }
+
+  rtArrayObject* netMetricsArray = new rtArrayObject();
+
+  rtValue keys;
+  if (map->Get("allKeys", &keys) != RT_OK) {
+    rtLogWarn("Could not retrieve url for network metrics data.");
+    return RT_FAIL;
+  }
+  rtObjectRef objRef = keys.toObject();
+  rtArrayObject* keysArray = static_cast<rtArrayObject*>(objRef.getPtr());
+
+  if (!keysArray) {
+    rtLogWarn("No url found in the network metrics data.");
+    return RT_FAIL;
+  }
+  
+  size_t count = keysArray->length();
+
+  for (size_t i = 0; i < count; ++i) {
+    rtValue keyValue;
+    rtString key = keysArray->get<rtString>(i);
+
+    keysArray->Get(key, &keyValue);
+    rtValue storedValue;
+    if (map->Get(key.cString(), &storedValue) == RT_OK) {
+      NetworkMetrics* metrics = (NetworkMetrics*)storedValue.toVoidPtr();
+      if (!metrics) {
+        rtLogError("Failed to cast stored value to NetworkMetrics structure for url: %s.", key.cString());
+        return RT_FAIL;
+      }
+      rtMapObject* metricsMap = new rtMapObject();
+      metricsMap->set("url", metrics->url);
+      metricsMap->set("method", metrics->method);
+
+      rtArrayObject* headersArray = new rtArrayObject();
+      for (const auto& header : metrics->headers) {
+        headersArray->pushBack(rtValue(header));
+      }
+      metricsMap->set("headers", rtValue(headersArray));
+      delete headersArray;
+
+      rtArrayObject* timeMetricsArray = new rtArrayObject();
+      for (const auto& metric : metrics->timeMetricsData) {
+        rtObjectRef timeMetricObj = new rtMapObject(); 
+        timeMetricObj->Set(metric.first.cString(), &metric.second);
+        timeMetricsArray->pushBack(rtValue(timeMetricObj));
+	delete timeMetricObj;
+	timeMetricObj = nullptr;
+      }
+
+      metricsMap->set("timeMetricsData", rtValue(timeMetricsArray));
+      delete timeMetricsArray;
+
+      netMetricsArray->pushBack(rtValue(metricsMap));
+    }
+    else {
+      rtLogWarn("Url not found in network metrics data: %s", key.cString());
+    }
+  }
+
+  *result = rtValue(netMetricsArray);
+
+  return RT_OK;
+}
+

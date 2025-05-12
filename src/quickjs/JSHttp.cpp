@@ -141,7 +141,7 @@ static JSValue js_print(JSContext *ctx, JSValueConst this_val,
                         int argc, JSValueConst *argv)
 {
     auto str = JS_ToCString(ctx, argv[0]);
-    std::cout << "msg: "<<str << std::endl;
+    NativeJSLogger::log(INFO, "msg: %s\n", str.c_str());
     JS_FreeCString(ctx, str);
     return JS_UNDEFINED;
 }

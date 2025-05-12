@@ -32,10 +32,12 @@
 
 #include <JavaScriptCore/JavaScript.h>
 #include <JavaScriptContextBase.h>
+#include <NativeJSLogger.h>
 #include "rtScriptJSCPrivate.h"
 #include <KeyListener.h>
 #include <KeyInput.h>
 
+#include <rtHttpRequest.h>
 #include <JavaScriptCore/JavaScript.h>
 #ifdef ENABLE_JSRUNTIME_PLAYER
 #ifdef ENABLE_AAMP_JSBINDINGS_STATIC
@@ -56,7 +58,14 @@ struct AAMPJSBindings
 
 extern "C" JS_EXPORT void JSSynchronousGarbageCollectForDebugging(JSContextRef);
 
-class JavaScriptContext: public JavaScriptContextBase
+struct PerformanceMetrics {          
+	double startTime=0.0;  
+	double executionStartTime=0.0;
+	double executionEndTime=0.0;	
+	double playbackStartTime=0.0;
+};
+
+class JavaScriptContext: public JavaScriptContextBase, public NetworkMetricsListener
 {
   public:
     JavaScriptContext(JavaScriptContextFeatures& features, std::string url, IJavaScriptEngine* jsEngine);
@@ -66,6 +75,22 @@ class JavaScriptContext: public JavaScriptContextBase
     rtError add(const char *name, rtValue  const& val);
     bool    has(const char *name);
     JSGlobalContextRef getContext() { return mContext; }
+    
+    //for startTime
+    void setStartTime(double time){
+    	mPerformanceMetrics.startTime=time;
+    }
+    
+    //for playbackStartTime and launch Time calculation
+    void setPlaybackStartTime(double time) {
+    	mPerformanceMetrics.playbackStartTime = time;
+    	double launchTime = mPerformanceMetrics.playbackStartTime - mPerformanceMetrics.startTime;
+	NativeJSLogger::log(INFO, "------LAUNCH_TIME-----:%.3f ms\n", launchTime);
+    }
+
+    virtual void onMetricsData (NetworkMetrics *net) override;
+    rtMapObject* getNetworkMetricsData() const { return mNetworkMetricsData; }
+    void dumpNetworkMetricData(NetworkMetrics *metrics, std::string appUrl);
 
   private:
     bool evaluateScript(const char *script, const char *name, const char *args = nullptr, bool module = false);
@@ -79,6 +104,8 @@ class JavaScriptContext: public JavaScriptContextBase
 #endif
     JSContextGroupRef mContextGroup;
     JSGlobalContextRef mContext;
+    PerformanceMetrics mPerformanceMetrics;
+    rtMapObject* mNetworkMetricsData;
     rtRef<rtJSCContextPrivate> mPriv;
     rtRef<rtFunctionCallback> m_webSocketBinding;
     rtRef<rtFunctionCallback> m_webSocketServerBinding;
@@ -89,5 +116,8 @@ class JavaScriptContext: public JavaScriptContextBase
     rtRef<rtFunctionCallback> m_thunderTokenBinding;
     rtRef<rtFunctionCallback> m_httpGetBinding;
     rtRef<rtFunctionCallback> m_readBinaryBinding;
+    rtRef<rtFunctionCallback> m_setVideoStartTimeBinding;
+    rtRef<rtFunctionCallback> m_JSRuntimeDownloadMetrics;
+
 };
 #endif

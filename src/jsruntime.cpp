@@ -18,6 +18,7 @@
 **/
 
 #include <NativeJSRenderer.h>
+#include <NativeJSLogger.h>
 #if defined(ENABLE_JSRUNTIME_SERVER)
 #include <JSRuntimeServer.h>
 #endif
@@ -27,7 +28,7 @@
 #include <iostream>
 #include <memory>
 #include <string.h>
-#include <thread>
+#include <vector>
 #include <unistd.h>
 
 using namespace std;
@@ -37,7 +38,7 @@ int main(int argc, char* argv[])
 {
     if (argc < 2)
     {
-        std::cout << "pass the url to run" << std::endl;
+        NativeJSLogger::log(WARN, "Pass the URL to run\n");
 	return -1;
     }
 
@@ -112,7 +113,7 @@ int main(int argc, char* argv[])
     }
     if (!renderer)
     {
-        std::cout << "unable to run application" << std::endl;
+        NativeJSLogger::log(ERROR, "Unable to run application\n");
         return -1;
     }
 
@@ -125,14 +126,32 @@ int main(int argc, char* argv[])
     }
 #endif
 
-    for (int j=0; j<applications.size(); j++)
-    {
+    std::vector<std::thread> applicationThreads;
+
+    for (int j = 0; j < applications.size(); j++) {
         std::string url = applications[j];
-        std::cout << "application url is " << (url.size() ? url.c_str() : "empty") << std::endl;
-        renderer->launchApplication(url, moduleSettings);
-    } 
+        
+        applicationThreads.emplace_back([renderer, url, &moduleSettings]() {
+        NativeJSLogger::log(INFO, "Application URL is %s\n", (url.size() ? url.c_str() : "empty"));
+	uint32_t id = renderer->createApplication(moduleSettings);
+        renderer->runApplication(id, url);
+        //renderer->runJavaScript(id,url);
+#if defined(NATIVEJS_DEVELOPER_MODE)
+        std::this_thread::sleep_for(std::chrono::milliseconds(500)); 
+        renderer->getApplications();
+        sleep(10);	
+        renderer->terminateApplication(id);
+#endif
+        });
+    }
 
-    renderer->run();
+    renderer->run(); 
 
+    for (auto& t : applicationThreads) {
+        if (t.joinable()) {
+        t.join();
+        }
+    }
+    
     return 0;
 }
