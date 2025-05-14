@@ -283,14 +283,6 @@ bool JavaScriptContext::evaluateScript(const char* script, const char* name, con
     //execution end time
     mPerformanceMetrics.executionEndTime = getTimeInMilliSec();
 
-    // execution duration
-    double executionDuration = mPerformanceMetrics.executionEndTime - mPerformanceMetrics.executionStartTime;
-    NativeJSLogger::log(INFO, "-----EXECUTION_DURATION-----: %.3f ms\n", executionDuration);
-
-    //Total duration from start to execution end
-    double totalDuration = mPerformanceMetrics.executionEndTime - mPerformanceMetrics.startTime;
-    NativeJSLogger::log(INFO, "-----TOTAL_DURATION-----: %.3f ms\n", totalDuration);
-
     return true;
 }
 
@@ -517,3 +509,34 @@ void JavaScriptContext::dumpNetworkMetricData(NetworkMetrics *metrics, std::stri
     file.close();
 }
 
+void JavaScriptContext::setCreateApplicationStartTime(double time)
+{
+    mPerformanceMetrics.createApplicationStartTime = time;
+}
+
+void JavaScriptContext::setCreateApplicationEndTime(double time, uint32_t id)
+{
+    mPerformanceMetrics.createApplicationEndTime = time;
+    double duration = time-mPerformanceMetrics.createApplicationStartTime;
+    
+    NativeJSLogger::log(INFO, "createApplicationDuration for ID %d: %.3f ms\n",id, duration);
+}
+
+double JavaScriptContext::getExecutionDuration() const
+{
+    double executionDuration = mPerformanceMetrics.executionEndTime - mPerformanceMetrics.executionStartTime;
+    return executionDuration;
+}
+
+void JavaScriptContext::setAppdata(uint32_t id, const std::string& url)
+{
+        mIds = id;
+        mUrls = url;
+} 
+
+void JavaScriptContext::setPlaybackStartTime(double time)
+{
+    mPerformanceMetrics.playbackStartTime = time;
+    double launchTime = mPerformanceMetrics.playbackStartTime - mPerformanceMetrics.createApplicationStartTime;
+    NativeJSLogger::log(INFO, "Launch_Duration for ID %d | URL %s : %.3f ms\n", mIds, mUrls.c_str(), launchTime);
+}

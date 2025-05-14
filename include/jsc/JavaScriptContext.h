@@ -59,7 +59,8 @@ struct AAMPJSBindings
 extern "C" JS_EXPORT void JSSynchronousGarbageCollectForDebugging(JSContextRef);
 
 struct PerformanceMetrics {          
-	double startTime=0.0;  
+	double createApplicationStartTime=0.0;
+	double createApplicationEndTime=0.0;
 	double executionStartTime=0.0;
 	double executionEndTime=0.0;	
 	double playbackStartTime=0.0;
@@ -68,6 +69,10 @@ struct PerformanceMetrics {
 class JavaScriptContext: public JavaScriptContextBase, public NetworkMetricsListener
 {
   public:
+
+    uint32_t mIds = 0;
+    std::string mUrls="";
+
     JavaScriptContext(JavaScriptContextFeatures& features, std::string url, IJavaScriptEngine* jsEngine);
     virtual ~JavaScriptContext();
   
@@ -76,21 +81,15 @@ class JavaScriptContext: public JavaScriptContextBase, public NetworkMetricsList
     bool    has(const char *name);
     JSGlobalContextRef getContext() { return mContext; }
     
-    //for startTime
-    void setStartTime(double time){
-    	mPerformanceMetrics.startTime=time;
-    }
-    
-    //for playbackStartTime and launch Time calculation
-    void setPlaybackStartTime(double time) {
-    	mPerformanceMetrics.playbackStartTime = time;
-    	double launchTime = mPerformanceMetrics.playbackStartTime - mPerformanceMetrics.startTime;
-	NativeJSLogger::log(INFO, "------LAUNCH_TIME-----:%.3f ms\n", launchTime);
-    }
-
     virtual void onMetricsData (NetworkMetrics *net) override;
     rtMapObject* getNetworkMetricsData() const { return mNetworkMetricsData; }
     void dumpNetworkMetricData(NetworkMetrics *metrics, std::string appUrl);
+
+    void setCreateApplicationStartTime(double time);
+    void setCreateApplicationEndTime(double time,uint32_t id);
+    void setPlaybackStartTime(double time);
+    void setAppdata(uint32_t id, const std::string& url);
+    double getExecutionDuration() const;
 
   private:
     bool evaluateScript(const char *script, const char *name, const char *args = nullptr, bool module = false);
