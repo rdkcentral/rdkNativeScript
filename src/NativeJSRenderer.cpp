@@ -252,7 +252,7 @@ std::list<ApplicationDetails> NativeJSRenderer::getApplications()
 			ApplicationDetails appData;
 			appData.id = key;
 			appData.url = value.url;
-			NativeJSLogger::log(DEBUG, "Found application with ID: %s and URL: %s\n", key, value.url);
+			NativeJSLogger::log(DEBUG, "Found application with ID: %d and URL: %s\n", key, value.url);
 			runningApplication.push_back(appData);
 		}
 	}
@@ -289,10 +289,10 @@ void NativeJSRenderer::createApplicationInternal(ApplicationRequest& appRequest)
         JavaScriptContext* context = new JavaScriptContext(features, "" , mEngine);
         if(NULL == context)
         {
-        	NativeJSLogger::log(DEBUG, "Context not created for ID: %s\n", id);
+        	NativeJSLogger::log(DEBUG, "Context not created for ID: %d\n", id);
         	return ;
         }
-        NativeJSLogger::log(DEBUG, "Context created for ID: %s\n", id);
+        NativeJSLogger::log(DEBUG, "Context created for ID: %d\n", id);
 	
         double endTime = getTimeInMilliSec();
         context->setCreateApplicationStartTime(startTime);
