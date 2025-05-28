@@ -62,7 +62,7 @@ static size_t HeaderCallback(void *contents, size_t size, size_t nmemb, void *us
   mem->headerBuffer = (char*)realloc(mem->headerBuffer, mem->headerSize + downloadSize + 1);
   if(mem->headerBuffer == NULL) {
     /* out of memory! */
-    std::cout << "out of memory when downloading image\n";
+    NativeJSLogger::log(WARN, "Out of memory when downloading image\n");
     return 0;
   }
 
@@ -81,7 +81,7 @@ static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, voi
   mem->contentsBuffer = (char*)realloc(mem->contentsBuffer, mem->contentsSize + downloadSize + 1);
   if(mem->contentsBuffer == NULL) {
     /* out of memory! */
-    std::cout << "out of memory when downloading image\n";
+    NativeJSLogger::log(WARN, "Out of memory when downloading image\n");
     return 0;
   }
 
@@ -132,7 +132,7 @@ NativeJSRenderer::NativeJSRenderer(std::string waylandDisplay): mEngine(nullptr)
     if (embedThunderJS)
     {
         mEmbedThunderJS = true;
-        std::cout << "thunderjs enabled via environment " << std::endl;
+        NativeJSLogger::log(INFO, "ThunderJS enabled via environment\n");
     }
     else
     {
@@ -140,7 +140,7 @@ NativeJSRenderer::NativeJSRenderer(std::string waylandDisplay): mEngine(nullptr)
         if (f.good())
         {
             mEmbedThunderJS = true;
-            std::cout << "thunderjs enabled via file presence " << std::endl;
+            NativeJSLogger::log(INFO, "ThunderJS enabled via file presence\n");
         }			
     }		    
 
@@ -148,13 +148,13 @@ NativeJSRenderer::NativeJSRenderer(std::string waylandDisplay): mEngine(nullptr)
     if (f.good())
     {
         mEmbedRdkWebBridge = true;
-        std::cout << "rdk webbridge enabled via file presence " << std::endl;
+        NativeJSLogger::log(INFO, "rdk WebBridge enabled via file presence\n");
     }			
     char* enableWebSocketServer = getenv("NATIVEJS_ENABLE_WEBSOCKET_SERVER");
     if (enableWebSocketServer)
     {
         mEnableWebSocketServer = true;
-        std::cout << "websocket server enabled via environment " << std::endl;
+        NativeJSLogger::log(INFO, "WebSocket server enabled via environment\n");
     }
     else
     {
@@ -162,7 +162,7 @@ NativeJSRenderer::NativeJSRenderer(std::string waylandDisplay): mEngine(nullptr)
         if (f.good())
         {
             mEnableWebSocketServer = true;
-            std::cout << "websocket server enabled via file presence " << std::endl;
+            NativeJSLogger::log(INFO, "WebSocket server enabled via file presence\n");
         }			
     }		    
 }
@@ -189,12 +189,12 @@ void NativeJSRenderer::setEnvForConsoleMode(ModuleSettings& moduleSettings)
     JavaScriptContext* context = new JavaScriptContext(features, "", mEngine);
     if (!context)
     {
-        std::cout << "Context could not be initialized - exiting" << std::endl;
-        return;
+        NativeJSLogger::log(ERROR, "Context could not be initialized - exiting\n");
+	return;
     }
     mConsoleState->consoleContext = context;
 
-    std::cout << "Running developer console..." << std::endl;
+    NativeJSLogger::log(INFO, "Running developer console...\n");
     std::thread consoleThread(&JsRuntime::NativeJSRenderer::runDeveloperConsole, this, std::ref(mConsoleState->moduleSettings));
     consoleThread.detach();
 
@@ -244,7 +244,7 @@ std::list<ApplicationDetails> NativeJSRenderer::getApplications()
 	std::list<ApplicationDetails> runningApplication;
 	if(mContextMap.empty())
 	{
-		std::cout<<"No application found.. "<<std::endl;
+		NativeJSLogger::log(WARN, "No application found..\n");
 	}
 	else {
 		for(const auto& [key, value] : mContextMap)
@@ -252,7 +252,7 @@ std::list<ApplicationDetails> NativeJSRenderer::getApplications()
 			ApplicationDetails appData;
 			appData.id = key;
 			appData.url = value.url;
-			NativeJSLogger::log(DEBUG, "Found application with ID: %s and URL: %s\n", key, value.url);
+			NativeJSLogger::log(DEBUG, "Found application with ID: %d and URL: %s\n", key, value.url);
 			runningApplication.push_back(appData);
 		}
 	}
@@ -289,10 +289,10 @@ void NativeJSRenderer::createApplicationInternal(ApplicationRequest& appRequest)
         JavaScriptContext* context = new JavaScriptContext(features, "" , mEngine);
         if(NULL == context)
         {
-        	NativeJSLogger::log(DEBUG, "Context not created for ID: %s\n", id);
+        	NativeJSLogger::log(DEBUG, "Context not created for ID: %d\n", id);
         	return ;
         }
-        NativeJSLogger::log(DEBUG, "Context created for ID: %s\n", id);
+        NativeJSLogger::log(DEBUG, "Context created for ID: %d\n", id);
 	
         double endTime = getTimeInMilliSec();
         context->setCreateApplicationStartTime(startTime);
@@ -315,7 +315,7 @@ void NativeJSRenderer::runApplicationInternal(ApplicationRequest& appRequest)
 	
 	if(!url.empty())
 	{
-		std::cout<<"Before launching app"<<std::endl;
+		NativeJSLogger::log(INFO, "Before launching app\n");
 		std::string urlPattern = url.substr(0, 4);
 		if (urlPattern.compare(0, 4, "http") == 0)
 		{
@@ -335,18 +335,18 @@ void NativeJSRenderer::runApplicationInternal(ApplicationRequest& appRequest)
 		}
 		else
 		{	    
-			std::cout << "about to launch local app " <<std::endl;
+			NativeJSLogger::log(INFO, "About to launch local app\n");
 			JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
-			std::cout << "running test application " << url << std::endl;
+			NativeJSLogger::log(INFO, "Running test application: %s\n", url);
 			bool ret = context->runFile(url.c_str(), nullptr, true);
-			std::cout << "test application execution result " << ret << std::endl;
+			NativeJSLogger::log(INFO, "Test application execution result: %d\n", ret ? 1 : 0);
 			double duration = context->getExecutionDuration();
 			context->setAppdata(id, url);
-                        NativeJSLogger::log(INFO, "Execution duration(runApplicationDuration) for ID %d | URL %s : %.3f ms\n", id, url.c_str(), duration);
+			NativeJSLogger::log(INFO, "Execution duration(runApplicationDuration) for ID %d | URL %s : %.3f ms\n", id, url.c_str(), duration);
 		}	    
 	}
 	else{
-	    std::cout << "nativeJS application url not proper" << std::endl;
+	    NativeJSLogger::log(WARN, "nativeJS application url not proper\n");
 	    return ;
 	}
 }
@@ -364,7 +364,7 @@ void NativeJSRenderer::runJavaScriptInternal(ApplicationRequest& appRequest)
 	mContextMap[id].url = code;
 	if(!code.empty())
 	{
-		std::cout<<"Running the JavaScript code "<<std::endl;
+		NativeJSLogger::log(INFO, "Running the JavaScript code\n");
 		IJavaScriptContext* context = mContextMap[id].context;
 		std::string rawcode = code ;
 		bool ret = context-> runScript(rawcode.c_str(),true,"JavaScriptCode",nullptr,true);
@@ -372,7 +372,7 @@ void NativeJSRenderer::runJavaScriptInternal(ApplicationRequest& appRequest)
 		NativeJSLogger::log(INFO, "Execution duration(runJavaScriptDuration) for ID %d | %s : %.3f ms\n", id, code.c_str(), duration);
 	}
 	else{
-		std::cout<<"Empty/Invalid JavaScript Code"<<std::endl;
+		NativeJSLogger::log(ERROR, "Empty or Invalid JavaScript Code\n");
 	}
 }
 
@@ -383,18 +383,18 @@ void NativeJSRenderer::terminateApplicationInternal(ApplicationRequest& AppReque
 	if (mapEntry != mContextMap.end())
 	{
 		JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
-		std::cout<<"terminating the application with id "<<id<<std::endl;
+		NativeJSLogger::log(INFO, "Terminating the application with id: %d\n", id);
 		if (NULL != context)	{     	
-			std::cout << "deleted context " <<std::endl;
+			NativeJSLogger::log(INFO, "Deleted context\n");
 			delete context;
 		}	
         mContextMap.erase(mapEntry);	
-		std::cout<<"Application is terminated"<<std::endl;
+		NativeJSLogger::log(INFO, "Application is terminated\n");
 	}
 	
 	else
 	{
-		std::cout << "unable to find application" << id <<" with url: "<<mContextMap[id].url << std::endl;
+		NativeJSLogger::log(ERROR, "Unable to find application with id: %d and url: %s\n", id, mContextMap[id].url);
 		return ;
 	}
 	
@@ -445,7 +445,7 @@ void NativeJSRenderer::run()
             }
             else 
             {
-            	std::cerr<<"Invalid Request Type"<<std::endl;
+            	NativeJSLogger::log(ERROR, "Invalid Request Type\n");
             }
             
         }
@@ -514,8 +514,8 @@ void NativeJSRenderer::runDeveloperConsole(ModuleSettings moduleSettings)
 {
     std::string input;
 
-    std::cout << "\nJSRuntime Developer Console\n";
-    std::cout << "Type 'exit' or press CTRL+C and ENTER to quit.\n\n";
+    NativeJSLogger::log(INFO, "\nJSRuntime Developer Console\n");
+    NativeJSLogger::log(INFO, "Type 'exit' or press CTRL+C and ENTER to quit.\n");
 
     signal(SIGINT, handleDevConsoleSigInt);
     while (consoleLoop) {
@@ -572,17 +572,17 @@ bool NativeJSRenderer::downloadFile(std::string& url, MemoryStruct& chunk)
         curl_easy_cleanup(curl);
         if ((res == 0) && (httpCode == 200))
         {
-            std::cout << "download operation success" << std::endl;
-            ret = true;
+            NativeJSLogger::log(INFO, "Download operation success\n");
+	    ret = true;
         }
         else
         {
-            std::cout << "download operation failed" << std::endl;
+            NativeJSLogger::log(ERROR, "Download operation failed\n");
         }
     }
     else
     {
-        std::cout << "unable to perform download " << std::endl;
+        NativeJSLogger::log(ERROR, "Unable to perform download\n");
     } 
     return ret;
 }
