@@ -365,7 +365,7 @@ void NativeJSRenderer::runJavaScriptInternal(ApplicationRequest& appRequest)
 	if(!code.empty())
 	{
 		NativeJSLogger::log(INFO, "Running the JavaScript code\n");
-		IJavaScriptContext* context = mContextMap[id].context;
+		JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
 		std::string rawcode = code ;
 		bool ret = context-> runScript(rawcode.c_str(),true,"JavaScriptCode",nullptr,true);
 		double duration = context->getExecutionDuration();
