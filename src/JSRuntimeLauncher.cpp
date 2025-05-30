@@ -220,12 +220,6 @@ int main(int argc, char *argv[]) {
         {
             consoleMode = true;
         }
-#if defined(ENABLE_JSRUNTIME_SERVER)
-	else if (strcmp(c_flags[i], "--server") == 0)
-        {
-            runServer = true;
-        }
-#endif
         else
         {
             applications.push_back(c_flags[i]);
@@ -242,15 +236,6 @@ int main(int argc, char *argv[]) {
         NativeJSLogger::log(ERROR, "Unable to run application\n");
         return -1;
     }
-
-#if defined(ENABLE_JSRUNTIME_SERVER)
-    if (runServer == true)
-    {
-        JSRuntimeServer *server = JSRuntimeServer::getInstance();
-        server->initialize(WS_SERVER_PORT, renderer);
-        server->start();
-    }
-#endif
 
     uint32_t id = renderer->createApplication(moduleSettings);
     for (int j = 0; j < applications.size(); j++) {
