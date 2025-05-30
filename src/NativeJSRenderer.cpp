@@ -326,6 +326,10 @@ void NativeJSRenderer::runApplicationInternal(ApplicationRequest& appRequest)
 			    return ;
 			}
 			JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
+		        std::stringstream window;
+            		window<<"window.location = {\"href\":\"file:/" << url << "\"};";
+           		std::cout << "Adding the window location:" << window.str().c_str()<< " to js file" << std::endl;
+            		context->runScript(window.str().c_str(),true, url, nullptr, true);
 			std::cout << "nativeJS application thunder execution url " << url << " result " << ret << std::endl;
 			ret = context->runScript(chunk.contentsBuffer, true, url, nullptr, true);
 			std::cout << "nativeJS application execution result " << ret << std::endl;
@@ -337,6 +341,10 @@ void NativeJSRenderer::runApplicationInternal(ApplicationRequest& appRequest)
 		{	    
 			NativeJSLogger::log(INFO, "About to launch local app\n");
 			JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
+            		std::stringstream window;
+            		window<<"window.location = {\"href\":\"file:/" << url << "\"};";
+            		std::cout << "Adding the window location:" << window.str().c_str()<< " to js file" << std::endl;
+            		context->runScript(window.str().c_str(),true, url, nullptr, true);
 			NativeJSLogger::log(INFO, "Running test application: %s\n", url);
 			bool ret = context->runFile(url.c_str(), nullptr, true);
 			NativeJSLogger::log(INFO, "Test application execution result: %d\n", ret ? 1 : 0);

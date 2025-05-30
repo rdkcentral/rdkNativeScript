@@ -447,6 +447,10 @@ if (mModuleSettings.enablePlayer)
         runFile("modules/linkedjsdom.js", nullptr/*, true*/);
         runFile("modules/linkedjsdomwrapper.js", nullptr/*, true*/);
         runFile("modules/windowwrapper.js", nullptr/*, true*/);
+    	auto FireboltEndpoint = getenv("FIREBOLT_ENDPOINT") ? std::string(getenv("FIREBOLT_ENDPOINT")) : "";
+	std::stringstream firebolt;
+	firebolt << "window.__firebolt = {\"endpoint\":\"" << FireboltEndpoint << "\"};";
+	std::cout << "Adding the Firebolt EndPoint value " << FireboltEndpoint << " to window.js file" << std::endl;
     }
 }
 
