@@ -26,6 +26,7 @@ option(BUILD_JSRUNTIME_APP "BUILD_JSRUNTIME_APP" ON)
 option(ENABLE_JSRUNTIME_SERVER "ENABLE_JSRUNTIME_SERVER" OFF)
 option(BUILD_JSRUNTIME_CLIENT "BUILD_JSRUNTIME_CLIENT" OFF)
 option(NATIVEJS_DEVELOPER_MODE "NATIVEJS_DEVELOPER_MODE" OFF)
+option(ENABLE_JSRUNTIME_LAUNCHER "ENABLE_JSRUNTIME_LAUNCHER" OFF)
 
 #can be jsc or node or v8 or quickjs
 option(JSRUNTIME_ENGINE_NAME "JSRUNTIME_ENGINE_NAME" "jsc")
@@ -105,6 +106,10 @@ set(JSRUNTIME_APP_FILES
 	${JSRUNTIME_COMMON_SOURCE_DIRECTORY}/jsruntime.cpp
 )
 
+set(JSRUNTIME_LAUNCHER_FILES
+        ${JSRUNTIME_COMMON_SOURCE_DIRECTORY}/JSRuntimeLauncher.cpp
+)
+
 if ( ENABLE_JSRUNTIME_SERVER )
     add_definitions("-DENABLE_JSRUNTIME_SERVER")
     add_definitions("-DWS_SERVER_PORT=9112")
@@ -174,6 +179,16 @@ if (BUILD_JSRUNTIME_CLIENT)
     set_target_properties(jsruntime_client PROPERTIES OUTPUT_NAME "JSRuntimeClient")
     target_link_libraries(jsruntime_client ${JSRUNTIME_LIBRARY_LINK_DIRECTORIES} -lpthread)
 endif (BUILD_JSRUNTIME_CLIENT)
+
+if (ENABLE_JSRUNTIME_LAUNCHER)
+    message("Enabling build support for jsruntime launcher - widget")
+    add_executable(jsruntime_launcher ${JSRUNTIME_LAUNCHER_FILES})
+    add_dependencies(${JSRUNTIME_LIBRARY_NAME} ${JSRUNTIME_ENGINE_DEPENDENT_LIBRARY_NAME})
+    add_dependencies(jsruntime_launcher ${JSRUNTIME_LIBRARY_NAME} ${JSRUNTIME_ENGINE_DEPENDENT_LIBRARY_NAME} )
+    target_include_directories(jsruntime_launcher PRIVATE ${JSRUNTIME_INCLUDE_DIRECTORIES})
+    set_target_properties(jsruntime_launcher PROPERTIES OUTPUT_NAME "JSRuntimeLauncher")
+    target_link_libraries(jsruntime_launcher ${JSRUNTIME_LIBRARY_LINK_DIRECTORIES} -l${JSRUNTIME_LIBRARY_NAME} ${JSRUNTIME_LINK_LIBRARIES})
+endif (ENABLE_JSRUNTIME_LAUNCHER)
 
 set(UWEBSOCKETS_TARGET "Linux")
 if (APPLE)
