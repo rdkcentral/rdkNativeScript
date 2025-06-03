@@ -326,10 +326,12 @@ void NativeJSRenderer::runApplicationInternal(ApplicationRequest& appRequest)
 			    return ;
 			}
 			JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
-		        std::stringstream window;
+		        #if defined(ENABLE_JSRUNTIME_LAUNCHER)
+			std::stringstream window;
             		window<<"window.location = {\"href\":\"" << url << "\"};";
            		NativeJSLogger::log(INFO, "Adding the window location: %s to js file\n", window.str().c_str());
             		context->runScript(window.str().c_str(),true, url, nullptr, true);
+			#endif
 			NativeJSLogger::log(INFO, "nativeJS application thunder execution url: %s, result: %d\n", url.c_str(), ret ? 1 : 0);
 			ret = context->runScript(chunk.contentsBuffer, true, url, nullptr, true);
 			NativeJSLogger::log(INFO, "nativeJS application execution result: %d\n", ret ? 1 : 0);
@@ -341,11 +343,13 @@ void NativeJSRenderer::runApplicationInternal(ApplicationRequest& appRequest)
 		{	    
 			NativeJSLogger::log(INFO, "About to launch local app\n");
 			JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
-            		std::stringstream window;
+            		#if defined(ENABLE_JSRUNTIME_LAUNCHER)
+			std::stringstream window;
             		window<<"window.location = {\"href\":\"file:/" << url << "\"};";
             		NativeJSLogger::log(INFO, "Adding the window location: %s to js file\n", window.str().c_str());
             		context->runScript(window.str().c_str(),true, url, nullptr, true);
-			NativeJSLogger::log(INFO, "Running test application: %s\n", url);
+			#endif
+			NativeJSLogger::log(INFO, "Running test application: %s\n", url.c_str());
 			bool ret = context->runFile(url.c_str(), nullptr, true);
 			NativeJSLogger::log(INFO, "Test application execution result: %d\n", ret ? 1 : 0);
 			double duration = context->getExecutionDuration();
