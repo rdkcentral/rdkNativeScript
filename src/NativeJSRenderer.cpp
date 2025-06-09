@@ -326,25 +326,25 @@ void NativeJSRenderer::runApplicationInternal(ApplicationRequest& appRequest)
 			    return ;
 			}
 			IJavaScriptContext* context = mContextMap[id].context;
-			JavaScriptContext* jscontext = (JavaScriptContext*)mContextMap[id].context;
-			std::cout << "nativeJS application thunder execution url " << url << " result " << ret << std::endl;
+			//JavaScriptContext* jscontext = (JavaScriptContext*)mContextMap[id].context;
+			std::cout << "nativeJS application thunder execution url, " << url << " result " << ret << std::endl;
 			ret = context->runScript(chunk.contentsBuffer, true, url, nullptr, true);
 			std::cout << "nativeJS application execution result " << ret << std::endl;
-			double duration = jscontext->getExecutionDuration();
-                        jscontext->setAppdata(id, url);
-			NativeJSLogger::log(INFO, "Execution duration(runApplicationDuration) for ID %d | URL %s : %.3f ms\n", id, url.c_str(), duration);
+			//double duration = jscontext->getExecutionDuration();
+                        //jscontext->setAppdata(id, url);
+			//NativeJSLogger::log(INFO, "Execution duration(runApplicationDuration) for ID %d | URL %s : %.3f ms\n", id, url.c_str(), duration);
 		}
 		else
 		{	    
 			NativeJSLogger::log(INFO, "About to launch local app\n");
 			IJavaScriptContext* context = mContextMap[id].context;
-			JavaScriptContext* jscontext = (JavaScriptContext*)mContextMap[id].context;
+			//JavaScriptContext* jscontext = (JavaScriptContext*)mContextMap[id].context;
 			NativeJSLogger::log(INFO, "Running test application: %s\n", url);
 			bool ret = context->runFile(url.c_str(), nullptr, true);
 			NativeJSLogger::log(INFO, "Test application execution result: %d\n", ret ? 1 : 0);
-			double duration = jscontext->getExecutionDuration();
-			jscontext->setAppdata(id, url);
-			NativeJSLogger::log(INFO, "Execution duration(runApplicationDuration) for ID %d | URL %s : %.3f ms\n", id, url.c_str(), duration);
+			//double duration = jscontext->getExecutionDuration();
+			//jscontext->setAppdata(id, url);
+			//NativeJSLogger::log(INFO, "Execution duration(runApplicationDuration), for ID %d | URL %s : %.3f ms\n", id, url.c_str(), duration);
 		}	    
 	}
 	else{
@@ -368,11 +368,11 @@ void NativeJSRenderer::runJavaScriptInternal(ApplicationRequest& appRequest)
 	{
 		NativeJSLogger::log(INFO, "Running the JavaScript code\n");
 		IJavaScriptContext* context = mContextMap[id].context;
-		JavaScriptContext* jscontext = (JavaScriptContext*)mContextMap[id].context;
+		//JavaScriptContext* jscontext = (JavaScriptContext*)mContextMap[id].context;
 		std::string rawcode = code ;
 		bool ret = context-> runScript(rawcode.c_str(),true,"JavaScriptCode",nullptr,true);
-		double duration = jscontext->getExecutionDuration();
-		NativeJSLogger::log(INFO, "Execution duration(runJavaScriptDuration) for ID %d | %s : %.3f ms\n", id, code.c_str(), duration);
+		//double duration = jscontext->getExecutionDuration();
+		//NativeJSLogger::log(INFO, "Execution duration(runJavaScriptDuration) for ID %d | %s : %.3f ms\n", id, code.c_str(), duration);
 	}
 	else{
 		NativeJSLogger::log(ERROR, "Empty or Invalid JavaScript Code\n");
