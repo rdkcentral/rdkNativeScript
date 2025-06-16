@@ -252,7 +252,7 @@ std::list<ApplicationDetails> NativeJSRenderer::getApplications()
 			ApplicationDetails appData;
 			appData.id = key;
 			appData.url = value.url;
-			NativeJSLogger::log(DEBUG, "Found application with ID: %d and URL: %s\n", key, value.url.c_str());
+			NativeJSLogger::log(DEBUG, "Found application with ID: %d and URL: %s\n", key, value.url);
 			runningApplication.push_back(appData);
 		}
 	}
@@ -326,13 +326,9 @@ void NativeJSRenderer::runApplicationInternal(ApplicationRequest& appRequest)
 			    return ;
 			}
 			JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
-		        std::stringstream window;
-            		window<<"window.location = {\"href\":\"" << url << "\"};";
-           		NativeJSLogger::log(INFO, "Adding the window location: %s to js file\n", window.str().c_str());
-            		context->runScript(window.str().c_str(),true, url, nullptr, true);
-			NativeJSLogger::log(INFO, "nativeJS application thunder execution url: %s, result: %d\n", url.c_str(), ret ? 1 : 0);
+			std::cout << "nativeJS application thunder execution url " << url << " result " << ret << std::endl;
 			ret = context->runScript(chunk.contentsBuffer, true, url, nullptr, true);
-			NativeJSLogger::log(INFO, "nativeJS application execution result: %d\n", ret ? 1 : 0);
+			std::cout << "nativeJS application execution result " << ret << std::endl;
 			double duration = context->getExecutionDuration();
                         context->setAppdata(id, url);
 			NativeJSLogger::log(INFO, "Execution duration(runApplicationDuration) for ID %d | URL %s : %.3f ms\n", id, url.c_str(), duration);
@@ -341,10 +337,6 @@ void NativeJSRenderer::runApplicationInternal(ApplicationRequest& appRequest)
 		{	    
 			NativeJSLogger::log(INFO, "About to launch local app\n");
 			JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
-            		std::stringstream window;
-            		window<<"window.location = {\"href\":\"file:/" << url << "\"};";
-            		NativeJSLogger::log(INFO, "Adding the window location: %s to js file\n", window.str().c_str());
-            		context->runScript(window.str().c_str(),true, url, nullptr, true);
 			NativeJSLogger::log(INFO, "Running test application: %s\n", url);
 			bool ret = context->runFile(url.c_str(), nullptr, true);
 			NativeJSLogger::log(INFO, "Test application execution result: %d\n", ret ? 1 : 0);
