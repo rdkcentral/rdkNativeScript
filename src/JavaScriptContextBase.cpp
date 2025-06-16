@@ -25,15 +25,11 @@
 #ifdef ENABLE_ESSOS
 #include <EssosInstance.h>
 #endif
-
-//newly added
-#include <sys/stat.h>
-#include <cstdlib>
+#include <sys/stat.h>                                                                                                                                                       
+#include <cstdlib>    
 
 std::string JavaScriptContextBase::sThunderJSCode = "";
 std::string JavaScriptContextBase::sWebBridgeCode = "";
-
-//newly added
 std::string JavaScriptContextBase::sModulesPath = "" ;
 
 JavaScriptContextFeatures::JavaScriptContextFeatures(bool embedThunderJS, bool embedWebBridge, bool enableWebSockerServer, ModuleSettings& moduleSettings):mEmbedThunderJS(embedThunderJS), mEmbedWebBridge(embedWebBridge), mEnableWebSockerServer(enableWebSockerServer), mModuleSettings(moduleSettings)
@@ -42,28 +38,22 @@ JavaScriptContextFeatures::JavaScriptContextFeatures(bool embedThunderJS, bool e
 
 JavaScriptContextBase::JavaScriptContextBase(JavaScriptContextFeatures& features, std::string url, IJavaScriptEngine* jsEngine): mApplicationUrl(url), mEngine(jsEngine), mEmbedThunderJS(features.mEmbedThunderJS), mEmbedWebBridge(features.mEmbedWebBridge), mEnableWebSockerServer(features.mEnableWebSockerServer), mModuleSettings(features.mModuleSettings)
 {
-//newly added
-    JavaScriptContextBase::setEnvVariable("JSRUNTIME_MODULES_PATH", "");
-    
-    sModulesPath = std::getenv("JSRUNTIME_MODULES_PATH");
     getModulesPath();
-
     if (mEmbedThunderJS)
     {
         if (sThunderJSCode.empty())
-        {		
-	    std::string ThunderJS= sModulesPath + "thunderJS.js"
-	    sThunderJSCode = readFile(ThunderJS.c_str());
+        {
+            sThunderJSCode = readFile("thunderJS.js");
         }
     }
     if (mEmbedWebBridge)
     {
         if (sWebBridgeCode.empty())
         {
-	    std::string WebBridge = sModulesPath + "webbridgesdk.js" 
-	    sWebBridgeCode = readFile(WebBridge.c_str());
+            sWebBridgeCode = readFile("webbridgesdk.js");
         }
     }
+
 #ifdef ENABLE_ESSOS
     EssosInstance::instance()->registerKeyListener(this);
 #endif
@@ -93,6 +83,22 @@ std::string JavaScriptContextBase::readFile(const char *file)
     std::ifstream       src_file(file);
     std::stringstream   src_script;
     src_script << src_file.rdbuf();
+    if(src_script.str().empty())
+    {
+        std::string fileName=sModulesPath;
+        fileName.append(file);
+        struct stat path;
+        if (stat(fileName.c_str(), &path) == 0) {
+            std::cout << "File exists at: " << fileName << std::endl;
+            std::ifstream       src_file(fileName.c_str());
+            src_script.str("");
+            src_script.clear();
+            src_script << src_file.rdbuf();
+        }
+        else {
+            std::cout << file << "does not exist at: " << fileName << std::endl;
+        }
+    }
     return src_script.str();
 }
 
@@ -119,11 +125,7 @@ bool JavaScriptContextBase::runFile(const char *file, const char* args, bool isA
             NativeJSLogger::log(ERROR, "%s ... load error / not found. %s\n", __PRETTY_FUNCTION__, file);
             fflush(stdout);
             return false;
-        }
     }
-    //newly added
-    std::cout<<"File:" << file << std::endl;
-        
     return evaluateScript(scriptToRun.c_str(), isApplication?file:nullptr, args, isApplication);
 }
 
@@ -147,44 +149,34 @@ void JavaScriptContextBase::onKeyRelease(struct JavaScriptKeyDetails& details)
     processKeyEvent(details, false);
 }
 
-//newly added
-void JavaScriptContextBase::setEnvVariable(const char* name, const char* value) {
-    if (setenv(name, value, 1) == 0) {
-        std::cout << "Environment variable set: " << name << std::endl;
-    } else {
-        std::cerr << "Failed to set environment variable!" << std::endl;
-    }
-}
 std::string JavaScriptContextBase::getModulesPath(){
-	if(!sModulesPath.empty()){
-		return sModulesPath;
-	}
-	else{
-		struct stat info;
-		std::string home;
-		char* cwd = getcwd(nullptr,0);
-		std::string PWD=cwd;
-		if (stat("/home/root/modules/", &info) == 0 && (info.st_mode & S_IFDIR)){
-			home =PWD + "/home/root/modules/";
-		}
-		else if(stat("/runtime/modules/", &info) == 0 && (info.st_mode & S_IFDIR)){
-			home = PWD + "/runtime/modules/";
-		}
-		else if("/modules/", &info) == 0 && (info.st_mode & S_IFDIR)){
-			home = PWD +"/modules/";
-		}
-        else{
-                std::cerr << "Modules Directory not found!" << std::endl;
-        }
-		sModulesPath = home;
-		if(setenv("JSRUNTIME_MODULES_PATH",home.c_str(),1)==0){
-			std::cout<<"JSRUNTIME_MODULES_PATH:"<<std::getenv("JSRUNTIME_MODULES_PATH")<<std::endl;
-			std::cout<<"Modules path variable set successfully"<<std::endl;
-		}
-		else{
-			std::cout<<"Modules path variable cannot be set!"<<std::endl;
-		}
-		return sModulesPath;
-	}
+    if(!sModulesPath.empty()){
+            return sModulesPath;
+    }
+    else{
+            struct stat info;
+            std::string home;
+            char* cwd = getcwd(nullptr,0);
+            std::string PWD=cwd;	    
+	        PWD=PWD+"/modules/";
+            if (stat(PWD.c_str(), &info) == 0 && (info.st_mode & S_IFDIR)){
+                    home = PWD; // "/home/root/modules/"
+            }
+            else if(stat(PWD.c_str(), &info) == 0 && (info.st_mode & S_IFDIR)){
+                    home = PWD; // "/runtime/modules/"
+            }
+            else if(stat(PWD.c_str(), &info) == 0 && (info.st_mode & S_IFDIR)){
+                    home = PWD; 
+            }
+            sModulesPath = home;
+            if(setenv("JSRUNTIME_MODULES_PATH",home.c_str(),1)==0){
+                    std::cout<<"JSRUNTIME_MODULES_PATH:"<<std::getenv("JSRUNTIME_MODULES_PATH")<<std::endl;
+                    std::cout<<"Modules path variable set successfully"<<std::endl;
+            }
+            else{
+                    std::cout<<"Modules path variable cannot be set!"<<std::endl;
+            }
+            return sModulesPath;
+    }
 
 }
