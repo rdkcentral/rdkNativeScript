@@ -85,12 +85,12 @@ class Performance
 
   clearMarks()
   {
-    for (var key in this.entries)
+    for (var key in entries)
     {
-        this.entries[key] = null;
-	delete this.entries[key];    
+        entries[key] = null;
+	delete entries[key];    
     }
-    this.entries = {}
+    entries = {}
   }	  
 
   getEntriesByName(name)
@@ -117,16 +117,6 @@ class Performance
   now()
   {
     return Date.now();	  
-  }
-  clearMeasures()
-  {
-    for (var key in this.entries)
-    {
-        this.entries[key] = null;
-        delete this.entries[key];
-    }
-    this.entries = {}
-  }
-
+  }	  
 }
 performance = new Performance();
