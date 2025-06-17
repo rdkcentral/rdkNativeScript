@@ -127,3 +127,8 @@ void JavaScriptContextBase::onKeyRelease(struct JavaScriptKeyDetails& details)
 {
     processKeyEvent(details, false);
 }
+
+ModuleSettings JavaScriptContextBase::getModuleSettings()
+{
+	return mModuleSettings;
+}

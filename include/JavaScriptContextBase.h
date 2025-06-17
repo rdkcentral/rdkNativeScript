@@ -55,6 +55,7 @@ class JavaScriptContextBase:public IJavaScriptContext, public JavaScriptKeyListe
     std::string getUrl();
     virtual void onKeyPress(struct JavaScriptKeyDetails& details);
     virtual void onKeyRelease(struct JavaScriptKeyDetails& details);
+    ModuleSettings getModuleSettings();
   protected:
     virtual void processKeyEvent(struct JavaScriptKeyDetails& details, bool keyPress) = 0;
     virtual bool evaluateScript(const char* script, const char* name, const char *args, bool module=false) = 0;
