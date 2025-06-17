@@ -84,9 +84,9 @@ std::string JavaScriptContextBase::readFile(const char *file)
     std::ifstream src_file;
     std::stringstream   src_script;
     struct stat path;
-    if(stat(file.c_str(), &path) == 0)
+    if(stat(file, &path) == 0)
     {
-        isModule=false;
+        isModules=false;
     }
     if(!isModules)
     {
@@ -106,17 +106,18 @@ bool JavaScriptContextBase::runFile(const char *file, const char* args, bool isA
 {
     if (!file)
     {
-        NativeJSLogger::log(" %s  ... no script given.",__PRETTY_FUNCTION__);
-        fflush(stdout);
+        NativeJSLogger::log(WARN, "%s ... no script given.\n", __PRETTY_FUNCTION__);
+	fflush(stdout);
         return false;
     }
 
     std::string scriptToRun;
     scriptToRun = readFile(file);
+    NativeJSLogger::log(INFO, "Checking in [%s]\n", file);
     if(scriptToRun.empty())
     {
             NativeJSLogger::log(ERROR, "%s ... load error / not found. %s\n", __PRETTY_FUNCTION__, file);
-            fflush(stdout);
+	    fflush(stdout);
             return false;
     }
     return evaluateScript(scriptToRun.c_str(), isApplication?file:nullptr, args, isApplication);
@@ -158,11 +159,11 @@ void JavaScriptContextBase::populateModulesPath(){
             {
             PWD = "/runtime";
             }    
-	        sModulesPath=PWD+"/modules/";
-            setenv("JSRUNTIME_MODULES_PATH",sModulesPath.c_str(),1)
+	    sModulesPath=PWD+"/modules/";
+            setenv("JSRUNTIME_MODULES_PATH",sModulesPath.c_str(),1);
 
     }
-    std::cout<<"Modules Path:"<<sModulePath<<std::endl;
+    std::cout<<"Modules Path:"<<sModulesPath<<std::endl;
     return;
 
 }

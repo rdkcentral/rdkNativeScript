@@ -46,6 +46,8 @@
 #include <dlfcn.h>
 #endif
 #endif
+#include <sstream> 
+#include <fstream>
 
 extern "C" JS_EXPORT void JSSynchronousGarbageCollectForDebugging(JSContextRef);
 #ifdef ENABLE_AAMP_JSBINDINGS_STATIC
