@@ -289,10 +289,10 @@ void NativeJSRenderer::createApplicationInternal(ApplicationRequest& appRequest)
         JavaScriptContext* context = new JavaScriptContext(features, "" , mEngine);
         if(NULL == context)
         {
-        	NativeJSLogger::log(DEBUG, "Context not created for ID: %d\n", id);
+        	//NativeJSLogger::log(DEBUG, "Context not created for ID: %d\n", id);
         	return ;
         }
-        NativeJSLogger::log(DEBUG, "Context created for ID: %d\n", id);
+        //NativeJSLogger::log(DEBUG, "Context created for ID: %d\n", id);
 	
         double endTime = getTimeInMilliSec();
         context->setCreateApplicationStartTime(startTime);
@@ -315,7 +315,7 @@ void NativeJSRenderer::runApplicationInternal(ApplicationRequest& appRequest)
 	
 	if(!url.empty())
 	{
-		NativeJSLogger::log(INFO, "Before launching app\n");
+		//NativeJSLogger::log(INFO, "Before launching app\n");
 		std::string urlPattern = url.substr(0, 4);
 		if (urlPattern.compare(0, 4, "http") == 0)
 		{
@@ -326,39 +326,39 @@ void NativeJSRenderer::runApplicationInternal(ApplicationRequest& appRequest)
 			    return ;
 			}
 			JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
-		        /*#if defined(ENABLE_JSRUNTIME_LAUNCHER)
+		        #if defined(ENABLE_JSRUNTIME_LAUNCHER)
 			std::stringstream window;
             		window<<"window.location = {\"href\":\"" << url << "\"};";
-           		NativeJSLogger::log(INFO, "Adding the window location: %s to js file\n", window.str().c_str());
+           		//NativeJSLogger::log(INFO, "Adding the window location: %s to js file\n", window.str().c_str());
             		context->runScript(window.str().c_str(),true, url, nullptr, true);
-			#endif*/
-			NativeJSLogger::log(INFO, "nativeJS application thunder execution url: %s, result: %d\n", url.c_str(), ret ? 1 : 0);
+			#endif
+			//NativeJSLogger::log(INFO, "nativeJS application thunder execution url: %s, result: %d\n", url.c_str(), ret ? 1 : 0);
 			ret = context->runScript(chunk.contentsBuffer, true, url, nullptr, true);
-			NativeJSLogger::log(INFO, "nativeJS application execution result: %d\n", ret ? 1 : 0);
+			//NativeJSLogger::log(INFO, "nativeJS application execution result: %d\n", ret ? 1 : 0);
 			double duration = context->getExecutionDuration();
                         context->setAppdata(id, url);
-			NativeJSLogger::log(INFO, "Execution duration(runApplicationDuration) for ID %d | URL %s : %.3f ms\n", id, url.c_str(), duration);
+			//NativeJSLogger::log(INFO, "Execution duration(runApplicationDuration) for ID %d | URL %s : %.3f ms\n", id, url.c_str(), duration);
 		}
 		else
 		{	    
-			NativeJSLogger::log(INFO, "About to launch local app\n");
+			//NativeJSLogger::log(INFO, "About to launch local app\n");
 			JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
-            		/*#if defined(ENABLE_JSRUNTIME_LAUNCHER)
+            		#if defined(ENABLE_JSRUNTIME_LAUNCHER)
 			std::stringstream window;
             		window<<"window.location = {\"href\":\"file:/" << url << "\"};";
-            		NativeJSLogger::log(INFO, "Adding the window location: %s to js file\n", window.str().c_str());
+            		//NativeJSLogger::log(INFO, "Adding the window location: %s to js file\n", window.str().c_str());
             		context->runScript(window.str().c_str(),true, url, nullptr, true);
-			#endif*/
-			NativeJSLogger::log(INFO, "Running test application: %s\n", url.c_str());
+			#endif
+			//NativeJSLogger::log(INFO, "Running test application: %s\n", url.c_str());
 			bool ret = context->runFile(url.c_str(), nullptr, true);
-			NativeJSLogger::log(INFO, "Test application execution result: %d\n", ret ? 1 : 0);
+			//NativeJSLogger::log(INFO, "Test application execution result: %d\n", ret ? 1 : 0);
 			double duration = context->getExecutionDuration();
 			context->setAppdata(id, url);
-			NativeJSLogger::log(INFO, "Execution duration(runApplicationDuration) for ID %d | URL %s : %.3f ms\n", id, url.c_str(), duration);
+			//NativeJSLogger::log(INFO, "Execution duration(runApplicationDuration) for ID %d | URL %s : %.3f ms\n", id, url.c_str(), duration);
 		}	    
 	}
 	else{
-	    NativeJSLogger::log(WARN, "nativeJS application url not proper\n");
+	    //NativeJSLogger::log(WARN, "nativeJS application url not proper\n");
 	    return ;
 	}
 }
