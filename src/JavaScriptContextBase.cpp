@@ -84,12 +84,10 @@ std::string JavaScriptContextBase::readFile(const char *file)
     std::ifstream src_file;
     std::stringstream   src_script;
     struct stat path;
-    if(stat(file, &path) == 0)
-    {
+    if(stat(file, &path) == 0){
         isModules=false;
     }
-    if(!isModules)
-    {
+    if(!isModules){
         src_file.open(file);
         src_script << src_file.rdbuf();
     }
@@ -110,7 +108,6 @@ bool JavaScriptContextBase::runFile(const char *file, const char* args, bool isA
 	fflush(stdout);
         return false;
     }
-
     std::string scriptToRun;
     scriptToRun = readFile(file);
     NativeJSLogger::log(INFO, "Checking in [%s]\n", file);
@@ -144,24 +141,20 @@ void JavaScriptContextBase::onKeyRelease(struct JavaScriptKeyDetails& details)
 }
 
 void JavaScriptContextBase::populateModulesPath(){
-    if(getenv("JSRUNTIME_MODULES_PATH"))
-    {
+    if(getenv("JSRUNTIME_MODULES_PATH")){
         std::cout<<"JSRUNTIME_MODULES_PATH variable is set"<<std::endl;
         sModulesPath = std::string(getenv("JSRUNTIME_MODULES_PATH"));
         return;
     }
     else{
-            struct stat info;
-            std::string home;
             char* cwd = getcwd(nullptr,0);
             std::string PWD=cwd;	
             if(PWD=="/package")
             {
-            PWD = "/runtime";
+            	PWD = "/runtime";
             }    
 	    sModulesPath=PWD+"/modules/";
             setenv("JSRUNTIME_MODULES_PATH",sModulesPath.c_str(),1);
-
     }
     std::cout<<"Modules Path:"<<sModulesPath<<std::endl;
     return;

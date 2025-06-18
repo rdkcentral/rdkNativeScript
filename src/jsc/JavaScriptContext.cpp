@@ -46,7 +46,7 @@
 #include <dlfcn.h>
 #endif
 #endif
-#include <sstream> 
+#include <sstream>
 #include <fstream>
 
 extern "C" JS_EXPORT void JSSynchronousGarbageCollectForDebugging(JSContextRef);
@@ -417,14 +417,12 @@ if (mModuleSettings.enablePlayer)
     {
         runFile("http.js", nullptr);
         runFile("https.js", nullptr);
-
     }
     if (mModuleSettings.enableFetch)
     {
         runFile("node-fetch.js" , nullptr/*, true*/);
     }
     runFile("utils.js", nullptr);
-
     if (mModuleSettings.enableWebSocketEnhanced)
     {
         runFile("event.js", nullptr);
@@ -438,7 +436,7 @@ if (mModuleSettings.enablePlayer)
     if (mEnableWebSockerServer)
     {
         NativeJSLogger::log(INFO, "enabling websocket server\n");
-	    runFile("wsserver.js", nullptr);
+        runFile("wsserver.js", nullptr);
     }
 #endif
     if (mModuleSettings.enableWindow)
@@ -556,6 +554,3 @@ void JavaScriptContext::setPlaybackStartTime(double time)
     double launchTime = mPerformanceMetrics.playbackStartTime - mPerformanceMetrics.createApplicationStartTime;
     NativeJSLogger::log(INFO, "Launch_Duration for ID %d | URL %s : %.3f ms\n", mIds, mUrls.c_str(), launchTime);
 }
-
-
-
