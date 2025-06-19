@@ -28,6 +28,8 @@
 #include <iostream>
 #include <signal.h>
 
+#include <fstream>
+#include <sstream>
 #include <JavaScriptCore/JavaScript.h>
 #include <JavaScriptContext.h>
 #include <JavaScriptUtils.h>
