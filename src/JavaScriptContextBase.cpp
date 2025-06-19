@@ -156,6 +156,6 @@ void JavaScriptContextBase::populateModulesPath(){
             std::string PWD=cwd;
             sModulesPath=PWD+"/modules/";
     }
-    std::cout<<"Modules Path:"<<sModulePath<<std::endl;
+    std::cout<<"Modules Path:"<<sModulesPath<<std::endl;
     return;
 }
