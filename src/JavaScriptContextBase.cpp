@@ -30,7 +30,7 @@
 
 std::string JavaScriptContextBase::sThunderJSCode = "";
 std::string JavaScriptContextBase::sWebBridgeCode = "";
-std::string JavaScriptContextBase::sModulesPath = " " 
+std::string JavaScriptContextBase::sModulesPath = ""; 
 
 JavaScriptContextFeatures::JavaScriptContextFeatures(bool embedThunderJS, bool embedWebBridge, bool enableWebSockerServer, ModuleSettings& moduleSettings):mEmbedThunderJS(embedThunderJS), mEmbedWebBridge(embedWebBridge), mEnableWebSockerServer(enableWebSockerServer), mModuleSettings(moduleSettings)
 {
