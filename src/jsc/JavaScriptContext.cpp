@@ -48,6 +48,8 @@
 #include <dlfcn.h>
 #endif
 #endif
+#include <sstream>
+#include <fstream>
 
 extern "C" JS_EXPORT void JSSynchronousGarbageCollectForDebugging(JSContextRef);
 #ifdef ENABLE_AAMP_JSBINDINGS_STATIC
@@ -407,48 +409,48 @@ if (mModuleSettings.enablePlayer)
     injectFun(mContext, "require", requireCallback);
     if(mModuleSettings.enablePlayer)
     {
-	runFile("modules/video.js", nullptr);
+       runFile("video.js", nullptr);
     }
     if (mModuleSettings.enableXHR)
     {
-        runFile("modules/xhr.js", nullptr);
+        runFile("xhr.js", nullptr);
     }
     if (mModuleSettings.enableHttp)
     {
-        runFile("modules/http.js", nullptr);
-        runFile("modules/https.js", nullptr);
+        runFile("http.js", nullptr);
+        runFile("https.js", nullptr);
     }
     if (mModuleSettings.enableFetch)
     {
-        runFile("modules/node-fetch.js", nullptr/*, true*/);
+        runFile("node-fetch.js" , nullptr/*, true*/);
     }
-    runFile("modules/utils.js", nullptr);
+    runFile("utils.js", nullptr);
     if (mModuleSettings.enableWebSocketEnhanced)
     {
-        runFile("modules/event.js", nullptr);
-        runFile("modules/wsenhanced.js", nullptr);
-    }
+        runFile("event.js", nullptr);
+        runFile("wsenhanced.js", nullptr);
+}
     else if(mModuleSettings.enableWebSocket)
     {
-        runFile("modules/ws.js", nullptr);
+        runFile("ws.js", nullptr);
     }
 #ifdef WS_SERVER_ENABLED
     if (mEnableWebSockerServer)
     {
         NativeJSLogger::log(INFO, "enabling websocket server\n");
-	runFile("modules/wsserver.js", nullptr);
+        runFile("wsserver.js", nullptr);
     }
 #endif
     if (mModuleSettings.enableWindow)
     {
-        runFile("modules/window.js", nullptr/*, true*/);
-        runFile("modules/windowwrapper.js", nullptr/*, true*/);
+        runFile("window.js", nullptr/*, true*/);
+        runFile("windowwrapper.js", nullptr/*, true*/);
     }
     else if (mModuleSettings.enableJSDOM)
     {
-        runFile("modules/linkedjsdom.js", nullptr/*, true*/);
-        runFile("modules/linkedjsdomwrapper.js", nullptr/*, true*/);
-        runFile("modules/windowwrapper.js", nullptr/*, true*/);
+        runFile("linkedjsdom.js", nullptr/*, true*/);
+        runFile("linkedjsdomwrapper.js", nullptr/*, true*/);
+        runFile("windowwrapper.js", nullptr/*, true*/);
         if(getenv("FIREBOLT_ENDPOINT")!=NULL)
         {
             auto FireboltEndpoint = std::string(getenv("FIREBOLT_ENDPOINT"));
