@@ -1,0 +1,32 @@
+Increase the NativeJS log level to DEBUG
+
+Terminal 1:
+
+Change clientIdentifier to "test" in /etc/WPEFramework/plugins/WebKitBrowser.json
+source /opt/www/demo/testapp_RDKNativescript/exports.sh
+
+systemctl stop sky-appsservice
+westeros --renderer /usr/lib/libwesteros_render_gl.so.0.0.0 --display test
+
+Terminal 2:
+export XDG_RUNTIME_DIR=/tmp
+export WAYLAND_DISPLAY=test
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/javascriptcore 
+export LD_PRELOAD=/usr/lib/realtek/libVOutWrapper.so:/usr/lib/realtek/libjpu.so:/usr/lib/realtek/libvpu.so:/usr/lib/libwesteros_gl.so.0
+
+westeros_test
+
+Open Controller UI on browser <ip_addr>:9998
+
+Activate NativeJS/jsruntime plugin using Controller UI and, 
+
+Activate WebKitBrowser plugin
+curl -d '{"jsonrpc":"2.0","id":"3","method": "Controller.1.activate", "params":{"callsign":"WebKitBrowser"}}' http://127.0.0.1:9998/jsonrpc
+
+
+Upon Refreshing the controller UI, on left side panel select WebKitBrowser
+
+Set URL http://127.0.0.1:50050/demo/testapp_RDKNativescript/video.html and reload
+
+
+
