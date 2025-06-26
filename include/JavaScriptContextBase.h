@@ -69,5 +69,7 @@ class JavaScriptContextBase:public IJavaScriptContext, public JavaScriptKeyListe
     bool mEmbedWebBridge;
     bool mEnableWebSockerServer;
     ModuleSettings mModuleSettings;
+    static std::string sModulesPath;
+    static void populateModulesPath();
 };
 #endif

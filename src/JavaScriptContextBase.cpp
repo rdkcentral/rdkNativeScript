@@ -25,9 +25,12 @@
 #ifdef ENABLE_ESSOS
 #include <EssosInstance.h>
 #endif
+#include <sys/stat.h>                                                                                                                                                       
+#include <cstdlib>
 
 std::string JavaScriptContextBase::sThunderJSCode = "";
 std::string JavaScriptContextBase::sWebBridgeCode = "";
+std::string JavaScriptContextBase::sModulesPath = ""; 
 
 JavaScriptContextFeatures::JavaScriptContextFeatures(bool embedThunderJS, bool embedWebBridge, bool enableWebSockerServer, ModuleSettings& moduleSettings):mEmbedThunderJS(embedThunderJS), mEmbedWebBridge(embedWebBridge), mEnableWebSockerServer(enableWebSockerServer), mModuleSettings(moduleSettings)
 {
@@ -35,18 +38,19 @@ JavaScriptContextFeatures::JavaScriptContextFeatures(bool embedThunderJS, bool e
 
 JavaScriptContextBase::JavaScriptContextBase(JavaScriptContextFeatures& features, std::string url, IJavaScriptEngine* jsEngine): mApplicationUrl(url), mEngine(jsEngine), mEmbedThunderJS(features.mEmbedThunderJS), mEmbedWebBridge(features.mEmbedWebBridge), mEnableWebSockerServer(features.mEnableWebSockerServer), mModuleSettings(features.mModuleSettings)
 {
+    populateModulesPath();
     if (mEmbedThunderJS)
     {
         if (sThunderJSCode.empty())
-        {		
-            sThunderJSCode = readFile("modules/thunderJS.js");
+        {
+            sThunderJSCode = readFile("thunderJS.js");
         }
     }
     if (mEmbedWebBridge)
     {
         if (sWebBridgeCode.empty())
-        {		
-            sWebBridgeCode = readFile("modules/webbridgesdk.js");
+        {
+            sWebBridgeCode = readFile("webbridgesdk.js");
         }
     }
 #ifdef ENABLE_ESSOS
@@ -75,9 +79,23 @@ void JavaScriptContextBase::registerCommonUtils()
 
 std::string JavaScriptContextBase::readFile(const char *file)
 {
-    std::ifstream       src_file(file);
+    bool isModule = true;
+    std::ifstream src_file;
     std::stringstream   src_script;
-    src_script << src_file.rdbuf();
+    struct stat path;
+    if(stat(file, &path) == 0){
+        isModule=false;
+    }
+    if(!isModule){
+        src_file.open(file);
+        src_script << src_file.rdbuf();
+    }
+    else{
+        std::string fileName=sModulesPath;
+        fileName.append(file);
+        src_file.open(fileName);
+        src_script << src_file.rdbuf();
+    }
     return src_script.str();
 }
 
@@ -86,24 +104,17 @@ bool JavaScriptContextBase::runFile(const char *file, const char* args, bool isA
     if (!file)
     {
         NativeJSLogger::log(WARN, "%s ... no script given.\n", __PRETTY_FUNCTION__);
-        fflush(stdout);
+	fflush(stdout);
         return false;
     }
-
     std::string scriptToRun;
     scriptToRun = readFile(file);
+    NativeJSLogger::log(INFO, "Checking in [%s]\n", file);
     if(scriptToRun.empty())
     {
-        std::string fileName("/home/root/");
-	fileName.append(file);
-        scriptToRun = readFile(fileName.c_str());
-        NativeJSLogger::log(INFO, "Checking in [%s]\n", fileName.c_str());
-        if(scriptToRun.empty())
-        {
             NativeJSLogger::log(ERROR, "%s ... load error / not found. %s\n", __PRETTY_FUNCTION__, file);
-            fflush(stdout);
+	    fflush(stdout);
             return false;
-        }
     }
     return evaluateScript(scriptToRun.c_str(), isApplication?file:nullptr, args, isApplication);
 }
@@ -131,4 +142,20 @@ void JavaScriptContextBase::onKeyRelease(struct JavaScriptKeyDetails& details)
 ModuleSettings JavaScriptContextBase::getModuleSettings()
 {
 	return mModuleSettings;
+}
+
+void JavaScriptContextBase::populateModulesPath(){
+    if(getenv("JSRUNTIME_MODULES_PATH"))
+    {
+        std::cout<<"JSRUNTIME_MODULES_PATH variable is set"<<std::endl;
+        sModulesPath = std::string(getenv("JSRUNTIME_MODULES_PATH"));
+        return;
+    }
+    else{
+            char* cwd = getcwd(nullptr,0);
+            std::string PWD=cwd;
+            sModulesPath=PWD+"/modules/";
+    }
+    std::cout<<"Modules Path:"<<sModulesPath<<std::endl;
+    return;
 }
