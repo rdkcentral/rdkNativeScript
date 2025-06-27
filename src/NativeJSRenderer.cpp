@@ -272,8 +272,6 @@ bool NativeJSRenderer::terminateApplication(uint32_t id)
 
 void NativeJSRenderer::createApplicationInternal(ApplicationRequest& appRequest)
 {
-        double startTime = getTimeInMilliSec(); 
-
 	ModuleSettings settings;
 	settings.enableHttp = appRequest.mEnableHttp;
 	settings.enableXHR = appRequest.mEnableXHR;
@@ -289,15 +287,10 @@ void NativeJSRenderer::createApplicationInternal(ApplicationRequest& appRequest)
         JavaScriptContext* context = new JavaScriptContext(features, "" , mEngine);
         if(NULL == context)
         {
-        	NativeJSLogger::log(DEBUG, "Context not created for ID: %d\n", id);
+        	NativeJSLogger::log(DEBUG, "Context not created for ID: %s\n", id);
         	return ;
         }
-        NativeJSLogger::log(DEBUG, "Context created for ID: %d\n", id);
-	
-        double endTime = getTimeInMilliSec();
-        context->setCreateApplicationStartTime(startTime);
-        context->setCreateApplicationEndTime(endTime, id);
-
+        NativeJSLogger::log(DEBUG, "Context created for ID: %s\n", id);
         mContextMap[id].context=context;
         mUserMutex.unlock();	
 }
@@ -315,7 +308,7 @@ void NativeJSRenderer::runApplicationInternal(ApplicationRequest& appRequest)
 	
 	if(!url.empty())
 	{
-		NativeJSLogger::log(INFO, "Before launching app\n");
+		std::cout<<"Before launching app"<<std::endl;
 		std::string urlPattern = url.substr(0, 4);
 		if (urlPattern.compare(0, 4, "http") == 0)
 		{
@@ -325,42 +318,22 @@ void NativeJSRenderer::runApplicationInternal(ApplicationRequest& appRequest)
 			{
 			    return ;
 			}
-			JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
-			if(context->getModuleSettings().enableJSDOM)
-			{
-				std::stringstream window;
-            	    		window<<"window.location = {\"href\":\"" << url << "\"};";
-           			NativeJSLogger::log(INFO, "Adding the window location: %s to js file\n", window.str().c_str());
-            			context->runScript(window.str().c_str(),true, url, nullptr, true);
-			}
-			NativeJSLogger::log(INFO, "nativeJS application thunder execution url: %s, result: %d\n", url.c_str(), ret ? 1 : 0);
+			IJavaScriptContext* context = mContextMap[id].context;
+			std::cout << "nativeJS application thunder execution url " << url << " result " << ret << std::endl;
 			ret = context->runScript(chunk.contentsBuffer, true, url, nullptr, true);
-			NativeJSLogger::log(INFO, "nativeJS application execution result: %d\n", ret ? 1 : 0);
-			double duration = context->getExecutionDuration();
-            		context->setAppdata(id, url);
-			NativeJSLogger::log(INFO, "Execution duration(runApplicationDuration) for ID %d | URL %s : %.3f ms\n", id, url.c_str(), duration);
+			std::cout << "nativeJS application execution result " << ret << std::endl; 
 		}
 		else
 		{	    
-			NativeJSLogger::log(INFO, "About to launch local app\n");
-			JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
-            		if(context->getModuleSettings().enableJSDOM)
-            		{
-			    std::stringstream window;
-                	    window<<"window.location = {\"href\":\"file:/" << url << "\"};";
-                	    NativeJSLogger::log(INFO, "Adding the window location: %s to js file\n", window.str().c_str());
-                	    context->runScript(window.str().c_str(),true, url, nullptr, true);
-			}
-			NativeJSLogger::log(INFO, "Running test application: %s\n", url.c_str());
+			std::cout << "about to launch local app " <<std::endl;
+			IJavaScriptContext* context = mContextMap[id].context;
+			std::cout << "running test application " << url << std::endl;
 			bool ret = context->runFile(url.c_str(), nullptr, true);
-			NativeJSLogger::log(INFO, "Test application execution result: %d\n", ret ? 1 : 0);
-			double duration = context->getExecutionDuration();
-			context->setAppdata(id, url);
-			NativeJSLogger::log(INFO, "Execution duration(runApplicationDuration) for ID %d | URL %s : %.3f ms\n", id, url.c_str(), duration);
+			std::cout << "test application execution result " << ret << std::endl;
 		}	    
 	}
 	else{
-	    NativeJSLogger::log(WARN, "nativeJS application url not proper\n");
+	    std::cout << "nativeJS application url not proper" << std::endl;
 	    return ;
 	}
 }
@@ -378,15 +351,13 @@ void NativeJSRenderer::runJavaScriptInternal(ApplicationRequest& appRequest)
 	mContextMap[id].url = code;
 	if(!code.empty())
 	{
-		NativeJSLogger::log(INFO, "Running the JavaScript code\n");
-		JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
+		std::cout<<"Running the JavaScript code "<<std::endl;
+		IJavaScriptContext* context = mContextMap[id].context;
 		std::string rawcode = code ;
 		bool ret = context-> runScript(rawcode.c_str(),true,"JavaScriptCode",nullptr,true);
-		double duration = context->getExecutionDuration();
-		NativeJSLogger::log(INFO, "Execution duration(runJavaScriptDuration) for ID %d | %s : %.3f ms\n", id, code.c_str(), duration);
 	}
 	else{
-		NativeJSLogger::log(ERROR, "Empty or Invalid JavaScript Code\n");
+		std::cout<<"Empty/Invalid JavaScript Code"<<std::endl;
 	}
 }
 
@@ -397,18 +368,18 @@ void NativeJSRenderer::terminateApplicationInternal(ApplicationRequest& AppReque
 	if (mapEntry != mContextMap.end())
 	{
 		JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
-		NativeJSLogger::log(INFO, "Terminating the application with id: %d\n", id);
+		std::cout<<"terminating the application with id "<<id<<std::endl;
 		if (NULL != context)	{     	
-			NativeJSLogger::log(INFO, "Deleted context\n");
+			std::cout << "deleted context " <<std::endl;
 			delete context;
 		}	
         mContextMap.erase(mapEntry);	
-		NativeJSLogger::log(INFO, "Application is terminated\n");
+		std::cout<<"Application is terminated"<<std::endl;
 	}
 	
 	else
 	{
-		NativeJSLogger::log(ERROR, "Unable to find application with id: %d and url: %s\n", id, mContextMap[id].url);
+		std::cout << "unable to find application" << id <<" with url: "<<mContextMap[id].url << std::endl;
 		return ;
 	}
 	
