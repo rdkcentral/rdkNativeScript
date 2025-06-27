@@ -291,7 +291,7 @@ void NativeJSRenderer::createApplicationInternal(ApplicationRequest& appRequest)
         	return ;
         }
         NativeJSLogger::log(DEBUG, "Context created for ID: %s\n", id);
-        mContextMap[id].context=context;
+        mContextMap[id].context=(IJavaScriptContext*)context;
         mUserMutex.unlock();	
 }
 
