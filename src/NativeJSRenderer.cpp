@@ -367,7 +367,7 @@ void NativeJSRenderer::terminateApplicationInternal(ApplicationRequest& AppReque
 	std::map<uint32_t, ApplicationData>::iterator mapEntry = mContextMap.find(id);
 	if (mapEntry != mContextMap.end())
 	{
-		JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
+		IJavaScriptContext* context = mContextMap[id].context;
 		std::cout<<"terminating the application with id "<<id<<std::endl;
 		if (NULL != context)	{     	
 			std::cout << "deleted context " <<std::endl;
