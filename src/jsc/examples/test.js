@@ -646,7 +646,7 @@ function createExportWrapper(name, nargs) {
 var wasmBinaryFile;
 
 function findWasmBinary() {
-    return locateFile('test.wasm');
+    return locateFile('http://127.0.0.1:50050/test.wasm');
 }
 
 function getBinarySync(file) {
