@@ -1222,7 +1222,9 @@ function Body(body) {
 	} else if (body instanceof Stream) ; else {
 		// none of the above
 		// coerce to string then buffer
-		body = Buffer.from(String(body));
+		//body = Buffer.from(String(body));
+		//MADANA HACK FOR WEB ASSEMBLY
+                body = Buffer.from(body);
 	}
 	this[INTERNALS] = {
 		body,
