@@ -28,6 +28,8 @@
 #include <iostream>
 #include <signal.h>
 
+#include <fstream>
+#include <sstream>
 #include <JavaScriptCore/JavaScript.h>
 #include <JavaScriptContext.h>
 #include <JavaScriptUtils.h>
@@ -46,6 +48,8 @@
 #include <dlfcn.h>
 #endif
 #endif
+#include <sstream>
+#include <fstream>
 
 extern "C" JS_EXPORT void JSSynchronousGarbageCollectForDebugging(JSContextRef);
 #ifdef ENABLE_AAMP_JSBINDINGS_STATIC
@@ -283,14 +287,6 @@ bool JavaScriptContext::evaluateScript(const char* script, const char* name, con
     //execution end time
     mPerformanceMetrics.executionEndTime = getTimeInMilliSec();
 
-    // execution duration
-    double executionDuration = mPerformanceMetrics.executionEndTime - mPerformanceMetrics.executionStartTime;
-    NativeJSLogger::log(INFO, "-----EXECUTION_DURATION-----: %.3f ms\n", executionDuration);
-
-    //Total duration from start to execution end
-    double totalDuration = mPerformanceMetrics.executionEndTime - mPerformanceMetrics.startTime;
-    NativeJSLogger::log(INFO, "-----TOTAL_DURATION-----: %.3f ms\n", totalDuration);
-
     return true;
 }
 
@@ -413,48 +409,60 @@ if (mModuleSettings.enablePlayer)
     injectFun(mContext, "require", requireCallback);
     if(mModuleSettings.enablePlayer)
     {
-	runFile("modules/video.js", nullptr);
+       runFile("video.js", nullptr);
     }
     if (mModuleSettings.enableXHR)
     {
-        runFile("modules/xhr.js", nullptr);
+        runFile("xhr.js", nullptr);
     }
     if (mModuleSettings.enableHttp)
     {
-        runFile("modules/http.js", nullptr);
-        runFile("modules/https.js", nullptr);
+        runFile("http.js", nullptr);
+        runFile("https.js", nullptr);
     }
     if (mModuleSettings.enableFetch)
     {
-        runFile("modules/node-fetch.js", nullptr/*, true*/);
+        runFile("node-fetch.js" , nullptr/*, true*/);
     }
-    runFile("modules/utils.js", nullptr);
+    runFile("utils.js", nullptr);
     if (mModuleSettings.enableWebSocketEnhanced)
     {
-        runFile("modules/event.js", nullptr);
-        runFile("modules/wsenhanced.js", nullptr);
-    }
+        runFile("event.js", nullptr);
+        runFile("wsenhanced.js", nullptr);
+}
     else if(mModuleSettings.enableWebSocket)
     {
-        runFile("modules/ws.js", nullptr);
+        runFile("ws.js", nullptr);
     }
 #ifdef WS_SERVER_ENABLED
     if (mEnableWebSockerServer)
     {
         NativeJSLogger::log(INFO, "enabling websocket server\n");
-	runFile("modules/wsserver.js", nullptr);
+        runFile("wsserver.js", nullptr);
     }
 #endif
     if (mModuleSettings.enableWindow)
     {
-        runFile("modules/window.js", nullptr/*, true*/);
-        runFile("modules/windowwrapper.js", nullptr/*, true*/);
+        runFile("window.js", nullptr/*, true*/);
+        runFile("windowwrapper.js", nullptr/*, true*/);
     }
     else if (mModuleSettings.enableJSDOM)
     {
-        runFile("modules/linkedjsdom.js", nullptr/*, true*/);
-        runFile("modules/linkedjsdomwrapper.js", nullptr/*, true*/);
-        runFile("modules/windowwrapper.js", nullptr/*, true*/);
+        runFile("linkedjsdom.js", nullptr/*, true*/);
+        runFile("linkedjsdomwrapper.js", nullptr/*, true*/);
+        runFile("windowwrapper.js", nullptr/*, true*/);
+        if(getenv("FIREBOLT_ENDPOINT")!=NULL)
+        {
+            auto FireboltEndpoint = std::string(getenv("FIREBOLT_ENDPOINT"));
+            std::stringstream ss;
+            ss << "window.__firebolt = {\"endpoint\":\"" << FireboltEndpoint << "\"};";
+            NativeJSLogger::log(INFO, "Adding the Firebolt EndPoint value: %s to window.js file\n", FireboltEndpoint.c_str());
+            ss << "var self = window;";
+            ss << "let videoDiv = document.createElement(\"div\");";
+            ss << "videoDiv.id = \"videoDiv\";";
+            ss << "document.body.appendChild(videoDiv)";
+            evaluateScript(ss.str().c_str(),nullptr);
+        }
     }
 }
 
@@ -517,3 +525,34 @@ void JavaScriptContext::dumpNetworkMetricData(NetworkMetrics *metrics, std::stri
     file.close();
 }
 
+void JavaScriptContext::setCreateApplicationStartTime(double time)
+{
+    mPerformanceMetrics.createApplicationStartTime = time;
+}
+
+void JavaScriptContext::setCreateApplicationEndTime(double time, uint32_t id)
+{
+    mPerformanceMetrics.createApplicationEndTime = time;
+    double duration = time-mPerformanceMetrics.createApplicationStartTime;
+    
+    NativeJSLogger::log(INFO, "createApplicationDuration for ID %d: %.3f ms\n",id, duration);
+}
+
+double JavaScriptContext::getExecutionDuration() const
+{
+    double executionDuration = mPerformanceMetrics.executionEndTime - mPerformanceMetrics.executionStartTime;
+    return executionDuration;
+}
+
+void JavaScriptContext::setAppdata(uint32_t id, const std::string& url)
+{
+        mIds = id;
+        mUrls = url;
+} 
+
+void JavaScriptContext::setPlaybackStartTime(double time)
+{
+    mPerformanceMetrics.playbackStartTime = time;
+    double launchTime = mPerformanceMetrics.playbackStartTime - mPerformanceMetrics.createApplicationStartTime;
+    NativeJSLogger::log(INFO, "Launch_Duration for ID %d | URL %s : %.3f ms\n", mIds, mUrls.c_str(), launchTime);
+}
