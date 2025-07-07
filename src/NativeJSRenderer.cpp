@@ -261,7 +261,7 @@ std::list<ApplicationDetails> NativeJSRenderer::getApplications()
 			//appData.url = value.url;
 			//NativeJSLogger::log(DEBUG, "Found application with ID: %d and URL: %s\n", key, value.url.c_str());
 			appData.url = value->url; 
-      			NativeJSLogger::log(DEBUG, "Found application with ID: %d and URL: %s\n", key, value->url);
+      			//NativeJSLogger::log(DEBUG, "Found application with ID: %d and URL: %s\n", key, value->url);
 			runningApplication.push_back(appData);
 		}
 	}
