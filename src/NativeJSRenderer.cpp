@@ -54,6 +54,13 @@ using namespace JsRuntime;
 rtThreadQueue* gUIThreadQueue = NULL;
 #endif
 
+namespace JsRuntime {
+    struct ApplicationData {
+        std::string url;
+        JavaScriptContext* context;
+    };
+}
+
 static size_t HeaderCallback(void *contents, size_t size, size_t nmemb, void *userp)
 {
   size_t downloadSize = size * nmemb;
@@ -251,8 +258,10 @@ std::list<ApplicationDetails> NativeJSRenderer::getApplications()
 		{
 			ApplicationDetails appData;
 			appData.id = key;
-			appData.url = value.url;
-			NativeJSLogger::log(DEBUG, "Found application with ID: %d and URL: %s\n", key, value.url.c_str());
+			//appData.url = value.url;
+			//NativeJSLogger::log(DEBUG, "Found application with ID: %d and URL: %s\n", key, value.url.c_str());
+			appData.url = value->url; 
+      			NativeJSLogger::log(DEBUG, "Found application with ID: %d and URL: %s\n", key, value->url.c_str());
 			runningApplication.push_back(appData);
 		}
 	}
@@ -294,11 +303,16 @@ void NativeJSRenderer::createApplicationInternal(ApplicationRequest& appRequest)
         }
         NativeJSLogger::log(DEBUG, "Context created for ID: %d\n", id);
 	
+	ApplicationData* appData = new ApplicationData();
+        appData->context = context;
+      	appData->url = "";
+      	mContextMap[id] = appData;
+
         double endTime = getTimeInMilliSec();
         context->setCreateApplicationStartTime(startTime);
         context->setCreateApplicationEndTime(endTime, id);
 
-        mContextMap[id].context=context;
+        //mContextMap[id].context=context;
         mUserMutex.unlock();	
 }
 
@@ -311,8 +325,9 @@ void NativeJSRenderer::runApplicationInternal(ApplicationRequest& appRequest)
 	{
 		return;    
 	}
-	mContextMap[id].url = url;
-	
+	//mContextMap[id].url = url;
+	mContextMap[id]->url = url;
+
 	if(!url.empty())
 	{
 		NativeJSLogger::log(INFO, "Before launching app\n");
@@ -325,7 +340,9 @@ void NativeJSRenderer::runApplicationInternal(ApplicationRequest& appRequest)
 			{
 			    return ;
 			}
-			JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
+			//JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
+			JavaScriptContext* context = mContextMap[id]->context;
+
 			if(context->getModuleSettings().enableJSDOM)
 			{
 				std::stringstream window;
@@ -343,8 +360,9 @@ void NativeJSRenderer::runApplicationInternal(ApplicationRequest& appRequest)
 		else
 		{	    
 			NativeJSLogger::log(INFO, "About to launch local app\n");
-			JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
-            		if(context->getModuleSettings().enableJSDOM)
+			//JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
+            		JavaScriptContext* context = mContextMap[id]->context;
+			if(context->getModuleSettings().enableJSDOM)
             		{
 			    std::stringstream window;
                 	    window<<"window.location = {\"href\":\"file:/" << url << "\"};";
@@ -375,11 +393,13 @@ void NativeJSRenderer::runJavaScriptInternal(ApplicationRequest& appRequest)
 		return;    
 	}
 	
-	mContextMap[id].url = code;
+	//mContextMap[id].url = code;
+	mContextMap[id]->url = code;
 	if(!code.empty())
 	{
 		NativeJSLogger::log(INFO, "Running the JavaScript code\n");
-		JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
+		//JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
+		JavaScriptContext* context = mContextMap[id]->context;
 		std::string rawcode = code ;
 		bool ret = context-> runScript(rawcode.c_str(),true,"JavaScriptCode",nullptr,true);
 		double duration = context->getExecutionDuration();
@@ -393,22 +413,26 @@ void NativeJSRenderer::runJavaScriptInternal(ApplicationRequest& appRequest)
 void NativeJSRenderer::terminateApplicationInternal(ApplicationRequest& AppRequest)
 {
 	uint32_t id = AppRequest.mId;
-	std::map<uint32_t, ApplicationData>::iterator mapEntry = mContextMap.find(id);
+	//std::map<uint32_t, ApplicationData>::iterator mapEntry = mContextMap.find(id);
+	auto mapEntry = mContextMap.find(id);
 	if (mapEntry != mContextMap.end())
 	{
-		JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
+		//JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
+		JavaScriptContext* context = mapEntry->second->context;
 		NativeJSLogger::log(INFO, "Terminating the application with id: %d\n", id);
 		if (NULL != context)	{     	
 			NativeJSLogger::log(INFO, "Deleted context\n");
 			delete context;
 		}	
+        delete mapEntry->second;
         mContextMap.erase(mapEntry);	
 		NativeJSLogger::log(INFO, "Application is terminated\n");
 	}
 	
 	else
 	{
-		NativeJSLogger::log(ERROR, "Unable to find application with id: %d and url: %s\n", id, mContextMap[id].url);
+		//NativeJSLogger::log(ERROR, "Unable to find application with id: %d and url: %s\n", id, mContextMap[id].url);
+		NativeJSLogger::log(ERROR, "Unable to find application with id: %d\n", id);
 		return ;
 	}
 	

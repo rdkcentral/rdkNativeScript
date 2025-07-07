@@ -106,10 +106,11 @@ namespace JsRuntime {
           bool mEnableWindow;
           bool mEnablePlayer;
         }; 
-        struct ApplicationData{
+        /*struct ApplicationData{
           std::string url;
           IJavaScriptContext* context;
-        };
+        };*/
+	struct ApplicationData;
 
         class NativeJSRenderer
         {
@@ -146,8 +147,9 @@ namespace JsRuntime {
                 bool mEssosInitialized;
                 bool mConsoleMode;
                 std::mutex mUserMutex;                               	
-                std::map<uint32_t, ApplicationData> mContextMap;
-                std::vector<ApplicationRequest> gPendingRequests;               
+                //std::map<uint32_t, ApplicationData> mContextMap;
+                std::map<uint32_t, ApplicationData*> mContextMap;
+		std::vector<ApplicationRequest> gPendingRequests;               
 		    };
 };
 		
