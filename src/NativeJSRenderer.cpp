@@ -261,7 +261,7 @@ std::list<ApplicationDetails> NativeJSRenderer::getApplications()
 			//appData.url = value.url;
 			//NativeJSLogger::log(DEBUG, "Found application with ID: %d and URL: %s\n", key, value.url.c_str());
 			appData.url = value->url; 
-      			//NativeJSLogger::log(DEBUG, "Found application with ID: %d and URL: %s\n", key, value->url);
+			//NativeJSLogger::log(DEBUG, "Found application with ID: %d and URL: %s\n", key, value->url);
 			runningApplication.push_back(appData);
 		}
 	}
@@ -304,9 +304,9 @@ void NativeJSRenderer::createApplicationInternal(ApplicationRequest& appRequest)
         NativeJSLogger::log(DEBUG, "Context created for ID: %d\n", id);
 	
 	ApplicationData* appData = new ApplicationData();
-        appData->context = context;
-      	appData->url = "";
-      	mContextMap[id] = appData;
+	appData->context = context;
+	appData->url = "";
+	mContextMap[id] = appData;
 
         double endTime = getTimeInMilliSec();
         context->setCreateApplicationStartTime(startTime);
