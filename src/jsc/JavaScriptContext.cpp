@@ -150,7 +150,7 @@ void JavaScriptContext::loadAAMPJSBindingsLib()
                             dlsym(aampJSBindingsLibHandle, "_Z17AAMPPlayer_LoadJSPv"));
             gAAMPJSBindings->fnUnloadJS =
                     reinterpret_cast<typeof AAMPJSBindings::fnUnloadJS>(
-                            dlsym(aampJSBindingsLibHandle, "AAMPPlayer_UnloadJS"));
+                            dlsym(aampJSBindingsLibHandle, "_Z19AAMPPlayer_UnloadJSPv"));
         }
         else
         {
