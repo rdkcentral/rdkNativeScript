@@ -129,6 +129,11 @@ std::string JavaScriptContextBase::getUrl()
     return mApplicationUrl;
 }
 
+void JavaScriptContextBase::setUrl(std::string url)
+{
+    mApplicationUrl = url;
+}
+
 void JavaScriptContextBase::onKeyPress(struct JavaScriptKeyDetails& details)
 {
     processKeyEvent(details, true);
