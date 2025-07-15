@@ -234,7 +234,8 @@ public:
 	metrics->method = this->method();
 	std::vector<rtString> headerValues = this->headers();
 	metrics->headers = headerValues; 
-        
+        metrics->statusCode = downloadRequest->httpStatusCode();
+
 	rtObjectRef timeMetrics = downloadRequest->downloadMetrics();
         rtValue keys;
         if (timeMetrics->Get("allKeys", &keys) == RT_OK) {
