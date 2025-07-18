@@ -53,6 +53,7 @@ class JavaScriptContextBase:public IJavaScriptContext, public JavaScriptKeyListe
     virtual bool runScript(const char *script, bool isModule=true, std::string name="", const char *args = nullptr, bool isApplication=false);
     virtual bool runFile(const char *file, const char* args, bool isApplication=false);
     std::string getUrl();
+    void setUrl(std::string url);
     virtual void onKeyPress(struct JavaScriptKeyDetails& details);
     virtual void onKeyRelease(struct JavaScriptKeyDetails& details);
     ModuleSettings getModuleSettings();
