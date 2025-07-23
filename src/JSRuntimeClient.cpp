@@ -18,7 +18,13 @@
 **/
 #include <JSRuntimeClient.h>
 #include <NativeJSLogger.h>
+
+#ifdef USE_WEBSOCKET_MOCK
+#include "jsc_lib_mock.h"
+#else
 #include "jsc_lib.h"
+#endif
+
 #include <iostream>
 #include <sstream>
 #include <thread>
