@@ -20,7 +20,7 @@
 #pragma once
 
 #ifdef USE_WEBSOCKET_MOCK
-#include "mock_websocketpp.hpp"
+#include "websocketpp.hpp"
 #else
 #include <websocketpp/config/asio_no_tls_client.hpp>
 #include <websocketpp/common/thread.hpp>
