@@ -21,7 +21,7 @@
 #include "JavaScriptWrapper.h"
 #include "rtLog.h"
 
-#ifdef USE_WEBSOCKET_MOCK
+#ifdef USE_JSCLIB_MOCK
 #include "jsc_lib_mock.h"
 #else
 #include "jsc_lib.h"
