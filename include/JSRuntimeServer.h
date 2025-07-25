@@ -19,8 +19,9 @@
 
 #pragma once
 
+#include <NativeJSRenderer.h>
 #ifdef USE_WEBSOCKET_MOCK
-#include "websocketpp.hpp" // Include the mock WebSocket++ header
+#include "websocketpp.hpp" 
 #else
 #include <websocketpp/config/asio_no_tls.hpp>
 #include <websocketpp/server.hpp>
