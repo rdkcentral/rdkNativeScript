@@ -20,7 +20,12 @@
 #ifndef NativeJS_ESSOS_INSTANCE_H
 #define NativeJS_ESSOS_INSTANCE_H
 
+#ifdef USE_ESSOS_MOCK
+#include "essos_mock.h"
+#else
 #include <essos.h>
+#endif
+
 #include <KeyListener.h>
 
 class EssosInstance
