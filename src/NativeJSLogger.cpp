@@ -29,7 +29,7 @@ static const char* logLevelNames[] = {
         "DEBUG", "INFO", "WARN", "ERROR", "FATAL"
 };
 
-LogLevel NativeJSLogger::sLogLevel = INFO;
+LevelLog NativeJSLogger::sLogLevel = INFO;
 
 void NativeJSLogger::setLogLevel(const char* loglevel)
 {
@@ -47,7 +47,7 @@ void NativeJSLogger::setLogLevel(const char* loglevel)
             sLogLevel = FATAL;
 }
 
-void NativeJSLogger::log(LogLevel level, const char* format, ...)
+void NativeJSLogger::log(LevelLog level, const char* format, ...)
 {
       if (level < sLogLevel)
             return;

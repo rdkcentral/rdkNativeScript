@@ -20,7 +20,7 @@
 #ifndef NATIVEJS_LOGGER_H
 #define NATIVEJS_LOGGER_H
 
-enum LogLevel {
+enum LevelLog {
         DEBUG,
         INFO,
         WARN,
@@ -32,9 +32,9 @@ class NativeJSLogger
 {
     public:
         static void setLogLevel(const char* loglevel);
-        static void log(LogLevel level, const char* format, ...);
+        static void log(LevelLog level, const char* format, ...);
     private:
-        static LogLevel sLogLevel;
+        static LevelLog sLogLevel;
 };
 
 #endif // NATIVEJS_LOGGER_H
