@@ -326,6 +326,7 @@ void NativeJSRenderer::runApplicationInternal(ApplicationRequest& appRequest)
 			    return ;
 			}
 			JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
+			context->setUrl(mContextMap[id].url);
 			if(context->getModuleSettings().enableJSDOM)
 			{
 				std::stringstream window;
@@ -344,7 +345,8 @@ void NativeJSRenderer::runApplicationInternal(ApplicationRequest& appRequest)
 		{	    
 			NativeJSLogger::log(INFO, "About to launch local app\n");
 			JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
-            		if(context->getModuleSettings().enableJSDOM)
+                       context->setUrl(mContextMap[id].url);            		
+			if(context->getModuleSettings().enableJSDOM)
             		{
 			    std::stringstream window;
                 	    window<<"window.location = {\"href\":\"file:/" << url << "\"};";
