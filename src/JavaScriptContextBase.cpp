@@ -25,12 +25,12 @@
 #ifdef ENABLE_ESSOS
 #include <EssosInstance.h>
 #endif
-#include <sys/stat.h>                                                                                                                                                       
+#include <sys/stat.h>
 #include <cstdlib>
 
 std::string JavaScriptContextBase::sThunderJSCode = "";
 std::string JavaScriptContextBase::sWebBridgeCode = "";
-std::string JavaScriptContextBase::sModulesPath = ""; 
+std::string JavaScriptContextBase::sModulesPath = "";
 
 JavaScriptContextFeatures::JavaScriptContextFeatures(bool embedThunderJS, bool embedWebBridge, bool enableWebSockerServer, ModuleSettings& moduleSettings):mEmbedThunderJS(embedThunderJS), mEmbedWebBridge(embedWebBridge), mEnableWebSockerServer(enableWebSockerServer), mModuleSettings(moduleSettings)
 {
@@ -125,7 +125,7 @@ bool JavaScriptContextBase::runScript(const char *script, bool isModule, std::st
 }
 
 std::string JavaScriptContextBase::getUrl()
-{ 
+{
     return mApplicationUrl;
 }
 
@@ -146,10 +146,11 @@ void JavaScriptContextBase::onKeyRelease(struct JavaScriptKeyDetails& details)
 
 ModuleSettings JavaScriptContextBase::getModuleSettings()
 {
-	return mModuleSettings;
+    return mModuleSettings;
 }
 
-void JavaScriptContextBase::populateModulesPath(){
+void JavaScriptContextBase::populateModulesPath()
+{
     if(getenv("JSRUNTIME_MODULES_PATH"))
     {
         std::cout<<"JSRUNTIME_MODULES_PATH variable is set"<<std::endl;
@@ -163,4 +164,9 @@ void JavaScriptContextBase::populateModulesPath(){
     }
     std::cout<<"Modules Path:"<<sModulesPath<<std::endl;
     return;
+}
+
+void JavaScriptContextBase::setExternalApplicationHandler(std::shared_ptr<IExternalApplicationHandler> handler)
+{
+    mExternalApplicationHandler = handler;
 }
