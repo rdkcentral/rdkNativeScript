@@ -27,6 +27,7 @@
 #include <memory>
 #include <IJavaScriptEngine.h>
 #include <IJavaScriptContext.h>
+#include <IExternalApplicationHandler.h>
 #include <ModuleSettings.h>
 #include <condition_variable>
 #include <list>
@@ -76,19 +77,19 @@ namespace JsRuntime {
           IJavaScriptContext* consoleContext = nullptr;
           ModuleSettings moduleSettings{};
         };
-        
+
         struct ApplicationDetails{
         	uint32_t id;
         	std::string url;
         };
-        
+
         enum RequestType{
           CREATE=0,
           RUN,
           TERMINATE,
           RUNSCRIPT
 		    };
-        
+
         struct ApplicationRequest
         {
           ApplicationRequest(uint32_t id, RequestType requestType, std::string url="", bool enableHttp=false, bool enableXHR=false, bool enableWebSocket=false, bool enableWebSocketEnhanced=false, bool enableFetch=false, bool enableJSDOM=false, bool enableWindow=false, bool enablePlayer=false): mId(id), mRequestType(requestType), mUrl(url), mEnableHttp(enableHttp), mEnableXHR(enableXHR), mEnableWebSocket(enableWebSocket), mEnableWebSocketEnhanced(enableWebSocketEnhanced), mEnableFetch(enableFetch), mEnableJSDOM(enableJSDOM), mEnableWindow(enableWindow), mEnablePlayer(enablePlayer)
@@ -105,7 +106,7 @@ namespace JsRuntime {
           bool mEnableJSDOM;
           bool mEnableWindow;
           bool mEnablePlayer;
-        }; 
+        };
         struct ApplicationData{
           std::string url;
           IJavaScriptContext* context;
@@ -121,19 +122,20 @@ namespace JsRuntime {
                 void run();
                 void setEnvForConsoleMode(ModuleSettings& moduleSettings);
                 bool runApplication(uint32_t id, std::string url);
-                bool runJavaScript(uint32_t id, std::string code); 
-                uint32_t createApplication(ModuleSettings& moduleSettings) ; 
+                bool runJavaScript(uint32_t id, std::string code);
+                uint32_t createApplication(ModuleSettings& moduleSettings) ;
                 bool terminateApplication(uint32_t id);
-                std::list<ApplicationDetails> getApplications();  		
-            private:           	 
-                bool downloadFile(std::string& url, MemoryStruct& chunk);
+                std::list<ApplicationDetails> getApplications();
+                void setExternalApplicationHandler(std::shared_ptr<IExternalApplicationHandler> handler);
+            private:
+		bool downloadFile(std::string& url, MemoryStruct& chunk);
                 void processDevConsoleRequests();
                 void runDeveloperConsole(ModuleSettings moduleSettings);
                 void createApplicationInternal(ApplicationRequest& appRequest);
                 void runApplicationInternal(ApplicationRequest& appRequest);
                 void terminateApplicationInternal(ApplicationRequest& appRequest);
-                void runJavaScriptInternal(ApplicationRequest& appRequest);  
-                uint32_t createApplicationIdentifier();         	
+                void runJavaScriptInternal(ApplicationRequest& appRequest);
+                uint32_t createApplicationIdentifier();
                 static size_t write_data(void *ptr, size_t size, size_t nmemb, FILE *stream);
                 IJavaScriptEngine* mEngine;
                 bool mRunning;
@@ -145,13 +147,9 @@ namespace JsRuntime {
                 bool mEnableWebSocketServer;
                 bool mEssosInitialized;
                 bool mConsoleMode;
-                std::mutex mUserMutex;                               	
+                std::mutex mUserMutex;
                 std::map<uint32_t, ApplicationData> mContextMap;
-                std::vector<ApplicationRequest> gPendingRequests;               
-		    };
+                std::vector<ApplicationRequest> gPendingRequests;
+                std::shared_ptr<IExternalApplicationHandler> mExternalApplicationHandler;
+	};
 };
-		
-		
-            	       	
-           
-
