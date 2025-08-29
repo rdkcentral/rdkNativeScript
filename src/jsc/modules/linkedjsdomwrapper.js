@@ -55,3 +55,31 @@ console.log(window.screen);
 console.log(window.URL);
 console.log(window.URLSearchParams);
 */
+document.location = window.location;
+
+function getRandom(arr) {
+    getRandomValuesCpp(arr);
+}
+
+crypto = {}
+crypto.getRandomValues = getRandom;
+
+(function setupUrlChangeDetection() {
+    let currentHref = window.location.href;
+
+    const checkUrlChange = () => {
+        let newHref = window.location.href;
+        if (document && document.location && document.location.href && newHref !== document.location.href) {
+            newHref = document.location.href;
+        }
+
+        if (newHref !== currentHref) {
+        if (typeof setExternalAppHandler === 'function') {
+                    setExternalAppHandler(newHref);
+            }
+                currentHref = newHref;
+        }
+    };
+
+    setInterval(checkUrlChange, 500);
+})();

@@ -22,7 +22,7 @@
 const URLRet = require("./lib/URL");
 var URL = URLRet.implementation;
 //JSRUNTIME KEEP IT FOR FUTURE USE
-/*
+
 const URLSearchParamsRet = require("./lib/URLSearchParams");
 const URLSearchParams = URLSearchParamsRet.implementation;
 
@@ -44,4 +44,4 @@ var cannotHaveAUsernamePasswordPort = urlStateMachine.cannotHaveAUsernamePasswor
 var hasAnOpaquePath = urlStateMachine.hasAnOpaquePath;
 var percentDecodeString = percentEncoding.percentDecodeString;
 var percentDecodeBytes = percentEncoding.percentDecodeBytes;
-*/
+
