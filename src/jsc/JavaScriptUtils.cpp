@@ -30,6 +30,7 @@
 #include <algorithm>
 #include <cassert>
 #include <chrono>
+#include <random>
 #include <fstream>
 #include <iostream>
 #include <list>
@@ -178,14 +179,17 @@ public:
 
   rtHttpRequestEx(const rtString& url)
     : rtHttpRequest(url)
-  { }
+  {
+  }
 
   rtHttpRequestEx(const rtObjectRef& options)
     : rtHttpRequest(options)
-  { }
+  {
+  }
 
   void onDownloadProgressImpl(double progress) final
   {
+
     AddRef();
       dispatchOnMainLoop(
         [this, downloadedsize = progress] ()
@@ -203,10 +207,10 @@ public:
     AddRef();
     if (!downloadRequest->errorString().isEmpty()) {
       dispatchOnMainLoop(
-        [this, errorString = downloadRequest->errorString(), statusCode = downloadRequest->downloadStatusCode()] () 
+        [this, errorString = downloadRequest->errorString(), statusCode = downloadRequest->downloadStatusCode()] ()
 	{
           if (statusCode == 28)
-          {	  
+          {
             mEmit.send("error", "TIMEDOUT");
           }
 	  else
@@ -221,7 +225,7 @@ public:
       resp->setErrorMessage(downloadRequest->errorString());
       resp->setHeaders(downloadRequest->headerData(), downloadRequest->headerDataSize());
       resp->setDownloadedData(downloadRequest->downloadedData(), downloadRequest->downloadedDataSize());
-      
+
       if (mMetricsListener)
       {
  	rtLogWarn("metriclistener");
@@ -229,11 +233,11 @@ public:
         if (!metrics){
             rtLogError("Failed to allocate NetworkMetrics");
             return;
-        }	
+        }
 	metrics->url = this->url();
 	metrics->method = this->method();
 	std::vector<rtString> headerValues = this->headers();
-	metrics->headers = headerValues; 
+	metrics->headers = headerValues;
        metrics->statusCode = downloadRequest->httpStatusCode();
 
 	rtObjectRef timeMetrics = downloadRequest->downloadMetrics();
@@ -262,15 +266,15 @@ public:
           resp->onEnd();
           Release();
         });
-    }
-  }
-};
+       }
+     }
+  };
+
 rtDefineObject(rtHttpRequestEx, rtHttpRequest);
 
 rtError rtHttpGetBinding(int numArgs, const rtValue* args, rtValue* result, void* context)
 {
   UNUSED_PARAM(context);
-
   if (numArgs < 1) {
     rtLogError("%s: invalid args", __FUNCTION__);
     return RT_ERROR_INVALID_ARG;
@@ -299,7 +303,7 @@ rtError rtHttpGetBinding(int numArgs, const rtValue* args, rtValue* result, void
   }
 
   req->setNetworkMetricsListener(jscContext);
-  
+
   rtObjectRef ref = req;
   *result = ref;
   return RT_OK;
@@ -333,12 +337,12 @@ rtError rtReadBinaryBinding(int numArgs, const rtValue* args, rtValue* result, v
   FILE *ptr = nullptr;
   ptr = fopen("hello.wasm","rb");  // r for read, b for binary
 
-  char *fd = "hello.wasm";
-  struct stat buf;          
-  
+  const char *fd = "hello.wasm";
+  struct stat buf;
+
   stat(fd, &buf);
   int size = buf.st_size;
-  
+
   buffer = (char*)malloc(size);
   fread(buffer,size,1,ptr); // read 10 bytes to our buffer
   fclose(ptr);
@@ -466,7 +470,7 @@ rtError getThunderTokenBinding(int numArgs, const rtValue* args, rtValue* result
   {
       rtLogError("lost context !!!");
       return RT_ERROR;
-  }	
+  }
   if (result)
   {
       result->setString("");
@@ -475,7 +479,7 @@ rtError getThunderTokenBinding(int numArgs, const rtValue* args, rtValue* result
   {
       rtLogError("lost return value !!!");
       return RT_ERROR;
-  }	  
+  }
   unsigned char tokenBuffer[MAX_TOKEN_BUFFER_LENGTH];
   memset(tokenBuffer, 0, MAX_TOKEN_BUFFER_LENGTH);
   std::string appUrl = jsccontext->getUrl();
@@ -690,7 +694,7 @@ char* JSValueToCString(JSContextRef context, JSValueRef value, JSValueRef* excep
         return src;
 }
 
-rtError rtJSRuntimeDownloadMetrics(int numArgs, const rtValue* args, rtValue* result, void* context) 
+rtError rtJSRuntimeDownloadMetrics(int numArgs, const rtValue* args, rtValue* result, void* context)
 {
   JavaScriptContext* jscContext = (JavaScriptContext*)context;
   if (jscContext == nullptr) {
@@ -717,7 +721,7 @@ rtError rtJSRuntimeDownloadMetrics(int numArgs, const rtValue* args, rtValue* re
     rtLogWarn("No url found in the network metrics data.");
     return RT_FAIL;
   }
-  
+
   size_t count = keysArray->length();
 
   for (size_t i = 0; i < count; ++i) {
@@ -745,7 +749,7 @@ rtError rtJSRuntimeDownloadMetrics(int numArgs, const rtValue* args, rtValue* re
 
       rtArrayObject* timeMetricsArray = new rtArrayObject();
       for (const auto& metric : metrics->timeMetricsData) {
-        rtObjectRef timeMetricObj = new rtMapObject(); 
+        rtObjectRef timeMetricObj = new rtMapObject();
         timeMetricObj->Set(metric.first.cString(), &metric.second);
         timeMetricsArray->pushBack(rtValue(timeMetricObj));
 	delete timeMetricObj;
@@ -767,3 +771,46 @@ rtError rtJSRuntimeDownloadMetrics(int numArgs, const rtValue* args, rtValue* re
   return RT_OK;
 }
 
+rtError rtSetExternalAppHandlerBinding(int numArgs, const rtValue* args, rtValue* result, void* context)
+{
+    if (context == nullptr || numArgs < 1) {
+        rtLogError("Invalid context or missing arguments");
+        return RT_ERROR_INVALID_ARG;
+    }
+
+    JavaScriptContext* jscContext = (JavaScriptContext*)context;
+
+    if (args[0].getType() != RT_stringType) {
+        rtLogError("Requires a string argument");
+        return RT_ERROR_INVALID_ARG;
+    }
+
+    rtString url = args[0].toString();
+    jscContext->handleExternalApplication(url.cString());
+
+    if (result)
+        *result = true;
+
+    return RT_OK;
+}
+
+rtError rtGetRandomValuesBinding(int numArgs, const rtValue* args, rtValue* /*result*/, void* /*context*/) 
+{
+    if (numArgs < 1 || args[0].getType() != RT_objectType) {
+        rtLogError("rtGetRandomValuesBinding: Invalid arguments");
+        return RT_ERROR_INVALID_ARG;
+    }
+
+    rtObjectRef arrObj = args[0].toObject();
+    
+    uint32_t len = arrObj.get<uint32_t>("length");
+    
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<uint32_t> dist;
+    
+    for (uint32_t i = 0; i < len; i++) {
+        arrObj.set(i, (double)dist(gen)); 
+    }
+    return RT_OK;
+}

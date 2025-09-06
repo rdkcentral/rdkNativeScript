@@ -1068,9 +1068,11 @@ URLStateMachine.prototype["parse query"] = function parseQuery(c, cStr) {
   }
 
   if ((!this.stateOverride && c === p("#")) || isNaN(c)) {
-    const queryPercentEncodePredicate = isSpecial(this.url) ? isSpecialQueryPercentEncode : isQueryPercentEncode;
-    this.url.query += utf8PercentEncodeString(this.buffer, queryPercentEncodePredicate);
-
+    
+	// TODO: Check for encryption
+     //const queryPercentEncodePredicate = isSpecial(this.url) ? isSpecialQueryPercentEncode : isQueryPercentEncode;
+    //this.url.query += utf8PercentEncodeString(this.buffer, queryPercentEncodePredicate);
+	this.url.query += this.buffer;
     this.buffer = "";
 
     if (c === p("#")) {

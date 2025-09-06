@@ -31,6 +31,8 @@
 #include <IJavaScriptContext.h>
 #include <IJavaScriptEngine.h>
 #include <ModuleSettings.h>
+#include <IExternalApplicationHandler.h>
+#include <memory>
 
 //#include <JavaScriptCore/JavaScript.h>
 
@@ -57,6 +59,7 @@ class JavaScriptContextBase:public IJavaScriptContext, public JavaScriptKeyListe
     virtual void onKeyPress(struct JavaScriptKeyDetails& details);
     virtual void onKeyRelease(struct JavaScriptKeyDetails& details);
     ModuleSettings getModuleSettings();
+    void setExternalApplicationHandler(std::shared_ptr<IExternalApplicationHandler> handler);
   protected:
     virtual void processKeyEvent(struct JavaScriptKeyDetails& details, bool keyPress) = 0;
     virtual bool evaluateScript(const char* script, const char* name, const char *args, bool module=false) = 0;
@@ -70,6 +73,7 @@ class JavaScriptContextBase:public IJavaScriptContext, public JavaScriptKeyListe
     bool mEmbedWebBridge;
     bool mEnableWebSockerServer;
     ModuleSettings mModuleSettings;
+    std::shared_ptr<IExternalApplicationHandler> mExternalApplicationHandler;
     static std::string sModulesPath;
     static void populateModulesPath();
 };
