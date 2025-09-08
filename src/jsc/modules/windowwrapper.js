@@ -100,3 +100,36 @@ catch(err)
 //console.log(window.origin);
 //console.log(window.Navigator);
 //console.log(window.Storage);
+
+class LocalStorage {
+    constructor() {
+        this.data = {};
+    }
+
+    getItem(key) {
+        return this.data[key] || null;
+    }
+    setItem(key, value) {
+        this.data[key] = String(value);
+    }
+
+    removeItem(key) {
+        delete this.data[key];
+    }
+
+    clear() {
+        this.data = {};
+    }
+
+    get length() {
+        return Object.keys(this.data).length;
+    }
+
+    key(index) {
+        const keys = Object.keys(this.data);
+        return keys[index] || null;
+    }
+}
+
+const localStorage = new LocalStorage();
+
