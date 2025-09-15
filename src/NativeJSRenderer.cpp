@@ -103,6 +103,11 @@ NativeJSRenderer::NativeJSRenderer(std::string waylandDisplay): mEngine(nullptr)
     }
 
     const char* levelFromEnv = getenv("NATIVEJS_LOG_LEVEL");
+    // checking for ethan log env 
+    #ifdef USE_ETHANLOG
+    NativeJSLogger::isEthanLogEnabled();
+    NativeJSLogger::log(INFO, "EthanLog is enabled");
+    #endif
     if(levelFromEnv)
     {
     	NativeJSLogger::setLogLevel(levelFromEnv);
