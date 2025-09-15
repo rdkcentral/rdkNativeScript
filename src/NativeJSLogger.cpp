@@ -24,6 +24,7 @@
 #include <unistd.h>
 #include <sys/syscall.h>
 #include <stdlib.h>
+#include <time.h>
 
 static const char* logLevelNames[] = {
         "DEBUG", "INFO", "WARN", "ERROR", "FATAL"
@@ -49,8 +50,19 @@ void NativeJSLogger::setLogLevel(const char* loglevel)
 
 void NativeJSLogger::log(LogLevel level, const char* format, ...)
 {
-      if (level < sLogLevel)
+     if (level < sLogLevel)
             return;
+
+      FILE* logFile = fopen("/opt/logs/jsruntime.log", "a");
+      if (!logFile) {
+            perror("Failed to open jsruntime.log");
+            return;
+      }
+
+      char timeStr[64];
+      time_t now = time(NULL);
+      struct tm* t = localtime(&now);
+      strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", t);
 
       int threadId = syscall(__NR_gettid);
       const char* levelStr = logLevelNames[level];
@@ -61,6 +73,12 @@ void NativeJSLogger::log(LogLevel level, const char* format, ...)
       vsnprintf(buffer, sizeof(buffer), format, args);
       va_end(args);
 
-      printf("\n[%s] JsRuntime Thread-%d: %s\n", levelStr, threadId, buffer);
+      if(getenv("NATIVEJS_LOGS_REG"))
+      	 printf("\n[%s] JsRuntime Thread-%d: %s\n", levelStr, threadId, buffer);
+      else
+        fprintf(logFile, "%s : [%s] JsRuntime Thread-%d: %s\n", timeStr, levelStr, threadId, buffer);
+
+      fclose(logFile);
+
 }
 
