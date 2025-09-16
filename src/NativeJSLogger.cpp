@@ -24,13 +24,27 @@
 #include <unistd.h>
 #include <sys/syscall.h>
 #include <stdlib.h>
-#include <time.h>
+
+#ifdef USE_ETHANLOG
+#include <ethanlog.h>
+
+static const int ethanLogLevelMap[] = {
+    ETHAN_LOG_DEBUG, ETHAN_LOG_INFO, ETHAN_LOG_WARNING, ETHAN_LOG_ERROR, ETHAN_LOG_FATAL   
+};
+#endif
 
 static const char* logLevelNames[] = {
         "DEBUG", "INFO", "WARN", "ERROR", "FATAL"
 };
 
+
 LogLevel NativeJSLogger::sLogLevel = INFO;
+bool NativeJSLogger::mEthanLogEnabled = false;
+
+void NativeJSLogger::isEthanLogEnabled()
+{
+    mEthanLogEnabled  = (getenv("ETHAN_LOGGING_PIPE") != nullptr);
+}
 
 void NativeJSLogger::setLogLevel(const char* loglevel)
 {
@@ -50,35 +64,36 @@ void NativeJSLogger::setLogLevel(const char* loglevel)
 
 void NativeJSLogger::log(LogLevel level, const char* format, ...)
 {
-     if (level < sLogLevel)
-            return;
+    if (level < sLogLevel)
+        return;
 
-      FILE* logFile = fopen("/opt/logs/jsruntime.log", "a");
-      if (!logFile) {
-            perror("Failed to open jsruntime.log");
-            return;
-      }
+    va_list args;
+    va_start(args, format);
+	int threadId = syscall(__NR_gettid);
 
-      char timeStr[64];
-      time_t now = time(NULL);
-      struct tm* t = localtime(&now);
-      strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", t);
+#ifdef USE_ETHANLOG
+    if (mEthanLogEnabled)
+    {
+	int ethanLogLevel = ethanLogLevelMap[level];
+        char* newFormat = nullptr;
+        int len = snprintf(nullptr, 0, "JSRuntime [Thread-%d] %s", threadId, format);
+        if (len > 0) {
+            newFormat = (char*)alloca(len + 1);
+            snprintf(newFormat, len + 1, "JSRuntime [Thread-%d] %s", threadId, format);
+        } else {
+            newFormat = (char*)format;
+        }
 
-      int threadId = syscall(__NR_gettid);
-      const char* levelStr = logLevelNames[level];
-      char buffer[512];
+        vethanlog(ethanLogLevel, "JsRuntime", nullptr, -1, newFormat, args);
+    }
+#else
+    
+    const char* levelStr = logLevelNames[level];
+    char buffer[512];
+    vsnprintf(buffer, sizeof(buffer), format, args);
+    printf("\n[%s] JsRuntime Thread-%d: %s\n", levelStr, threadId, buffer);
 
-      va_list args;
-      va_start(args, format);
-      vsnprintf(buffer, sizeof(buffer), format, args);
-      va_end(args);
+#endif //USE_ETHANLOG    
 
-      if(getenv("NATIVEJS_LOGS_REG"))
-      	 printf("\n[%s] JsRuntime Thread-%d: %s\n", levelStr, threadId, buffer);
-      else
-        fprintf(logFile, "%s : [%s] JsRuntime Thread-%d: %s\n", timeStr, levelStr, threadId, buffer);
-
-      fclose(logFile);
-
+    va_end(args);
 }
-
