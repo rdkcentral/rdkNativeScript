@@ -23,6 +23,7 @@
 #include <map>
 #include <memory>
 #include <cassert>
+#include <utility>
 
 #ifdef __cplusplus
 extern "C" {

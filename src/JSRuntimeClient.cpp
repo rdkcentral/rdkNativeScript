@@ -18,7 +18,13 @@
 **/
 #include <JSRuntimeClient.h>
 #include <NativeJSLogger.h>
+
+#ifdef USE_JSCLIB_MOCK
+#include "jsc_lib_mock.h"
+#else
 #include "jsc_lib.h"
+#endif
+
 #include <iostream>
 #include <sstream>
 #include <thread>
@@ -143,6 +149,7 @@ void JSRuntimeClient::onClose(websocketpp::connection_hdl hdl)
     setState("close");
 }
 
+#ifndef UNIT_TEST_BUILD
 int main(int argc, char **argv)
 {
     std::string command;
@@ -178,3 +185,4 @@ int main(int argc, char **argv)
 
     return 0;
 }
+#endif

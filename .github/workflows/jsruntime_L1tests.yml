@@ -1,0 +1,103 @@
+name: L1 Unit Tests for rdkNativeScript
+
+on:
+  push:
+    branches: [topic/RDKEMW-5610]
+  pull_request:
+    branches: [topic/RDKEMW-5610]
+  workflow_dispatch:
+
+env:
+  AUTOMATICS_UNAME: ${{ secrets.AUTOMATICS_UNAME }}
+  AUTOMATICS_PASSCODE: ${{ secrets.AUTOMATICS_PASSCODE }}
+
+jobs:
+  build-and-test-l1:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source repository
+        uses: actions/checkout@v3
+
+      - name: Checkout rdkNativeScript_tests repository
+        uses: actions/checkout@v3
+        with:
+          repository: rdk-e/rdkNativeScript_tests
+          ref: topic/RDKEMW-5610
+          path: rdkNativeScript_tests
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y \
+            g++ \
+            cmake \
+            build-essential \
+            libcurl4-openssl-dev \
+            libcjson-dev \
+            libgtest-dev \
+            libssl-dev \
+            zlib1g-dev \
+            libuv1-dev \
+            lcov \
+            libglib2.0-dev
+
+      - name: Build Google Test and Google Mock
+        run: |
+          cd /usr/src/googletest
+          sudo cmake -S . -B build
+          sudo cmake --build build
+          sudo cp build/lib/libgmock.a /usr/lib
+          sudo cp build/lib/libgmock_main.a /usr/lib
+          sudo cp build/lib/libgtest.a /usr/lib
+          sudo cp build/lib/libgtest_main.a /usr/lib
+
+      - name: Configure and Build L1
+        run: |
+          mkdir -p build_l1
+          cd build_l1
+          cmake -DCMAKE_BUILD_TYPE=Debug \
+                -DRUN_L1=ON \
+                -DRUN_L2=OFF \
+                -DENABLE_JSRUNTIME_ESSOS=ON \
+                -DENABLE_JSRUNTIME_PLAYER=ON \
+                -DENABLE_AAMP_JSBINDINGS=ON \
+                -DENABLE_AAMP_JSBINDINGS_DYNAMIC=ON \
+                -DENABLE_AAMP_JSBINDINGS_STATIC=OFF \
+                -DJSRUNTIME_ENGINE_NAME=jsc \
+                -Djsruntime_source=.. ../rdkNativeScript_tests
+          make -j$(nproc)
+      
+      - name: Run L1 Tests and Generate JUnit Results
+        run: |
+          cd build_l1
+          #ctest -R RunL1Tests --output-on-failure --no-compress-output --output-junit ctest-results.xml
+          ./L1_tests --gtest_output=xml:ctest-results.xml
+
+      - name: Publish L1 test results
+        uses: dorny/test-reporter@v1
+        with:
+          name: Unit Test Results
+          path: build_l1/ctest-results.xml
+          reporter: java-junit
+  
+      - name: Generate coverage report
+        run: |
+          cd build_l1
+          lcov --capture --directory . --output-file coverage.info --ignore-errors mismatch
+          lcov --remove coverage.info '/usr/*' '*/test/*' '*/tests/*' '*/L1/*' '*/mocks/*' '*/gtest/*' '*/gmock/*' '*/googletest/*' '*/include/*' --output-file coverage.cleaned.info
+          lcov --extract coverage.cleaned.info '*/src/*' --output-file coverage.final.info
+          genhtml coverage.final.info --output-directory html_coverage_report
+
+      - name: Upload test result file (JUnit XML)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctest-results-l1-${{ github.run_id }}
+          path: build_l1/ctest-results.xml
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: l1-html-coverage-report
+          path: build_l1/html_coverage_report
+          if-no-files-found: warn
