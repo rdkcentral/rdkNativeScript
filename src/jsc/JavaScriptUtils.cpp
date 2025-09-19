@@ -20,7 +20,13 @@
 #include "JavaScriptUtils.h"
 #include "JavaScriptWrapper.h"
 #include "rtLog.h"
+
+#ifdef USE_JSCLIB_MOCK
+#include "jsc_lib_mock.h"
+#else
 #include "jsc_lib.h"
+#endif
+
 #include <unistd.h>
 #include <stdio.h>
 #include <errno.h>
