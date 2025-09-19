@@ -17,7 +17,12 @@
 * limitations under the License.
 **/
 
+#ifdef USE_JSCLIB_MOCK
+#include "jsc_lib_mock.h"
+#else
 #include "jsc_lib.h"
+#endif
+
 #include "JavaScriptEngine.h"
 #include "JavaScriptWrapper.h"
 #include <NativeJSLogger.h>
