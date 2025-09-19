@@ -146,10 +146,10 @@ void JavaScriptContext::loadAAMPJSBindingsLib()
             gAAMPJSBindings->PlayerLibHandle = aampJSBindingsLibHandle;
 
             gAAMPJSBindings->fnLoadJS =
-                    reinterpret_cast<typeof AAMPJSBindings::fnLoadJS>(
+                    reinterpret_cast<decltype(AAMPJSBindings::fnLoadJS)>(
                             dlsym(aampJSBindingsLibHandle, "_Z17AAMPPlayer_LoadJSPv"));
             gAAMPJSBindings->fnUnloadJS =
-                    reinterpret_cast<typeof AAMPJSBindings::fnUnloadJS>(
+                    reinterpret_cast<decltype(AAMPJSBindings::fnUnloadJS)>(
                             dlsym(aampJSBindingsLibHandle, "_Z19AAMPPlayer_UnloadJSPv"));
         }
         else
