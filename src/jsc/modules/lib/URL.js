@@ -220,6 +220,10 @@ exports.implementation = class URLImpl {
   toJSON() {
     return this.href;
   }
+ 
+  toString() {
+    return this.href;
+  }
 
   _potentiallyStripTrailingSpacesFromAnOpaquePath() {
     if (!usm.hasAnOpaquePath(this._url)) {

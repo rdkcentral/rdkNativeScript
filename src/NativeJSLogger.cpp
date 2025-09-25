@@ -25,11 +25,26 @@
 #include <sys/syscall.h>
 #include <stdlib.h>
 
+#ifdef USE_ETHANLOG
+#include <ethanlog.h>
+
+static const int ethanLogLevelMap[] = {
+    ETHAN_LOG_DEBUG, ETHAN_LOG_INFO, ETHAN_LOG_WARNING, ETHAN_LOG_ERROR, ETHAN_LOG_FATAL   
+};
+#endif
+
 static const char* logLevelNames[] = {
         "DEBUG", "INFO", "WARN", "ERROR", "FATAL"
 };
 
+
 LogLevel NativeJSLogger::sLogLevel = INFO;
+bool NativeJSLogger::mEthanLogEnabled = false;
+
+void NativeJSLogger::isEthanLogEnabled()
+{
+    mEthanLogEnabled  = (getenv("ETHAN_LOGGING_PIPE") != nullptr);
+}
 
 void NativeJSLogger::setLogLevel(const char* loglevel)
 {
@@ -49,18 +64,36 @@ void NativeJSLogger::setLogLevel(const char* loglevel)
 
 void NativeJSLogger::log(LogLevel level, const char* format, ...)
 {
-      if (level < sLogLevel)
-            return;
+    if (level < sLogLevel)
+        return;
 
-      int threadId = syscall(__NR_gettid);
-      const char* levelStr = logLevelNames[level];
-      char buffer[512];
+    va_list args;
+    va_start(args, format);
+	int threadId = syscall(__NR_gettid);
 
-      va_list args;
-      va_start(args, format);
-      vsnprintf(buffer, sizeof(buffer), format, args);
-      va_end(args);
+#ifdef USE_ETHANLOG
+    if (mEthanLogEnabled)
+    {
+	int ethanLogLevel = ethanLogLevelMap[level];
+        char* newFormat = nullptr;
+        int len = snprintf(nullptr, 0, "JSRuntime [Thread-%d] %s", threadId, format);
+        if (len > 0) {
+            newFormat = (char*)alloca(len + 1);
+            snprintf(newFormat, len + 1, "JSRuntime [Thread-%d] %s", threadId, format);
+        } else {
+            newFormat = (char*)format;
+        }
 
-      printf("\n[%s] JsRuntime Thread-%d: %s\n", levelStr, threadId, buffer);
+        vethanlog(ethanLogLevel, "JsRuntime", nullptr, -1, newFormat, args);
+    }
+#else
+    
+    const char* levelStr = logLevelNames[level];
+    char buffer[512];
+    vsnprintf(buffer, sizeof(buffer), format, args);
+    printf("\n[%s] JsRuntime Thread-%d: %s\n", levelStr, threadId, buffer);
+
+#endif //USE_ETHANLOG    
+
+    va_end(args);
 }
-

@@ -36,7 +36,6 @@
 #include "rtScriptJSCPrivate.h"
 #include <KeyListener.h>
 #include <KeyInput.h>
-
 #include <rtHttpRequest.h>
 #include <JavaScriptCore/JavaScript.h>
 #ifdef ENABLE_JSRUNTIME_PLAYER
@@ -58,11 +57,11 @@ struct AAMPJSBindings
 
 extern "C" JS_EXPORT void JSSynchronousGarbageCollectForDebugging(JSContextRef);
 
-struct PerformanceMetrics {          
+struct PerformanceMetrics {
 	double createApplicationStartTime=0.0;
 	double createApplicationEndTime=0.0;
 	double executionStartTime=0.0;
-	double executionEndTime=0.0;	
+	double executionEndTime=0.0;
 	double playbackStartTime=0.0;
 };
 
@@ -75,12 +74,12 @@ class JavaScriptContext: public JavaScriptContextBase, public NetworkMetricsList
 
     JavaScriptContext(JavaScriptContextFeatures& features, std::string url, IJavaScriptEngine* jsEngine);
     virtual ~JavaScriptContext();
-  
+
     rtValue get(const char *name);
     rtError add(const char *name, rtValue  const& val);
     bool    has(const char *name);
     JSGlobalContextRef getContext() { return mContext; }
-    
+
     virtual void onMetricsData (NetworkMetrics *net) override;
     rtMapObject* getNetworkMetricsData() const { return mNetworkMetricsData; }
     void dumpNetworkMetricData(NetworkMetrics *metrics, std::string appUrl);
@@ -90,6 +89,8 @@ class JavaScriptContext: public JavaScriptContextBase, public NetworkMetricsList
     void setPlaybackStartTime(double time);
     void setAppdata(uint32_t id, const std::string& url);
     double getExecutionDuration() const;
+
+    void handleExternalApplication(const std::string& url);
 
   private:
     bool evaluateScript(const char *script, const char *name, const char *args = nullptr, bool module = false);
@@ -117,6 +118,7 @@ class JavaScriptContext: public JavaScriptContextBase, public NetworkMetricsList
     rtRef<rtFunctionCallback> m_readBinaryBinding;
     rtRef<rtFunctionCallback> m_setVideoStartTimeBinding;
     rtRef<rtFunctionCallback> m_JSRuntimeDownloadMetrics;
-
+    rtRef<rtFunctionCallback> m_setExternalAppHandlerBinding;
+    rtRef<rtFunctionCallback> m_getRandomValuesBinding;
 };
 #endif

@@ -1222,7 +1222,9 @@ function Body(body) {
 	} else if (body instanceof Stream) ; else {
 		// none of the above
 		// coerce to string then buffer
-		body = Buffer.from(String(body));
+		//body = Buffer.from(String(body));
+		//MADANA HACK FOR WEB ASSEMBLY
+                body = Buffer.from(body);
 	}
 	this[INTERNALS] = {
 		body,
@@ -1800,7 +1802,12 @@ class Headers {
 			return null;
 		}
 
-		return this[MAP][key].join(', ');
+		const value = this[MAP][key];
+		// Always ensure we return a string, not an array
+		if (Array.isArray(value)) {
+			return value.join(', ');
+		}
+		return String(value);
 	}
 
 	/**
@@ -1839,7 +1846,7 @@ class Headers {
 		validateName(name);
 		validateValue(value);
 		const key = find(this[MAP], name);
-		this[MAP][key !== undefined ? key : name] = [value];
+		this[MAP][key !== undefined ? key : name] = [value]; 
 	}
 
 	/**
@@ -2019,11 +2026,16 @@ Object.defineProperty(HeadersIteratorPrototype, Symbol.toStringTag, {
 function exportNodeCompatibleHeaders(headers) {
 	const obj = Object.assign({ __proto__: null }, headers[MAP]);
 
-	// http.request() only supports string as Host header. This hack makes
-	// specifying custom Host header possible.
-	const hostHeaderKey = find(headers[MAP], 'Host');
-	if (hostHeaderKey !== undefined) {
-		obj[hostHeaderKey] = obj[hostHeaderKey][0];
+	// Convert all header values from arrays to strings for Node.js compatibility
+	for (const key in obj) {
+		if (Array.isArray(obj[key])) {
+			// Join array elements with comma and space, or take first element if single
+			obj[key] = obj[key].length === 1 ? obj[key][0] : obj[key].join(', ');
+		}
+		else if (obj[key] !== undefined) {
+      			// Ensure non-array values are also converted to strings
+      			obj[key] = String(obj[key]);
+    		}	
 	}
 
 	return obj;
@@ -2379,8 +2391,12 @@ function getNodeRequestOptions(request) {
 	}
 
 	// HTTP-network-or-cache fetch step 2.15
-	if (request.compress && !headers.has('Accept-Encoding')) {
+	// Only request compression if zlib is available for decompression
+	const zlibAvailable = typeof zlib !== 'undefined';
+	if (request.compress && zlibAvailable && !headers.has('Accept-Encoding')) {
 		headers.set('Accept-Encoding', 'gzip,deflate');
+	} else if (request.compress && !zlibAvailable) {
+		console.log('[DEBUG] Compression requested but zlib not available - requesting uncompressed response');
 	}
 
 	let agent = request.agent;
@@ -2704,53 +2720,62 @@ function fetch(url, opts) {
 			// servers send slightly invalid responses that are still accepted
 			// by common browsers.
 			// Always using Z_SYNC_FLUSH is what cURL does.
-			/*
-			const zlibOptions = {
-				flush: zlib.Z_SYNC_FLUSH,
-				finishFlush: zlib.Z_SYNC_FLUSH
-			};
+			
+			// Check if zlib is available (not available in all environments)
+			const zlibAvailable = typeof zlib !== 'undefined';
+			
+			if (zlibAvailable) {
+				const zlibOptions = {
+					flush: zlib.Z_SYNC_FLUSH,
+					finishFlush: zlib.Z_SYNC_FLUSH
+				};
 
-			// for gzip
-			if (codings == 'gzip' || codings == 'x-gzip') {
-				body = body.pipe(zlib.createGunzip(zlibOptions));
-				response = new Response(body, response_options);
-				resolve(response);
-				return;
-			}
-
-			// for deflate
-			if (codings == 'deflate' || codings == 'x-deflate') {
-				// handle the infamous raw deflate response from old servers
-				// a hack for old IIS and Apache servers
-				const raw = res.pipe(new PassThrough$1());
-				raw.once('data', function (chunk) {
-					// see http://stackoverflow.com/questions/37519828
-					if ((chunk[0] & 0x0F) === 0x08) {
-						body = body.pipe(zlib.createInflate());
-					} else {
-						body = body.pipe(zlib.createInflateRaw());
-					}
+				// for gzip
+				if (codings == 'gzip' || codings == 'x-gzip') {
+					body = body.pipe(zlib.createGunzip(zlibOptions));
 					response = new Response(body, response_options);
 					resolve(response);
-				});
-				raw.on('end', function () {
-					// some old IIS servers return zero-length OK deflate responses, so 'data' is never emitted.
-					if (!response) {
+					return;
+				}
+
+				// for deflate
+				if (codings == 'deflate' || codings == 'x-deflate') {
+					// handle the infamous raw deflate response from old servers
+					// a hack for old IIS and Apache servers
+					const raw = res.pipe(new PassThrough$1());
+					raw.once('data', function (chunk) {
+						// see http://stackoverflow.com/questions/37519828
+						if ((chunk[0] & 0x0F) === 0x08) {
+							body = body.pipe(zlib.createInflate());
+						} else {
+							body = body.pipe(zlib.createInflateRaw());
+						}
 						response = new Response(body, response_options);
 						resolve(response);
-					}
-				});
-				return;
-			}
+					});
+					raw.on('end', function () {
+						// some old IIS servers return zero-length OK deflate responses, so 'data' is never emitted.
+						if (!response) {
+							response = new Response(body, response_options);
+							resolve(response);
+						}
+					});
+					return;
+				}
 
-			// for br
-			if (codings == 'br' && typeof zlib.createBrotliDecompress === 'function') {
-				body = body.pipe(zlib.createBrotliDecompress());
-				response = new Response(body, response_options);
-				resolve(response);
-				return;
+				// for br
+				if (codings == 'br' && typeof zlib.createBrotliDecompress === 'function') {
+					body = body.pipe(zlib.createBrotliDecompress());
+					response = new Response(body, response_options);
+					resolve(response);
+					return;
+				}
+			} else {
+				// zlib not available - log warning for compressed responses
+				if (codings && codings !== 'identity') {
+					console.warn(`[DEBUG] Content-Encoding '${codings}' detected but zlib not available for decompression`);
+				}
 			}
-                        */
 			// otherwise, use response as-is
 			response = new Response(body, response_options);
                         console.log(response);
@@ -8606,6 +8631,12 @@ module.exports = JSON.parse('[[[0,44],"disallowed_STD3_valid"],[[45,46],"valid"]
 /******/ 	var __webpack_exports__ = __webpack_require__(568);
 /******/ 	FetchLib = __webpack_exports__;
                 fetch = FetchLib;
+
+                Headers = FetchLib.Headers;
+                Request = FetchLib.Request;
+                Response = FetchLib.Response;
+                FetchError = FetchLib.FetchError;
+                AbortError = FetchLib.AbortError;
 /******/ 	
 /******/ })()
 ;

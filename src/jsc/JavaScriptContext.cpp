@@ -48,6 +48,8 @@
 #include <dlfcn.h>
 #endif
 #endif
+#include <sstream>
+#include <fstream>
 
 extern "C" JS_EXPORT void JSSynchronousGarbageCollectForDebugging(JSContextRef);
 #ifdef ENABLE_AAMP_JSBINDINGS_STATIC
@@ -86,7 +88,7 @@ JavaScriptContext::JavaScriptContext(JavaScriptContextFeatures& features, std::s
 JavaScriptContext::~JavaScriptContext()
 {
     rtLogInfo("%s begin", __FUNCTION__);
-  
+
 #ifdef ENABLE_JSRUNTIME_PLAYER
 if (mModuleSettings.enablePlayer)
 {
@@ -148,13 +150,13 @@ void JavaScriptContext::loadAAMPJSBindingsLib()
                             dlsym(aampJSBindingsLibHandle, "_Z17AAMPPlayer_LoadJSPv"));
             gAAMPJSBindings->fnUnloadJS =
                     reinterpret_cast<typeof AAMPJSBindings::fnUnloadJS>(
-                            dlsym(aampJSBindingsLibHandle, "AAMPPlayer_UnloadJS"));
+                            dlsym(aampJSBindingsLibHandle, "_Z19AAMPPlayer_UnloadJSPv"));
         }
         else
         {
             NativeJSLogger::log(ERROR, "failed to load %s and error is %s\n", aampJSBindingsLib, dlerror());
         }
-	
+
 	dlclose(jscLibHandle);
     }
 }
@@ -177,7 +179,7 @@ rtError JavaScriptContext::add(const char *name, rtValue const& val)
     JSValueRef exception = nullptr;
     JSObjectSetProperty(mContext, globalObj, jsName, jsVal, kJSPropertyAttributeDontEnum, &exception);
     JSStringRelease(jsName);
-  
+
     if (exception)
     {
         JSStringRef exceptStr = JSValueToStringCopy(mContext, exception, nullptr);
@@ -193,12 +195,12 @@ rtValue JavaScriptContext::get(const char *name)
 {
     if (!name)
       return {};
-  
+
     JSStringRef jsName = JSStringCreateWithUTF8CString(name);
     JSObjectRef globalObj = JSContextGetGlobalObject(mContext);
     JSValueRef exception = nullptr;
     rtValue retVal;
-  
+
     do
     {
         JSValueRef valueRef = JSObjectGetProperty(mContext, globalObj, jsName, &exception);
@@ -209,7 +211,7 @@ rtValue JavaScriptContext::get(const char *name)
           break;
     } while(0);
     JSStringRelease(jsName);
-  
+
     if (exception)
     {
         JSStringRef exceptStr = JSValueToStringCopy(mContext, exception, nullptr);
@@ -218,7 +220,7 @@ rtValue JavaScriptContext::get(const char *name)
         rtLogError("Failed to get %s from rtScript context, error='%s'\n", name, errorStr.cString());
         return rtValue();
     }
-  
+
     return retVal;
 }
 
@@ -239,22 +241,22 @@ bool JavaScriptContext::evaluateScript(const char* script, const char* name, con
     mPerformanceMetrics.executionStartTime = getTimeInMilliSec();
 
     if (nullptr != name)
-    {	  
+    {
       rtLogInfo("JavaScriptContext::evaluateScript name=%s", name);
     }
     JSValueRef exception = nullptr;
     JSStringRef codeStr = JSStringCreateWithUTF8CString(script);
     JSObjectRef globalObj = JSContextGetGlobalObject(mContext);
     JSStringRef fileStr = nullptr;
-  
+
     if (name)
     {
         fileStr = JSStringCreateWithUTF8CString(name);
         JSGlobalContextSetName(mContext, fileStr);
-    } 
-  
+    }
+
     //MADANA BIG CHANGE
-    if (module)
+    if (false)
     {
           JSStringRef fileNameProperty = JSStringCreateWithUTF8CString("entryPointModuleName");
           JSStringRef fileName = JSStringCreateWithUTF8CString(name);
@@ -265,11 +267,11 @@ bool JavaScriptContext::evaluateScript(const char* script, const char* name, con
         functionLoadModule(mContext, globalObj, (char *) script, strlen(script), (char*)name);
     }
     else
-    {	    
+    {
         JSValueRef result = JSEvaluateScript(mContext, codeStr, globalObj, fileStr, 0, &exception);
         JSStringRelease(codeStr);
         if (nullptr != fileStr)
-        {	  
+        {
             JSStringRelease(fileStr);
         }
         if (exception)
@@ -291,13 +293,13 @@ bool JavaScriptContext::evaluateScript(const char* script, const char* name, con
 void JavaScriptContext::processKeyEvent(struct JavaScriptKeyDetails& details, bool keyPress)
 {
     JSStringRef str = JSStringCreateWithUTF8CString(keyPress?"jsruntime.onKeyDown":"jsruntime.onKeyUp");
-  
+
     JSValueRef func = JSEvaluateScript(mContext, str, 0, 0, 0, 0);
-  
+
     if (JSValueIsObject(mContext, func))
     {
         JSObjectRef funcObj = JSValueToObject(mContext, func, 0);
-  
+
         if (funcObj && JSObjectIsFunction(mContext, funcObj))
 	{
             rtObjectRef e = new rtMapObject;
@@ -313,23 +315,23 @@ void JavaScriptContext::processKeyEvent(struct JavaScriptKeyDetails& details, bo
             e.set("metaKey", details.metaKey);
             e.set("repeat", details.repeat);
             e.set("keyCode", details.keyCode);
-            
-  
+
+
             const JSValueRef args[] = { rtToJs(mContext, e) };
-  
+
             size_t num_args = sizeof(args) / sizeof(JSValueRef*);
-  
+
             JSValueRef exception = 0;
-  
-            JSValueRef result = JSObjectCallAsFunction(mContext, funcObj, 0, 
-                                                       num_args, args, 
+
+            JSValueRef result = JSObjectCallAsFunction(mContext, funcObj, 0,
+                                                       num_args, args,
                                                        &exception);
-  
+
             if (exception)
 	    {
 		 NativeJSLogger::log(ERROR, "received exception during key handling\n");
             }
-            
+
             if (result)
 	    {
                 // Handle result (if any) here.
@@ -343,7 +345,7 @@ void JavaScriptContext::registerUtils()
     m_webSocketBinding = new rtFunctionCallback(rtWebSocketBinding, nullptr);
 #ifdef WS_SERVER_ENABLED
     if (mEnableWebSockerServer)
-    {	  
+    {
         m_webSocketServerBinding = new rtFunctionCallback(rtWebSocketServerBinding, nullptr);
     }
 #endif
@@ -356,10 +358,12 @@ void JavaScriptContext::registerUtils()
     m_readBinaryBinding = new rtFunctionCallback(rtReadBinaryBinding, nullptr);
     m_setVideoStartTimeBinding = new rtFunctionCallback(rtSetVideoStartTimeBinding, this);
     m_JSRuntimeDownloadMetrics = new rtFunctionCallback(rtJSRuntimeDownloadMetrics, this);
+    m_setExternalAppHandlerBinding = new rtFunctionCallback(rtSetExternalAppHandlerBinding, this);
+    m_getRandomValuesBinding = new rtFunctionCallback(rtGetRandomValuesBinding, nullptr);
     add("webSocket", m_webSocketBinding.getPtr());
 #ifdef WS_SERVER_ENABLED
     if (mEnableWebSockerServer)
-    {	  
+    {
         add("webSocketServer", m_webSocketServerBinding.getPtr());
     }
 #endif
@@ -372,7 +376,9 @@ void JavaScriptContext::registerUtils()
     add("readBinary", m_readBinaryBinding.getPtr());
     add("setVideoStartTime", m_setVideoStartTimeBinding.getPtr());
     add("JSRuntimeDownloadMetrics", m_JSRuntimeDownloadMetrics.getPtr());
-  
+    add("setExternalAppHandler", m_setExternalAppHandlerBinding.getPtr());
+    add("getRandomValuesCpp", m_getRandomValuesBinding.getPtr());
+
 #ifdef ENABLE_JSRUNTIME_PLAYER
 if (mModuleSettings.enablePlayer)
 {
@@ -407,48 +413,49 @@ if (mModuleSettings.enablePlayer)
     injectFun(mContext, "require", requireCallback);
     if(mModuleSettings.enablePlayer)
     {
-	runFile("modules/video.js", nullptr);
+       runFile("video.js", nullptr);
     }
     if (mModuleSettings.enableXHR)
     {
-        runFile("modules/xhr.js", nullptr);
+        runFile("xhr.js", nullptr);
     }
     if (mModuleSettings.enableHttp)
     {
-        runFile("modules/http.js", nullptr);
-        runFile("modules/https.js", nullptr);
+        runFile("http.js", nullptr);
+        runFile("https.js", nullptr);
     }
     if (mModuleSettings.enableFetch)
     {
-        runFile("modules/node-fetch.js", nullptr/*, true*/);
+        runFile("node-fetch.js" , nullptr/*, true*/);
     }
-    runFile("modules/utils.js", nullptr);
+    runFile("utils.js", nullptr);
     if (mModuleSettings.enableWebSocketEnhanced)
     {
-        runFile("modules/event.js", nullptr);
-        runFile("modules/wsenhanced.js", nullptr);
-    }
+        runFile("event.js", nullptr);
+        runFile("wsenhanced.js", nullptr);
+}
     else if(mModuleSettings.enableWebSocket)
     {
-        runFile("modules/ws.js", nullptr);
+        runFile("ws.js", nullptr);
     }
 #ifdef WS_SERVER_ENABLED
     if (mEnableWebSockerServer)
     {
         NativeJSLogger::log(INFO, "enabling websocket server\n");
-	runFile("modules/wsserver.js", nullptr);
+        runFile("wsserver.js", nullptr);
     }
 #endif
     if (mModuleSettings.enableWindow)
     {
-        runFile("modules/window.js", nullptr/*, true*/);
-        runFile("modules/windowwrapper.js", nullptr/*, true*/);
+        runFile("window.js", nullptr/*, true*/);
+        runFile("windowwrapper.js", nullptr/*, true*/);
     }
     else if (mModuleSettings.enableJSDOM)
     {
-        runFile("modules/linkedjsdom.js", nullptr/*, true*/);
-        runFile("modules/linkedjsdomwrapper.js", nullptr/*, true*/);
-        runFile("modules/windowwrapper.js", nullptr/*, true*/);
+        runFile("linkedjsdom.js", nullptr/*, true*/);
+        runFile("linkedjsdomwrapper.js", nullptr/*, true*/);
+        runFile("windowwrapper.js", nullptr/*, true*/);
+		runFile("url.js", nullptr/*, true*/);
         if(getenv("FIREBOLT_ENDPOINT")!=NULL)
         {
             auto FireboltEndpoint = std::string(getenv("FIREBOLT_ENDPOINT"));
@@ -482,15 +489,15 @@ void JavaScriptContext::dumpNetworkMetricData(NetworkMetrics *metrics, std::stri
 {
     std::ofstream file("/tmp/jsruntimenetworkmetrics.log", std::ios::app);
 
-    if (!file.is_open()) 
+    if (!file.is_open())
     {
         rtLogError("Failed to open jsruntimenetworkmetrics log file");
         return;
     }
-    static bool isAppUrlLogged = false; 
+    static bool isAppUrlLogged = false;
     if(!isAppUrlLogged)
     {
-	isAppUrlLogged = true;    
+	isAppUrlLogged = true;
 	    file << appUrl << ":";
     }
     auto now = std::chrono::system_clock::now();
@@ -504,18 +511,18 @@ void JavaScriptContext::dumpNetworkMetricData(NetworkMetrics *metrics, std::stri
     ss << "  url: " << metrics->url << "," << std::endl;
     ss << "  method: " << metrics->method << "," << std::endl;
     ss << "  headers: [";
-    for (size_t j = 0; j < metrics->headers.size(); ++j) 
+    for (size_t j = 0; j < metrics->headers.size(); ++j)
     {
 	ss << metrics->headers[j];
-        if (j != metrics->headers.size() - 1) 
+        if (j != metrics->headers.size() - 1)
         {
            ss << ", ";
         }
     }
     ss << "]," << std::endl;
     ss << "  statusCode: " << metrics->statusCode << std::endl;
-    for (const auto& pair : metrics->timeMetricsData) 
-    {              
+    for (const auto& pair : metrics->timeMetricsData)
+    {
 	ss << "  " << pair.first.cString() << ": " << pair.second.toString().cString() << "\n";
     }
     ss << "]" << std::endl;
@@ -532,7 +539,7 @@ void JavaScriptContext::setCreateApplicationEndTime(double time, uint32_t id)
 {
     mPerformanceMetrics.createApplicationEndTime = time;
     double duration = time-mPerformanceMetrics.createApplicationStartTime;
-    
+
     NativeJSLogger::log(INFO, "createApplicationDuration for ID %d: %.3f ms\n",id, duration);
 }
 
@@ -546,11 +553,20 @@ void JavaScriptContext::setAppdata(uint32_t id, const std::string& url)
 {
         mIds = id;
         mUrls = url;
-} 
+}
 
 void JavaScriptContext::setPlaybackStartTime(double time)
 {
     mPerformanceMetrics.playbackStartTime = time;
     double launchTime = mPerformanceMetrics.playbackStartTime - mPerformanceMetrics.createApplicationStartTime;
     NativeJSLogger::log(INFO, "Launch_Duration for ID %d | URL %s : %.3f ms\n", mIds, mUrls.c_str(), launchTime);
+}
+
+void JavaScriptContext::handleExternalApplication(const std::string& url)
+{
+    if (mExternalApplicationHandler)
+    {
+        printf("Got exteranl application set [%s] in id [%d] \n", url.c_str(), mIds);
+        mExternalApplicationHandler->runExternalApplication(url, mIds);
+    }
 }

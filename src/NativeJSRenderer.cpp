@@ -103,6 +103,11 @@ NativeJSRenderer::NativeJSRenderer(std::string waylandDisplay): mEngine(nullptr)
     }
 
     const char* levelFromEnv = getenv("NATIVEJS_LOG_LEVEL");
+    // checking for ethan log env 
+    #ifdef USE_ETHANLOG
+    NativeJSLogger::isEthanLogEnabled();
+    NativeJSLogger::log(INFO, "EthanLog is enabled");
+    #endif
     if(levelFromEnv)
     {
     	NativeJSLogger::setLogLevel(levelFromEnv);
@@ -119,15 +124,15 @@ NativeJSRenderer::NativeJSRenderer(std::string waylandDisplay): mEngine(nullptr)
     if (nullptr != testfile)
     {
         mTestFileName = testfile;
-    }		  
+    }
     char* testfiledomsupport = getenv("NATIVEJS_ENABLE_TEST_FILE_DOMSUPPORT");
     if (nullptr != testfiledomsupport)
     {
         if (strcmp(testfiledomsupport, "1") == 0)
-	{	
+	{
             mEnableTestFileDOMSupport = true;
         }
-    }		  
+    }
     char* embedThunderJS = getenv("NATIVEJS_EMBED_THUNDERJS");
     if (embedThunderJS)
     {
@@ -141,15 +146,15 @@ NativeJSRenderer::NativeJSRenderer(std::string waylandDisplay): mEngine(nullptr)
         {
             mEmbedThunderJS = true;
             NativeJSLogger::log(INFO, "ThunderJS enabled via file presence\n");
-        }			
-    }		    
+        }
+    }
 
     std::ifstream f(NATIVEJS_EMBED_WEBBRIDGE);
     if (f.good())
     {
         mEmbedRdkWebBridge = true;
         NativeJSLogger::log(INFO, "rdk WebBridge enabled via file presence\n");
-    }			
+    }
     char* enableWebSocketServer = getenv("NATIVEJS_ENABLE_WEBSOCKET_SERVER");
     if (enableWebSocketServer)
     {
@@ -163,15 +168,15 @@ NativeJSRenderer::NativeJSRenderer(std::string waylandDisplay): mEngine(nullptr)
         {
             mEnableWebSocketServer = true;
             NativeJSLogger::log(INFO, "WebSocket server enabled via file presence\n");
-        }			
-    }		    
+        }
+    }
 }
 
 NativeJSRenderer::~NativeJSRenderer()
 {
-    gPendingRequests.clear();  
+    gPendingRequests.clear();
     if (mEngine)
-    {	    
+    {
         delete mEngine;
         mEngine = nullptr;
     }
@@ -258,7 +263,7 @@ std::list<ApplicationDetails> NativeJSRenderer::getApplications()
 	}
 	mUserMutex.unlock();
 	return runningApplication;
-	
+
 }
 
 bool NativeJSRenderer::terminateApplication(uint32_t id)
@@ -272,7 +277,7 @@ bool NativeJSRenderer::terminateApplication(uint32_t id)
 
 void NativeJSRenderer::createApplicationInternal(ApplicationRequest& appRequest)
 {
-        double startTime = getTimeInMilliSec(); 
+        double startTime = getTimeInMilliSec();
 
 	ModuleSettings settings;
 	settings.enableHttp = appRequest.mEnableHttp;
@@ -282,9 +287,9 @@ void NativeJSRenderer::createApplicationInternal(ApplicationRequest& appRequest)
 	settings.enableFetch = appRequest.mEnableFetch;
 	settings.enableJSDOM = appRequest.mEnableJSDOM;
 	settings.enableWindow = appRequest.mEnableWindow;
-	settings.enablePlayer = appRequest.mEnablePlayer;	
+	settings.enablePlayer = appRequest.mEnablePlayer;
 	uint32_t id= appRequest.mId;
-	
+
 	JavaScriptContextFeatures features(mEmbedThunderJS, mEmbedRdkWebBridge, mEnableWebSocketServer, settings);
         JavaScriptContext* context = new JavaScriptContext(features, "" , mEngine);
         if(NULL == context)
@@ -293,26 +298,29 @@ void NativeJSRenderer::createApplicationInternal(ApplicationRequest& appRequest)
         	return ;
         }
         NativeJSLogger::log(DEBUG, "Context created for ID: %d\n", id);
-	
+	 if (mExternalApplicationHandler) {
+        context->setExternalApplicationHandler(mExternalApplicationHandler);
+    }
+
         double endTime = getTimeInMilliSec();
         context->setCreateApplicationStartTime(startTime);
         context->setCreateApplicationEndTime(endTime, id);
 
         mContextMap[id].context=context;
-        mUserMutex.unlock();	
+        mUserMutex.unlock();
 }
 
 void NativeJSRenderer::runApplicationInternal(ApplicationRequest& appRequest)
 {
 	uint32_t id = appRequest.mId;
 	std::string url = appRequest.mUrl;
-	
+
 	if (mContextMap.find(id) == mContextMap.end())
 	{
-		return;    
+		return;
 	}
 	mContextMap[id].url = url;
-	
+
 	if(!url.empty())
 	{
 		NativeJSLogger::log(INFO, "Before launching app\n");
@@ -326,6 +334,7 @@ void NativeJSRenderer::runApplicationInternal(ApplicationRequest& appRequest)
 			    return ;
 			}
 			JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
+			context->setUrl(mContextMap[id].url);
 			if(context->getModuleSettings().enableJSDOM)
 			{
 				std::stringstream window;
@@ -341,10 +350,11 @@ void NativeJSRenderer::runApplicationInternal(ApplicationRequest& appRequest)
 			NativeJSLogger::log(INFO, "Execution duration(runApplicationDuration) for ID %d | URL %s : %.3f ms\n", id, url.c_str(), duration);
 		}
 		else
-		{	    
+		{
 			NativeJSLogger::log(INFO, "About to launch local app\n");
 			JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
-            		if(context->getModuleSettings().enableJSDOM)
+                       context->setUrl(mContextMap[id].url);
+			if(context->getModuleSettings().enableJSDOM)
             		{
 			    std::stringstream window;
                 	    window<<"window.location = {\"href\":\"file:/" << url << "\"};";
@@ -357,7 +367,7 @@ void NativeJSRenderer::runApplicationInternal(ApplicationRequest& appRequest)
 			double duration = context->getExecutionDuration();
 			context->setAppdata(id, url);
 			NativeJSLogger::log(INFO, "Execution duration(runApplicationDuration) for ID %d | URL %s : %.3f ms\n", id, url.c_str(), duration);
-		}	    
+		}
 	}
 	else{
 	    NativeJSLogger::log(WARN, "nativeJS application url not proper\n");
@@ -369,19 +379,23 @@ void NativeJSRenderer::runJavaScriptInternal(ApplicationRequest& appRequest)
 {
 	uint32_t id = appRequest.mId;
 	std::string code = appRequest.mUrl;
-	
+
 	if (mContextMap.find(id) == mContextMap.end())
 	{
-		return;    
+		return;
 	}
-	
-	mContextMap[id].url = code;
+
+        if (mContextMap[id].url.length() == 0)
+	{
+	   mContextMap[id].url = "JavaScriptCode";
+	}
+        bool isApplication = true, isModule = false;
 	if(!code.empty())
 	{
 		NativeJSLogger::log(INFO, "Running the JavaScript code\n");
 		JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
 		std::string rawcode = code ;
-		bool ret = context-> runScript(rawcode.c_str(),true,"JavaScriptCode",nullptr,true);
+		bool ret = context->runScript(rawcode.c_str(),isModule,mContextMap[id].url,nullptr,isApplication);
 		double duration = context->getExecutionDuration();
 		NativeJSLogger::log(INFO, "Execution duration(runJavaScriptDuration) for ID %d | %s : %.3f ms\n", id, code.c_str(), duration);
 	}
@@ -398,21 +412,21 @@ void NativeJSRenderer::terminateApplicationInternal(ApplicationRequest& AppReque
 	{
 		JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
 		NativeJSLogger::log(INFO, "Terminating the application with id: %d\n", id);
-		if (NULL != context)	{     	
+		if (NULL != context)	{
 			NativeJSLogger::log(INFO, "Deleted context\n");
 			delete context;
-		}	
-        mContextMap.erase(mapEntry);	
+		}
+        mContextMap.erase(mapEntry);
 		NativeJSLogger::log(INFO, "Application is terminated\n");
 	}
-	
+
 	else
 	{
 		NativeJSLogger::log(ERROR, "Unable to find application with id: %d and url: %s\n", id, mContextMap[id].url);
 		return ;
 	}
-	
-	
+
+
 }
 
 size_t NativeJSRenderer::write_data(void *ptr, size_t size, size_t nmemb, FILE *stream)
@@ -431,14 +445,14 @@ void NativeJSRenderer::run()
 {
     while(mRunning)
     {
-	uint32_t id; 
+	uint32_t id;
 	mUserMutex.lock();
         if (mConsoleMode) {
             processDevConsoleRequests();
-        }     
+        }
         for (int i=0; i<gPendingRequests.size(); i++)
         {
-            
+
             ApplicationRequest& request = gPendingRequests[i];
             if(request.mRequestType == CREATE)
             {
@@ -447,27 +461,27 @@ void NativeJSRenderer::run()
             else if(request.mRequestType == RUN)
             {
 		runApplicationInternal(request);
-		
+
             }
             else if(request.mRequestType == TERMINATE)
-            {           	
+            {
 		terminateApplicationInternal(request);
             }
             else if(request.mRequestType == RUNSCRIPT)
             {
             	runJavaScriptInternal(request);
             }
-            else 
+            else
             {
             	NativeJSLogger::log(ERROR, "Invalid Request Type\n");
             }
-            
+
         }
         gPendingRequests.clear();
 	mUserMutex.unlock();
-	
+
         if(!mTestFileName.empty())
-        {			
+        {
             ModuleSettings settings;
 	    settings.enableJSDOM = mEnableTestFileDOMSupport;
 	    ApplicationRequest appRequest(id, RUN, mTestFileName, settings.enableHttp, settings.enableXHR, settings.enableWebSocket, settings.enableWebSocketEnhanced, settings.enableFetch, settings.enableJSDOM, settings.enableWindow, settings.enablePlayer);
@@ -475,19 +489,19 @@ void NativeJSRenderer::run()
 	    NativeJSRenderer::runApplicationInternal(appRequest);
 	    mTestFileName = "";
         }
-        
+
 #ifdef ENABLE_ESSOS
         if (mEssosInitialized)
-	{		
+	{
             EssosInstance::instance()->update();
         }
 #endif
         mEngine->run();
         double maxSleepTime = (1000 / 40) * 1000;
-        usleep(maxSleepTime);    
+        usleep(maxSleepTime);
     }
     if (mEngine)
-    {      
+    {
 	mEngine->terminate();
     }
 }
@@ -597,6 +611,11 @@ bool NativeJSRenderer::downloadFile(std::string& url, MemoryStruct& chunk)
     else
     {
         NativeJSLogger::log(ERROR, "Unable to perform download\n");
-    } 
+    }
     return ret;
+}
+
+void NativeJSRenderer::setExternalApplicationHandler(std::shared_ptr<IExternalApplicationHandler> handler)
+{
+    mExternalApplicationHandler = handler;
 }
