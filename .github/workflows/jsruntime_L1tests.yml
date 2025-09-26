@@ -1,4 +1,6 @@
 name: L1 Unit Tests for rdkNativeScript
+permissions:
+  contents: read
 
 on:
   push:
