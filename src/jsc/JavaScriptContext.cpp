@@ -135,7 +135,7 @@ void JavaScriptContext::loadAAMPJSBindingsLib()
     {
         static const char *aampJSBindingsLib = "libaampjsbindings.so";
 	static const char *jscLib = "libJavaScriptCore.so";
-	void *jscLibHandle = dlopen(jscLib, RTLD_NOW | RTLD_GLOBAL);
+	jscLibHandle = dlopen(jscLib, RTLD_NOW | RTLD_GLOBAL);
 	if (!jscLibHandle)
 	{
 	    std::cout<<"dlopen error for jsc library " << dlerror() << std::endl;
@@ -157,7 +157,6 @@ void JavaScriptContext::loadAAMPJSBindingsLib()
             NativeJSLogger::log(ERROR, "failed to load %s and error is %s\n", aampJSBindingsLib, dlerror());
         }
 
-	dlclose(jscLibHandle);
     }
 }
 
@@ -166,6 +165,8 @@ void JavaScriptContext::unloadAAMPJSBindingsLib()
     if (nullptr != gAAMPJSBindings->PlayerLibHandle)
     {
         dlclose(gAAMPJSBindings->PlayerLibHandle);
+	dlclose(jscLibHandle);
+
     }
 }
 #endif
