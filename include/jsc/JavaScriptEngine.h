@@ -22,6 +22,7 @@
 
 #include <unistd.h>
 #include <errno.h>
+#include <cstdint>
 
 //#include <algorithm>
 #include <string>

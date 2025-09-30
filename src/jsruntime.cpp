@@ -34,6 +34,7 @@
 using namespace std;
 using namespace JsRuntime;
 
+#ifndef UNIT_TEST_BUILD
 int main(int argc, char* argv[])
 {
     if (argc < 2)
@@ -155,3 +156,5 @@ int main(int argc, char* argv[])
     
     return 0;
 }
+
+#endif

@@ -19,8 +19,13 @@
 
 #pragma once
 #include <NativeJSRenderer.h>
+
+#ifdef USE_WEBSOCKET_MOCK
+#include "websocketpp.hpp" 
+#else
 #include <websocketpp/config/asio_no_tls.hpp>
 #include <websocketpp/server.hpp>
+#endif
 
 #include <memory>
 #include <mutex>

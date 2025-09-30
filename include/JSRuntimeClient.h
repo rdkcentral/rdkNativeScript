@@ -18,9 +18,14 @@
 **/
 
 #pragma once
+
+#ifdef USE_WEBSOCKET_MOCK
+#include "websocketpp.hpp"
+#else
 #include <websocketpp/config/asio_no_tls_client.hpp>
 #include <websocketpp/common/thread.hpp>
 #include <websocketpp/client.hpp>
+#endif
 
 #include <string>
 #include <condition_variable>
