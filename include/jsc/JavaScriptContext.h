@@ -100,6 +100,7 @@ class JavaScriptContext: public JavaScriptContextBase, public NetworkMetricsList
 #ifdef ENABLE_AAMP_JSBINDINGS_DYNAMIC
     void loadAAMPJSBindingsLib();
     void unloadAAMPJSBindingsLib();
+    void *jscLibHandle = nullptr;
 #endif
 #endif
     JSContextGroupRef mContextGroup;
