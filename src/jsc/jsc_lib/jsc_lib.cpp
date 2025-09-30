@@ -15,7 +15,12 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
  
+#ifdef USE_JSCLIB_MOCK
+#include "jsc_lib_mock.h"
+#else
 #include "jsc_lib.h"
+#endif
+
 #include "NativeJSLogger.h"
 
 using namespace JSC;

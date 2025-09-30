@@ -141,7 +141,7 @@ void PlayerWrapper::clearCallbackForAllAdIds()
             for (std::map<std::string, JSObjectRef>::iterator it = mPromiseCallbacks.begin(); it != mPromiseCallbacks.end(); )
             {
                 JSValueUnprotect(ctx, it->second);
-                mPromiseCallbacks.erase(it);
+                it = mPromiseCallbacks.erase(it);
             }
         }
 }
@@ -344,7 +344,7 @@ JSValueRef AAMPMediaPlayerJS_initConfig (JSContextRef ctx, JSObjectRef function,
 		}
 		if (!success)
 		{
-		    NativeJSLogger::log(ERROR, "Failed to parse JSON string [%s]\n", configData.c_str());
+		    NativeJSLogger::log(ERROR, "Failed to parse JSON string [%s]\n", configData);
 		    fflush(stdout);
 	        }
                 if (configData)
