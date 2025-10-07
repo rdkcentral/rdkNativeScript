@@ -68,6 +68,7 @@ std::thread::id gMainThreadId;
 
 static std::list<std::function<void ()>> gPendingFun;
 static std::mutex gDispatchMutex;
+static const char* envValue = std::getenv("NATIVEJS_DUMP_NETWORKMETRIC");
 
 struct TimeoutInfo
 {
@@ -232,7 +233,7 @@ public:
       resp->setHeaders(downloadRequest->headerData(), downloadRequest->headerDataSize());
       resp->setDownloadedData(downloadRequest->downloadedData(), downloadRequest->downloadedDataSize());
 
-      if (mMetricsListener)
+      if (mMetricsListener && envValue)
       {
  	rtLogWarn("metriclistener");
         NetworkMetrics *metrics = new NetworkMetrics();
