@@ -62,8 +62,6 @@ static AAMPJSBindings* gAAMPJSBindings = nullptr;
 //BIG CHANGE
 extern void functionLoadModule(JSGlobalContextRef ref, JSObjectRef globalObjectRef, char* buffer, int len, char* name);
 
-static const char* envValue = std::getenv("NATIVEJS_DUMP_NETWORKMETRIC");
-
 JSContextGroupRef globalContextGroup()
 {
     static JSContextGroupRef gGroupRef = JSContextGroupCreate();
@@ -134,13 +132,17 @@ void JavaScriptContext::loadAAMPJSBindingsLib()
     if (nullptr == gAAMPJSBindings->PlayerLibHandle)
     {
         static const char *aampJSBindingsLib = "libaampjsbindings.so";
+	// This is required for NativeJS Plugin 
+	#if 0
 	static const char *jscLib = "libJavaScriptCore.so";
 	jscLibHandle = dlopen(jscLib, RTLD_NOW | RTLD_GLOBAL);
 	if (!jscLibHandle)
 	{
 	    std::cout<<"dlopen error for jsc library " << dlerror() << std::endl;
 	}
-        void *aampJSBindingsLibHandle = dlopen(aampJSBindingsLib, RTLD_NOW | RTLD_GLOBAL);
+	#endif
+        
+	void *aampJSBindingsLibHandle = dlopen(aampJSBindingsLib, RTLD_NOW | RTLD_GLOBAL);
         if (aampJSBindingsLibHandle)
         {
             gAAMPJSBindings->PlayerLibHandle = aampJSBindingsLibHandle;
@@ -165,7 +167,7 @@ void JavaScriptContext::unloadAAMPJSBindingsLib()
     if (nullptr != gAAMPJSBindings->PlayerLibHandle)
     {
         dlclose(gAAMPJSBindings->PlayerLibHandle);
-	dlclose(jscLibHandle);
+	//dlclose(jscLibHandle);
 
     }
 }
@@ -481,9 +483,7 @@ void JavaScriptContext::onMetricsData (NetworkMetrics *net)
     rtString key = net->url;
     mNetworkMetricsData->set(key, rtValue((void *)net));
 
-    if (envValue) {
-        dumpNetworkMetricData(net, this->getUrl());
-    }
+    dumpNetworkMetricData(net, this->getUrl());
 }
 
 void JavaScriptContext::dumpNetworkMetricData(NetworkMetrics *metrics, std::string appUrl)
