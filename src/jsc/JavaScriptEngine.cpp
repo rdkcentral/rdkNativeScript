@@ -194,6 +194,7 @@ void JavaScriptEngine::collectGarbage()
 {
   if (gTopLevelContext)
   {
-    JSSynchronousGarbageCollectForDebugging(gTopLevelContext);
+    //JSSynchronousGarbageCollectForDebugging(gTopLevelContext);
+    JSGarbageCollect(gTopLevelContext);
   }
 }
