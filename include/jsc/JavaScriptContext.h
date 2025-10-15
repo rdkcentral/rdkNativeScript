@@ -86,7 +86,7 @@ class JavaScriptContext: public JavaScriptContextBase, public NetworkMetricsList
 
     void setCreateApplicationStartTime(double time);
     void setCreateApplicationEndTime(double time,uint32_t id);
-    void setPlaybackStartTime(double time);
+    virtual void setPlaybackStartTime(double time);
     void setAppdata(uint32_t id, const std::string& url);
     double getExecutionDuration() const;
 
