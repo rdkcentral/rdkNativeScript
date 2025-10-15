@@ -120,27 +120,29 @@ namespace JsRuntime {
                 bool initialize();
                 bool terminate();
                 void run();
-                void setEnvForConsoleMode(ModuleSettings& moduleSettings);
-                bool runApplication(uint32_t id, std::string url);
+                void setEnvForConsoleMode(ModuleSettings& moduleSettings, bool launchConsoleThread = true);
+                static bool consoleLoop;
+		bool runApplication(uint32_t id, std::string url);
                 bool runJavaScript(uint32_t id, std::string code);
                 uint32_t createApplication(ModuleSettings& moduleSettings) ;
                 bool terminateApplication(uint32_t id);
                 std::list<ApplicationDetails> getApplications();
                 void setExternalApplicationHandler(std::shared_ptr<IExternalApplicationHandler> handler);
-            private:
-		bool downloadFile(std::string& url, MemoryStruct& chunk);
-                void processDevConsoleRequests();
+	    protected:
+		static size_t write_data(void *ptr, size_t size, size_t nmemb, FILE *stream);
+		std::unique_ptr<ConsoleState> mConsoleState;
+		void processDevConsoleRequests();
                 void runDeveloperConsole(ModuleSettings moduleSettings);
+	    private:
+		bool downloadFile(std::string& url, MemoryStruct& chunk);
                 void createApplicationInternal(ApplicationRequest& appRequest);
                 void runApplicationInternal(ApplicationRequest& appRequest);
                 void terminateApplicationInternal(ApplicationRequest& appRequest);
                 void runJavaScriptInternal(ApplicationRequest& appRequest);
                 uint32_t createApplicationIdentifier();
-                static size_t write_data(void *ptr, size_t size, size_t nmemb, FILE *stream);
                 IJavaScriptEngine* mEngine;
                 bool mRunning;
                 std::string mTestFileName;
-                std::unique_ptr<ConsoleState> mConsoleState;
                 bool mEnableTestFileDOMSupport;
                 bool mEmbedThunderJS;
                 bool mEmbedRdkWebBridge;

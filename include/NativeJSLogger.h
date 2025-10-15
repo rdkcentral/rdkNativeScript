@@ -34,7 +34,7 @@ class NativeJSLogger
         static void setLogLevel(const char* loglevel);
 	static void isEthanLogEnabled();
         static void log(LogLevel level, const char* format, ...);
-    private:
+    protected:
         static LogLevel sLogLevel;
 	static bool mEthanLogEnabled;
 };

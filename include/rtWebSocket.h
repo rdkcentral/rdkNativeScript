@@ -96,11 +96,13 @@ public:
   /* run event loop */
   void poll();
 
-private:
+protected:
   rtEmitRef mEmit;
+  uWS::WebSocket <uWS::CLIENT>* mWs;
+
+private:
   int mTimeoutMs;
   uWS::Hub* mWSHub;
-  uWS::WebSocket <uWS::CLIENT>* mWs;
   std::map<std::string, std::string>* mHeaders;
   std::string mUri;
 };

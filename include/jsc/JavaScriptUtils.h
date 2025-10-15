@@ -21,6 +21,7 @@
 #define JAVASCRIPTMISC_H
 
 #include <JavaScriptCore/JavaScript.h>
+#include "rtHttpRequest.h"
 #include "rtString.h"
 #include "rtAtomic.h"
 #include <rtError.h>
@@ -31,6 +32,10 @@
 #include <functional>
 #include <vector>
 #include <thread>
+#include <queue>
+#include <chrono>
+#include <cstdint>
+
 namespace jsruntime
 {
 template<typename T>
@@ -51,6 +56,42 @@ protected:
   virtual ~RefCounted() {}
 };
 }
+
+class rtHttpRequestEx : public rtHttpRequest
+{
+public:
+  rtDeclareObject(rtHttpRequestEx, rtHttpRequest);
+  rtHttpRequestEx(const rtString& url);
+  rtHttpRequestEx(const rtObjectRef& options);
+  void onDownloadProgressImpl(double progress) final;
+  void onDownloadCompleteImpl(rtFileDownloadRequest* downloadRequest) final;
+};
+
+struct TimeoutInfo
+{
+    std::function<int ()> callback;
+    std::chrono::time_point<std::chrono::steady_clock> fireTime;
+    std::chrono::milliseconds interval;
+    bool repeat;
+    uint32_t tag;
+    bool canceled;
+};
+
+struct TimeoutInfoComparator
+{
+    constexpr bool operator()(const TimeoutInfo *lhs, const TimeoutInfo *rhs) const {
+        return !((lhs->fireTime < rhs->fireTime) ||
+                 ((lhs->fireTime == rhs->fireTime) && (lhs->tag < rhs->tag)));
+    }
+};
+
+class TimeoutQueue : public std::priority_queue<TimeoutInfo*, std::vector<TimeoutInfo*>, TimeoutInfoComparator>
+{
+public:
+    void pushTimeouts(const std::vector<TimeoutInfo*>& timerVec);
+    bool updateForInfo(const TimeoutInfo* info);
+};
+
 void dispatchOnMainLoop(std::function<void ()>&& fun);
 void dispatchPending();
 void dispatchTimeouts();
@@ -73,6 +114,7 @@ rtError rtSetVideoStartTimeBinding(int numArgs, const rtValue* args, rtValue* re
 rtError rtJSRuntimeDownloadMetrics(int numArgs, const rtValue* args, rtValue* result, void* context);
 rtError rtSetExternalAppHandlerBinding(int numArgs, const rtValue* args, rtValue* result, void* context);
 rtError rtGetRandomValuesBinding(int numArgs, const rtValue* args, rtValue* result, void* context);
+rtError rtInstallTimeout(int numArgs, const rtValue* args, rtValue* result, bool repeat);
 JSValueRef requireCallback(JSContextRef ctx, JSObjectRef, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef *exception);
 
 #endif /* JAVASCRIPTMISC_H */

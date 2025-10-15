@@ -38,10 +38,12 @@ class EssosInstance
         void onKeyRelease(struct JavaScriptKeyDetails& details);
         void update();
         void registerKeyListener(JavaScriptKeyListener*);
+    
+    protected:
+	static EssosInstance* mInstance;
 
     private:
         EssosInstance();
-        static EssosInstance* mInstance;
         EssCtx * mEssosContext;
         bool mUseWayland;
         JavaScriptKeyListener* mJavaScriptKeyListener;
