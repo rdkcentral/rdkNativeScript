@@ -103,6 +103,10 @@ NativeJSRenderer::NativeJSRenderer(std::string waylandDisplay): mEngine(nullptr)
     }
 
     const char* levelFromEnv = getenv("NATIVEJS_LOG_LEVEL");
+
+    //setting the base userAgent value
+    mBaseUserAgent = "Mozilla/5.0 (X11; Linux armv7l) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15 ";
+
     // checking for ethan log env 
     #ifdef USE_ETHANLOG
     NativeJSLogger::isEthanLogEnabled();
@@ -214,12 +218,12 @@ uint32_t NativeJSRenderer::createApplicationIdentifier()
     return ret;
 }
 
-uint32_t  NativeJSRenderer::createApplication(ModuleSettings& moduleSettings)
+uint32_t  NativeJSRenderer::createApplication(ModuleSettings& moduleSettings, std::string userAgent)
 {
     uint32_t id=0;
 	mUserMutex.lock();
     id = createApplicationIdentifier();
-	ApplicationRequest request(id, CREATE, "", moduleSettings.enableHttp, moduleSettings.enableXHR, moduleSettings.enableWebSocket, moduleSettings.enableWebSocketEnhanced, moduleSettings.enableFetch, moduleSettings.enableJSDOM, moduleSettings.enableWindow, moduleSettings.enablePlayer);
+	ApplicationRequest request(id, CREATE, "", moduleSettings.enableHttp, moduleSettings.enableXHR, moduleSettings.enableWebSocket, moduleSettings.enableWebSocketEnhanced, moduleSettings.enableFetch, moduleSettings.enableJSDOM, moduleSettings.enableWindow, moduleSettings.enablePlayer, userAgent);
 	gPendingRequests.push_back(request);
 	mUserMutex.unlock();
 	return id;
@@ -289,7 +293,7 @@ void NativeJSRenderer::createApplicationInternal(ApplicationRequest& appRequest)
 	settings.enableWindow = appRequest.mEnableWindow;
 	settings.enablePlayer = appRequest.mEnablePlayer;
 	uint32_t id= appRequest.mId;
-
+	std::string userAgent = appRequest.mUserAgent;
 	JavaScriptContextFeatures features(mEmbedThunderJS, mEmbedRdkWebBridge, mEnableWebSocketServer, settings);
         JavaScriptContext* context = new JavaScriptContext(features, "" , mEngine);
         if(NULL == context)
@@ -297,7 +301,12 @@ void NativeJSRenderer::createApplicationInternal(ApplicationRequest& appRequest)
         	NativeJSLogger::log(DEBUG, "Context not created for ID: %d\n", id);
         	return ;
         }
-        NativeJSLogger::log(DEBUG, "Context created for ID: %d\n", id);
+	
+	std::stringstream uagent;
+        uagent << "window.navigator.userAgent = \"" << userAgent << "\";";
+        context->runScript(uagent.str().c_str(),true, userAgent, nullptr, true);
+        
+	NativeJSLogger::log(DEBUG, "Context created for ID: %d\n", id);
 	 if (mExternalApplicationHandler) {
         context->setExternalApplicationHandler(mExternalApplicationHandler);
     }
@@ -619,3 +628,9 @@ void NativeJSRenderer::setExternalApplicationHandler(std::shared_ptr<IExternalAp
 {
     mExternalApplicationHandler = handler;
 }
+
+std::string NativeJSRenderer::getBaseUserAgent()
+{
+        return mBaseUserAgent;
+}
+
