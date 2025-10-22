@@ -92,7 +92,7 @@ namespace JsRuntime {
 
         struct ApplicationRequest
         {
-          ApplicationRequest(uint32_t id, RequestType requestType, std::string url="", bool enableHttp=false, bool enableXHR=false, bool enableWebSocket=false, bool enableWebSocketEnhanced=false, bool enableFetch=false, bool enableJSDOM=false, bool enableWindow=false, bool enablePlayer=false): mId(id), mRequestType(requestType), mUrl(url), mEnableHttp(enableHttp), mEnableXHR(enableXHR), mEnableWebSocket(enableWebSocket), mEnableWebSocketEnhanced(enableWebSocketEnhanced), mEnableFetch(enableFetch), mEnableJSDOM(enableJSDOM), mEnableWindow(enableWindow), mEnablePlayer(enablePlayer)
+          ApplicationRequest(uint32_t id, RequestType requestType, std::string url="", bool enableHttp=false, bool enableXHR=false, bool enableWebSocket=false, bool enableWebSocketEnhanced=false, bool enableFetch=false, bool enableJSDOM=false, bool enableWindow=false, bool enablePlayer=false, std::string userAgent=""): mId(id), mRequestType(requestType), mUrl(url), mEnableHttp(enableHttp), mEnableXHR(enableXHR), mEnableWebSocket(enableWebSocket), mEnableWebSocketEnhanced(enableWebSocketEnhanced), mEnableFetch(enableFetch), mEnableJSDOM(enableJSDOM), mEnableWindow(enableWindow), mEnablePlayer(enablePlayer), mUserAgent(userAgent)
           {
           }
           uint32_t mId;
@@ -106,6 +106,8 @@ namespace JsRuntime {
           bool mEnableJSDOM;
           bool mEnableWindow;
           bool mEnablePlayer;
+          std::string mUserAgent;
+
         };
         struct ApplicationData{
           std::string url;
@@ -123,10 +125,11 @@ namespace JsRuntime {
                 void setEnvForConsoleMode(ModuleSettings& moduleSettings);
                 bool runApplication(uint32_t id, std::string url);
                 bool runJavaScript(uint32_t id, std::string code);
-                uint32_t createApplication(ModuleSettings& moduleSettings) ;
+                uint32_t createApplication(ModuleSettings& moduleSettings, std::string userAgent) ;
                 bool terminateApplication(uint32_t id);
                 std::list<ApplicationDetails> getApplications();
                 void setExternalApplicationHandler(std::shared_ptr<IExternalApplicationHandler> handler);
+                std::string getBaseUserAgent();
             private:
 		bool downloadFile(std::string& url, MemoryStruct& chunk);
                 void processDevConsoleRequests();
@@ -151,5 +154,6 @@ namespace JsRuntime {
                 std::map<uint32_t, ApplicationData> mContextMap;
                 std::vector<ApplicationRequest> gPendingRequests;
                 std::shared_ptr<IExternalApplicationHandler> mExternalApplicationHandler;
+                std::string mBaseUserAgent;
 	};
 };
