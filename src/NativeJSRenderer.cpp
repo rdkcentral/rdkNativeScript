@@ -54,6 +54,10 @@ using namespace JsRuntime;
 rtThreadQueue* gUIThreadQueue = NULL;
 #endif
 
+namespace JsRuntime {
+        std::string DEFAULT_USER_AGENT = "Mozilla/5.0 (X11; Linux armv7l) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15 ";
+}
+
 static size_t HeaderCallback(void *contents, size_t size, size_t nmemb, void *userp)
 {
   size_t downloadSize = size * nmemb;
@@ -92,7 +96,7 @@ static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, voi
   return downloadSize;
 }
 
-NativeJSRenderer::NativeJSRenderer(std::string waylandDisplay): mEngine(nullptr), mRunning(true), mEnableTestFileDOMSupport(false), mEmbedThunderJS(false), mEmbedRdkWebBridge(false), mEnableWebSocketServer(false), mContextMap(), mEssosInitialized(false), mConsoleMode(false)
+NativeJSRenderer::NativeJSRenderer(std::string waylandDisplay): mEngine(nullptr), mRunning(true), mEnableTestFileDOMSupport(false), mEmbedThunderJS(false), mEmbedRdkWebBridge(false), mEnableWebSocketServer(false), mContextMap(), mEssosInitialized(false), mConsoleMode(false), mBaseUserAgent(DEFAULT_USER_AGENT)
 {
     if (waylandDisplay.size() > 0)
     {
@@ -103,9 +107,6 @@ NativeJSRenderer::NativeJSRenderer(std::string waylandDisplay): mEngine(nullptr)
     }
 
     const char* levelFromEnv = getenv("NATIVEJS_LOG_LEVEL");
-
-    //setting the base userAgent value
-    mBaseUserAgent = "Mozilla/5.0 (X11; Linux armv7l) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15 ";
 
     // checking for ethan log env 
     #ifdef USE_ETHANLOG
@@ -305,7 +306,8 @@ void NativeJSRenderer::createApplicationInternal(ApplicationRequest& appRequest)
 	std::stringstream uagent;
         uagent << "window.navigator.userAgent = \"" << userAgent << "\";";
         context->runScript(uagent.str().c_str(),true, userAgent, nullptr, true);
-        
+
+	NativeJSLogger::log(INFO, "UserAgent set to : %s", userAgent.c_str());         
 	NativeJSLogger::log(DEBUG, "Context created for ID: %d\n", id);
 	 if (mExternalApplicationHandler) {
         context->setExternalApplicationHandler(mExternalApplicationHandler);

@@ -34,6 +34,8 @@
 
 namespace JsRuntime {
 
+	extern std::string DEFAULT_USER_AGENT;
+
         struct MemoryStruct
         {
             MemoryStruct()
@@ -125,12 +127,12 @@ namespace JsRuntime {
                 void setEnvForConsoleMode(ModuleSettings& moduleSettings);
                 bool runApplication(uint32_t id, std::string url);
                 bool runJavaScript(uint32_t id, std::string code);
-                uint32_t createApplication(ModuleSettings& moduleSettings, std::string userAgent) ;
+                uint32_t createApplication(ModuleSettings& moduleSettings, std::string userAgent = DEFAULT_USER_AGENT) ;
                 bool terminateApplication(uint32_t id);
                 std::list<ApplicationDetails> getApplications();
-                void setExternalApplicationHandler(std::shared_ptr<IExternalApplicationHandler> handler);
+		void setExternalApplicationHandler(std::shared_ptr<IExternalApplicationHandler> handler);
                 std::string getBaseUserAgent();
-            private:
+	    private:
 		bool downloadFile(std::string& url, MemoryStruct& chunk);
                 void processDevConsoleRequests();
                 void runDeveloperConsole(ModuleSettings moduleSettings);
@@ -154,6 +156,7 @@ namespace JsRuntime {
                 std::map<uint32_t, ApplicationData> mContextMap;
                 std::vector<ApplicationRequest> gPendingRequests;
                 std::shared_ptr<IExternalApplicationHandler> mExternalApplicationHandler;
-                std::string mBaseUserAgent;
+		std::string mBaseUserAgent;
+
 	};
 };
