@@ -134,7 +134,7 @@ int main(int argc, char* argv[])
         
         applicationThreads.emplace_back([renderer, url, &moduleSettings]() {
         NativeJSLogger::log(INFO, "Application URL is %s\n", (url.size() ? url.c_str() : "empty"));
-	uint32_t id = renderer->createApplication(moduleSettings,renderer->getBaseUserAgent());
+	uint32_t id = renderer->createApplication(moduleSettings);
         renderer->runApplication(id, url);
         //renderer->runJavaScript(id,url);
 #if defined(NATIVEJS_DEVELOPER_MODE)
