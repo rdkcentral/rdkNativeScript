@@ -217,7 +217,7 @@ void JSRuntimeServer::onMessage(websocketpp::connection_hdl hdl, message_ptr msg
             std::string options = jParams.getString("moduleSettings", error);
             ModuleSettings moduleSettings;
             moduleSettings.fromString(options);
-	    uint32_t id = mRenderer->createApplication(moduleSettings, mRenderer->getBaseUserAgent());
+	    uint32_t id = mRenderer->createApplication(moduleSettings);
             mRenderer->runApplication(id, url);
             std::ostringstream oss;
 	    oss<< "ID : " << id;
@@ -237,7 +237,7 @@ void JSRuntimeServer::onMessage(websocketpp::connection_hdl hdl, message_ptr msg
             }
             ModuleSettings moduleSettings;
             moduleSettings.fromString(options);
-            uint32_t id = mRenderer->createApplication(moduleSettings,mRenderer->getBaseUserAgent());
+            uint32_t id = mRenderer->createApplication(moduleSettings);
             std::ostringstream oss;
             oss<< "ID : " << id;
             result = oss.str();

@@ -92,7 +92,7 @@ static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, voi
   return downloadSize;
 }
 
-NativeJSRenderer::NativeJSRenderer(std::string waylandDisplay): mEngine(nullptr), mRunning(true), mEnableTestFileDOMSupport(false), mEmbedThunderJS(false), mEmbedRdkWebBridge(false), mEnableWebSocketServer(false), mContextMap(), mEssosInitialized(false), mConsoleMode(false)
+NativeJSRenderer::NativeJSRenderer(std::string waylandDisplay): mEngine(nullptr), mRunning(true), mEnableTestFileDOMSupport(false), mEmbedThunderJS(false), mEmbedRdkWebBridge(false), mEnableWebSocketServer(false), mContextMap(), mEssosInitialized(false), mConsoleMode(false), mBaseUserAgent(DEFAULT_USER_AGENT)
 {
     if (waylandDisplay.size() > 0)
     {
@@ -103,9 +103,6 @@ NativeJSRenderer::NativeJSRenderer(std::string waylandDisplay): mEngine(nullptr)
     }
 
     const char* levelFromEnv = getenv("NATIVEJS_LOG_LEVEL");
-
-    //setting the base userAgent value
-    mBaseUserAgent = "Mozilla/5.0 (X11; Linux armv7l) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15 ";
 
     // checking for ethan log env 
     #ifdef USE_ETHANLOG
