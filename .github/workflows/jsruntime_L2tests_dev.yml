@@ -1,0 +1,184 @@
+name: L2 Tests (Development - Use Existing Artifacts)
+
+on:
+  workflow_dispatch:
+    inputs:
+      artifact_run_id:
+        description: 'Run ID of the workflow that created the build artifacts'
+        required: true
+        type: string
+  push:
+     branches: [topic/RDKEMW-9172]     
+
+jobs:
+  run-l2-tests-only:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout rdkNativeScript_tests repository)
+        uses: actions/checkout@v3
+        with:
+          repository: rdk-e/rdkNativeScript_tests
+          ref: topic/RDKEMW-9172             
+          path: rdkNativeScript_tests
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Download build artifacts from previous run
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          workflow: jsruntime_L2tests.yml
+          run_id: ${{ inputs.artifact_run_id }}
+          name: jsruntime-build-artifacts
+          path: artifacts/
+          if_no_artifact_found: fail
+
+      - name: Setup directory structure
+        run: |
+          mkdir -p build
+          mkdir -p externals/extlibs
+
+      - name: Copy static extlibs (JavaScriptCore, essos, ICU, etc.)
+        run: |
+          echo "Copying static extlibs from test repository..."
+          cp -R rdkNativeScript_tests/externals/extlibs/* externals/extlibs/
+          echo "Static extlibs lib copied:"
+          ls -lh externals/extlibs/lib/ | head -20
+          echo ""
+          echo "Static extlibs include copied:"
+          ls -lh externals/extlibs/include/ | head -20
+
+      - name: Copy runtime artifacts (built binaries and AAMP libs)
+        run: |
+          echo "Copying downloaded build artifacts..."
+          cp artifacts/build/JSRuntimeClient build/ 2>/dev/null || true
+          cp artifacts/build/JSRuntimeJSC build/
+          cp artifacts/build/*.so build/ 2>/dev/null || true
+          cp -R artifacts/build/modules build/ 2>/dev/null || true
+          cp -R artifacts/build/jsc_modules build/ 2>/dev/null || true
+          
+          echo "Merging runtime extlibs (AAMP libs and headers)..."
+          cp -R artifacts/externals/extlibs/lib/* externals/extlibs/lib/ 2>/dev/null || true
+          cp -R artifacts/externals/extlibs/include/* externals/extlibs/include/ 2>/dev/null || true
+          
+          echo ""
+          echo "Build directory contents:"
+          ls -lh build/
+          echo ""
+          echo "Final extlibs lib directory:"
+          ls -lh externals/extlibs/lib/ | head -30
+          echo ""
+          echo "Final extlibs include directory:"
+          ls -lh externals/extlibs/include/ | head -30
+
+      - name: Install runtime dependencies only
+        run: |
+          sudo apt-get update && sudo apt-get install -y \
+            libglib2.0-0 libgstreamer1.0-0 libgstreamer-plugins-base1.0-0 \
+            libwayland-client0 libcurl4
+
+      - name: Create library symlinks
+        run: |
+          cd externals/extlibs/lib
+          
+          # JavaScriptCore symlinks
+          ln -sf libJavaScriptCore.so.1.0.0 libJavaScriptCore.so.1
+          ln -sf libJavaScriptCore.so.1 libJavaScriptCore.so
+
+          # Essos symlinks
+          ln -sf libessos.so.0.0.0 libessos.so.0
+          ln -sf libessos.so.0 libessos.so
+
+          ln -sf libessosrmgr.so.0.0.0 libessosrmgr.so.0
+          ln -sf libessosrmgr.so.0 libessosrmgr.so
+
+          # UV symlinks
+          ln -sf libuv.so.1.0.0 libuv.so.1
+          ln -sf libuv.so.1 libuv.so
+          
+          # x86_64-linux-gnu symlinks
+          cd x86_64-linux-gnu
+          ln -sf libgio-2.0.so.0.6200.4 libgio-2.0.so.0
+          ln -sf libgio-2.0.so.0 libgio-2.0.so
+
+          ln -sf libgmodule-2.0.so.0.6200.4 libgmodule-2.0.so.0
+          ln -sf libgmodule-2.0.so.0 libgmodule-2.0.so
+
+          ln -sf libgthread-2.0.so.0.6200.4 libgthread-2.0.so.0
+          ln -sf libgthread-2.0.so.0 libgthread-2.0.so
+
+      - name: Set permissions on binaries
+        run: |
+          chmod +x build/JSRuntimeClient 2>/dev/null || true
+          chmod +x build/JSRuntimeJSC
+          chmod +x build/*.so 2>/dev/null || true
+
+      - name: Set LD_LIBRARY_PATH for runtime
+        run: |
+          echo "LD_LIBRARY_PATH=$(pwd)/externals/extlibs/lib:$(pwd)/externals/extlibs/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}" >> $GITHUB_ENV
+
+      - name: Verify JSRuntimeJSC binary
+        run: |
+          echo "=== Binary Information ==="
+          ls -lh build/JSRuntimeJSC
+          file build/JSRuntimeJSC
+          echo ""
+          echo "=== Library Dependencies ==="
+          ldd build/JSRuntimeJSC || true
+          echo ""
+          echo "=== Modules Directory ==="
+          ls -la build/modules/ 2>/dev/null || echo "No modules directory"
+          ls -la build/jsc_modules/ 2>/dev/null || echo "No jsc_modules directory"
+
+      - name: Make L2 test scripts executable
+        run: |
+          chmod +x rdkNativeScript_tests/L2/test_framework/*.sh
+
+      - name: Verify binary before running L2 tests
+        run: |
+          cd rdkNativeScript_tests/L2/test_framework
+          export JSRUNTIME_BINARY="${GITHUB_WORKSPACE}/build/JSRuntimeJSC"
+          ./verify_binary.sh || true
+
+      - name: Run L2 Integration Tests
+        run: |
+          cd rdkNativeScript_tests/L2/test_framework
+          export JSRUNTIME_BINARY="${GITHUB_WORKSPACE}/build/JSRuntimeJSC"
+          ./run_tests.sh
+        env:
+          JSRUNTIME_LOG_LEVEL: INFO
+
+      - name: Upload L2 test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: l2-test-results-dev
+          path: |
+            rdkNativeScript_tests/L2/test_results/*.log
+            rdkNativeScript_tests/L2/test_results/*.exitcode
+          if-no-files-found: warn
+
+      - name: Display test summary
+        if: always()
+        run: |
+          echo "=== L2 Test Results Summary ==="
+          if [ -d "rdkNativeScript_tests/L2/test_results" ]; then
+            echo "Test logs:"
+            ls -lh rdkNativeScript_tests/L2/test_results/
+            echo ""
+            echo "Exit codes:"
+            for exitcode_file in rdkNativeScript_tests/L2/test_results/*.exitcode; do
+              if [ -f "$exitcode_file" ]; then
+                test_name=$(basename "$exitcode_file" .log.exitcode)
+                exit_code=$(cat "$exitcode_file")
+                if [ "$exit_code" = "0" ]; then
+                  echo "✓ $test_name: PASS (exit code $exit_code)"
+                else
+                  echo "✗ $test_name: FAIL (exit code $exit_code)"
+                fi
+              fi
+            done
+          else
+            echo "No test results found"
+          fi
+

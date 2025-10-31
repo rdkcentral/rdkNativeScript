@@ -1,0 +1,134 @@
+name: L2 Unit Tests for rdkNativeScript
+permissions:
+  contents: read
+  checks: write
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [topic/RDKEMW]
+  pull_request:
+    branches: [topic/RDKEMW]
+
+env:
+  AUTOMATICS_UNAME: ${{ secrets.AUTOMATICS_UNAME }}
+  AUTOMATICS_PASSCODE: ${{ secrets.AUTOMATICS_PASSCODE }}
+
+jobs:
+  build-and-test-l1:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main source repository
+        uses: actions/checkout@v3
+
+      - name: Checkout rdkNativeScript_tests repository 
+        uses: actions/checkout@v3
+        with:
+          repository: rdk-e/rdkNativeScript_tests
+          ref: topic/RDKEMW-9172            
+          path: rdkNativeScript_tests
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y \
+            git cmake gperf ruby-dev libglew-dev libglut-dev \
+            libglib2.0-dev libglib2.0-0 g++ meson bison libjpeg-dev libpng-dev \
+            libfreetype6-dev libicu-dev autoconf libtool libxml2-dev \
+            libcurl4-openssl-dev libexpat1-dev doxygen vim libcjson-dev \
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+            libwayland-bin libwayland-dev wayland-protocols \
+            libreadline-dev net-tools libmount1 libpcre3 libselinux1 zlib1g \
+            libunwind-dev libboost-dev libboost-system-dev libboost-thread-dev libboost-chrono-dev libwebsocketpp-dev 
+     
+      - name: Setup externals folder
+        run: |
+          pwd
+          cp -a rdkNativeScript_tests/externals externals
+
+      - name: Make build.sh and scripts executable
+        run: |
+          pwd
+          chmod +x externals/build.sh
+          find externals -type f -name "preparedashpc.sh" -exec chmod +x {} \;
+          find externals -type f -name "copydashheaders.sh" -exec chmod +x {} \;
+
+      - name: Run build.sh to build externals (from tests repo)
+        run: |
+          cd externals
+          ./build.sh
+      
+      - name: Set LD_LIBRARY_PATH for ICU 66
+        run: echo "LD_LIBRARY_PATH=$(pwd)/externals/extlibs/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+      
+      - name: Symlinks for JavaScriptCore libraries
+        run: |
+          cd externals/extlibs/lib
+          ln -s libJavaScriptCore.so.1.0.0 libJavaScriptCore.so.1
+          ln -s libJavaScriptCore.so.1 libJavaScriptCore.so
+
+          ln -s libessos.so.0.0.0 libessos.so.0
+          ln -s libessos.so.0 libessos.so
+
+          ln -s libessosrmgr.so.0.0.0 libessosrmgr.so.0
+          ln -s libessosrmgr.so.0 libessosrmgr.so
+
+          ln -s libuv.so.1.0.0 libuv.so.1
+          ln -s libuv.so.1 libuv.so
+
+      - name: Symlinks for x86_64-linux-gnu libraries
+        run: |
+          cd externals/extlibs/lib/x86_64-linux-gnu
+          ln -s libgio-2.0.so.0.6200.4 libgio-2.0.so.0
+          ln -s libgio-2.0.so.0 libgio-2.0.so
+
+          ln -s libgmodule-2.0.so.0.6200.4 libgmodule-2.0.so.0
+          ln -s libgmodule-2.0.so.0 libgmodule-2.0.so
+
+          ln -s libgthread-2.0.so.0.6200.4 libgthread-2.0.so.0
+          ln -s libgthread-2.0.so.0 libgthread-2.0.so
+
+      - name: Configure and build nativescript
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. \
+            -DENABLE_JSRUNTIME_ESSOS=ON \
+            -DJSRUNTIME_ENGINE_NAME=jsc \
+            -DENABLE_JSRUNTIME_PLAYER=ON \
+            -DENABLE_AAMP_JSBINDINGS_DYNAMIC=ON \
+            -DBUILD_JSRUNTIME_CLIENT=ON \
+            -DENABLE_JSRUNTIME_SERVER=ON \
+            -DCMAKE_CXX_FLAGS="-I../externals/extlibs/include/rtcore"
+          cmake --build .
+
+      - name: Setup modules directory for JSRuntimeJSC
+        run: |
+          cd build
+          mkdir -p modules
+          mkdir -p jsc_modules
+          cp -R ../utils jsc_modules/
+          cp -R ../src/jsc/modules/* modules/ 2>/dev/null || true
+          cp -R ../utils/* modules/ 2>/dev/null || true
+          echo "Modules directory setup complete"
+          ls -la modules/
+          ls -la jsc_modules/
+
+      - name: Upload build artifacts for reuse
+        uses: actions/upload-artifact@v4
+        with:
+          name: jsruntime-build-artifacts
+          path: |
+            build/JSRuntimeClient
+            build/JSRuntimeJSC
+            build/libjsclib.so
+            build/libJSRuntimeJSC.so
+            build/modules/
+            build/jsc_modules/
+            externals/extlibs/lib/
+            externals/extlibs/include/
+          if-no-files-found: error
+          retention-days: 30
+
+
