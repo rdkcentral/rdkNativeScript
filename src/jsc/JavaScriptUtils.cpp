@@ -803,6 +803,7 @@ rtError rtSetExternalAppHandlerBinding(int numArgs, const rtValue* args, rtValue
 
 rtError rtGetRandomValuesBinding(int numArgs, const rtValue* args, rtValue* /*result*/, void* /*context*/) 
 {
+	printf("------------###RANDOMNUMBER###-----------");
     if (numArgs < 1 || args[0].getType() != RT_objectType) {
         rtLogError("rtGetRandomValuesBinding: Invalid arguments");
         return RT_ERROR_INVALID_ARG;

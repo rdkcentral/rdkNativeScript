@@ -31,6 +31,7 @@
 #include <ModuleSettings.h>
 #include <condition_variable>
 #include <list>
+#include <thread>
 
 namespace JsRuntime {
 
@@ -125,7 +126,10 @@ namespace JsRuntime {
                 bool terminate();
                 void run();
                 void setEnvForConsoleMode(ModuleSettings& moduleSettings);
-                bool runApplication(uint32_t id, std::string url);
+                static std::atomic_bool consoleLoop;
+                std::atomic_bool mShutdownConsole{false};
+                std::thread mConsoleThread;
+		bool runApplication(uint32_t id, std::string url);
                 bool runJavaScript(uint32_t id, std::string code);
                 uint32_t createApplication(ModuleSettings& moduleSettings, std::string userAgent = DEFAULT_USER_AGENT) ;
                 bool terminateApplication(uint32_t id);
