@@ -91,14 +91,19 @@ class JavaScriptContext: public JavaScriptContextBase, public NetworkMetricsList
     double getExecutionDuration() const;
 
     void handleExternalApplication(const std::string& url);
-
-  private:
     bool evaluateScript(const char *script, const char *name, const char *args = nullptr, bool module = false);
     void processKeyEvent(struct JavaScriptKeyDetails& details, bool keyPress);
     void registerUtils();
+#ifdef UNIT_TEST_BUILD
+    void loadAAMPJSBindingsLib();
+#endif
+  
+   private:
 #ifdef ENABLE_JSRUNTIME_PLAYER
 #ifdef ENABLE_AAMP_JSBINDINGS_DYNAMIC
+#ifndef UNIT_TEST_BUILD
     void loadAAMPJSBindingsLib();
+#endif
     void unloadAAMPJSBindingsLib();
     void *jscLibHandle = nullptr;
 #endif
