@@ -2,7 +2,8 @@
 const urlencoded = require("./urlencoded");
 
 exports.implementation = class URLSearchParamsImpl {
-  constructor(globalObject, constructorArgs, { doNotStripQMark = false }) {
+  constructor(globalObject, constructorArgs = [""], options = {}) {
+    const { doNotStripQMark = false } = options || {};
     let init = constructorArgs[0];
     this._list = [];
     this._url = null;
