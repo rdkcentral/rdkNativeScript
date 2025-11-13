@@ -161,6 +161,5 @@ namespace JsRuntime {
                 std::vector<ApplicationRequest> gPendingRequests;
                 std::shared_ptr<IExternalApplicationHandler> mExternalApplicationHandler;
 		std::string mBaseUserAgent;
-
 	};
 };

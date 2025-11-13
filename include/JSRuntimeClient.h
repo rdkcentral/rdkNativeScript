@@ -90,7 +90,7 @@ public:
 
     std::string getState();
 
-private:
+protected:
     void onMessage(websocketpp::connection_hdl hdl, message_ptr msg);
     void setState(const std::string &state);
     void onOpen(websocketpp::connection_hdl hdl);

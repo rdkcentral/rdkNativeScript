@@ -196,7 +196,7 @@ NativeJSRenderer::~NativeJSRenderer()
   
 }
 
-void NativeJSRenderer::setEnvForConsoleMode(ModuleSettings& moduleSettings)
+void NativeJSRenderer::setEnvForConsoleMode(ModuleSettings& moduleSettings, bool launchConsoleThread)
 {
 
    if (mConsoleThread.joinable()) {
@@ -217,7 +217,9 @@ void NativeJSRenderer::setEnvForConsoleMode(ModuleSettings& moduleSettings)
     }
     mConsoleState->consoleContext = context;
 
+    if (launchConsoleThread) {
     NativeJSLogger::log(INFO, "Running developer console...\n");
+    
     mConsoleThread = std::thread(&JsRuntime::NativeJSRenderer::runDeveloperConsole, this, std::ref(mConsoleState->moduleSettings));
 
     mConsoleMode = true;
