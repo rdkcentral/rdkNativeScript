@@ -70,45 +70,25 @@ static std::list<std::function<void ()>> gPendingFun;
 static std::mutex gDispatchMutex;
 static const char* envValue = std::getenv("NATIVEJS_DUMP_NETWORKMETRIC");
 
-struct TimeoutInfo
+void TimeoutQueue::pushTimeouts(const std::vector<TimeoutInfo*>& timerVec)
 {
-  std::function<int ()> callback;
-  std::chrono::time_point<std::chrono::steady_clock> fireTime;
-  std::chrono::milliseconds interval;
-  bool repeat;
-  uint32_t tag;
-  bool canceled;
-};
-
-struct TimeoutInfoComparator
-{
-  constexpr bool operator()(const TimeoutInfo *lhs, const TimeoutInfo *rhs) const {
-    return !((lhs->fireTime < rhs->fireTime) ||
-             ((lhs->fireTime == rhs->fireTime) && (lhs->tag < rhs->tag)));
-  }
-};
-
-class TimeoutQueue : public std::priority_queue<TimeoutInfo*, std::vector<TimeoutInfo*>, TimeoutInfoComparator>
-{
-public:
-  void pushTimeouts(const std::vector<TimeoutInfo*>& timerVec)
-  {
     if (!timerVec.size())
-      return;
-    c.reserve(c.size() + timerVec.size());
-    c.insert(c.end(),timerVec.begin(), timerVec.end());
-    std::make_heap(c.begin(), c.end(), comp);
-  }
-  bool updateForInfo(const TimeoutInfo* info)
-  {
-    auto it = std::find(c.begin(), c.end(), info);
-    if (it != c.end()) {
-      std::make_heap(c.begin(), c.end(), comp);
-      return true;
+        return;
+    this->c.reserve(this->c.size() + timerVec.size());
+    this->c.insert(this->c.end(), timerVec.begin(), timerVec.end());
+    std::make_heap(this->c.begin(), this->c.end(), this->comp);
+}
+
+bool TimeoutQueue::updateForInfo(const TimeoutInfo* info)
+{
+    auto it = std::find(this->c.begin(), this->c.end(), info);
+    if (it != this->c.end()) {
+        std::make_heap(this->c.begin(), this->c.end(), this->comp);
+        return true;
     }
     return false;
-  }
-};
+}
+
 static std::map<uint32_t, TimeoutInfo*> gTimeoutMap;
 static uint32_t gTimeoutIdx = 0;
 static TimeoutQueue gTimeoutQueue;
@@ -179,22 +159,17 @@ void assertIsMainThread()
   assert(std::this_thread::get_id() == gMainThreadId);
 }
 
-class rtHttpRequestEx : public rtHttpRequest
-{
-public:
-  rtDeclareObject(rtHttpRequestEx, rtHttpRequest);
-
-  rtHttpRequestEx(const rtString& url)
+  rtHttpRequestEx::rtHttpRequestEx(const rtString& url)
     : rtHttpRequest(url)
   {
   }
 
-  rtHttpRequestEx(const rtObjectRef& options)
+  rtHttpRequestEx::rtHttpRequestEx(const rtObjectRef& options)
     : rtHttpRequest(options)
   {
   }
 
-  void onDownloadProgressImpl(double progress) final
+  void rtHttpRequestEx::onDownloadProgressImpl(double progress) 
   {
 
     AddRef();
@@ -209,7 +184,7 @@ public:
         });
   }
 
-  void onDownloadCompleteImpl(rtFileDownloadRequest* downloadRequest) final
+  void rtHttpRequestEx::onDownloadCompleteImpl(rtFileDownloadRequest* downloadRequest) 
   {
     AddRef();
     if (!downloadRequest->errorString().isEmpty()) {
@@ -275,7 +250,6 @@ public:
         });
        }
      }
-  };
 
 rtDefineObject(rtHttpRequestEx, rtHttpRequest);
 

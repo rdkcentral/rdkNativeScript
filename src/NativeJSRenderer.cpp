@@ -190,7 +190,7 @@ NativeJSRenderer::~NativeJSRenderer()
     }
 }
 
-void NativeJSRenderer::setEnvForConsoleMode(ModuleSettings& moduleSettings)
+void NativeJSRenderer::setEnvForConsoleMode(ModuleSettings& moduleSettings, bool launchConsoleThread)
 {
     mConsoleState = std::make_unique<ConsoleState>();
     mConsoleState->moduleSettings = moduleSettings;
@@ -204,9 +204,11 @@ void NativeJSRenderer::setEnvForConsoleMode(ModuleSettings& moduleSettings)
     }
     mConsoleState->consoleContext = context;
 
+    if (launchConsoleThread) {
     NativeJSLogger::log(INFO, "Running developer console...\n");
     std::thread consoleThread(&JsRuntime::NativeJSRenderer::runDeveloperConsole, this, std::ref(mConsoleState->moduleSettings));
     consoleThread.detach();
+    }
 
     mConsoleMode = true;
 }
@@ -542,12 +544,10 @@ void NativeJSRenderer::processDevConsoleRequests()
     mConsoleState->inputMutex.unlock();
 }
 
-namespace {
-    bool consoleLoop = true;
-    void handleDevConsoleSigInt(int /*sig*/){
-        consoleLoop = false;
-    }
-} // namespace
+bool NativeJSRenderer::consoleLoop = true;
+void handleDevConsoleSigInt(int /*sig*/) {
+    NativeJSRenderer::consoleLoop = false;
+}
 
 void NativeJSRenderer::runDeveloperConsole(ModuleSettings moduleSettings)
 {

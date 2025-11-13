@@ -124,8 +124,9 @@ namespace JsRuntime {
                 bool initialize();
                 bool terminate();
                 void run();
-                void setEnvForConsoleMode(ModuleSettings& moduleSettings);
-                bool runApplication(uint32_t id, std::string url);
+                void setEnvForConsoleMode(ModuleSettings& moduleSettings, bool launchConsoleThread = true);
+                static bool consoleLoop;
+		bool runApplication(uint32_t id, std::string url);
                 bool runJavaScript(uint32_t id, std::string code);
                 uint32_t createApplication(ModuleSettings& moduleSettings, std::string userAgent = DEFAULT_USER_AGENT) ;
                 bool terminateApplication(uint32_t id);
@@ -157,6 +158,5 @@ namespace JsRuntime {
                 std::vector<ApplicationRequest> gPendingRequests;
                 std::shared_ptr<IExternalApplicationHandler> mExternalApplicationHandler;
 		std::string mBaseUserAgent;
-
 	};
 };
