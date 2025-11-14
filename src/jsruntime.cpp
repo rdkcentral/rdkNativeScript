@@ -122,7 +122,7 @@ int main(int argc, char* argv[])
     if (runServer == true)
     {
         JSRuntimeServer *server = JSRuntimeServer::getInstance();
-        server->initialize(WS_SERVER_PORT, renderer);
+        server->initialize(WS_SERVER_PORT, renderer, nullptr);
         server->start();
     }
 #endif
