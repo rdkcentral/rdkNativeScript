@@ -39,6 +39,8 @@ JSRuntimeClient::JSRuntimeClient() : mServerPort(0), mState("none")
 {
 }
 
+static std::string ip;
+
 void JSRuntimeClient::initialize(int serverPort)
 {
     mServerPort = serverPort;
@@ -61,7 +63,9 @@ bool JSRuntimeClient::run()
 {
     websocketpp::lib::error_code ec;
 
-    std::string uri = "ws://localhost:" + std::to_string(mServerPort);
+    //std::string uri = "ws://localhost:" + std::to_string(mServerPort);
+    std::string uri = ip + std::string(":") + std::to_string(mServerPort);
+    
     WsClient::connection_ptr con = mEndPoint.get_connection(uri, ec);
     if (ec)
     {
@@ -154,12 +158,14 @@ int main(int argc, char **argv)
 {
     std::string command;
     std::string response;
-
+/*
     if (argc > 1)
     {
 	NativeJSLogger::log(INFO, "Send input commands at ws://localhost:%s\n", std::to_string(WS_SERVER_PORT).c_str());
         return -1;
     }
+  */
+    ip = std::string(argv[1]);
 
     JSRuntimeClient *client = JSRuntimeClient::getInstance();
     client->initialize(WS_SERVER_PORT);
