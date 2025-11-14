@@ -19,6 +19,7 @@
 
 #pragma once
 #include <NativeJSRenderer.h>
+#include <IExternalApplicationHandler.h>
 
 #ifdef USE_WEBSOCKET_MOCK
 #include "websocketpp.hpp" 
@@ -40,7 +41,7 @@ public:
     static JSRuntimeServer *getInstance();
     ~JSRuntimeServer() = default;
 
-    void initialize(int serverport, std::shared_ptr<JsRuntime::NativeJSRenderer> renderer);
+    void initialize(int serverport, std::shared_ptr<JsRuntime::NativeJSRenderer> renderer, std::shared_ptr<IExternalApplicationHandler> externalHandler = nullptr);
     bool start();
     bool stop();
 
@@ -77,4 +78,5 @@ private:
     ConnectionSet mConnections;
     int mServerPort;
     std::shared_ptr<JsRuntime::NativeJSRenderer> mRenderer;
+    std::shared_ptr<IExternalApplicationHandler> mExternalHandler;
 };

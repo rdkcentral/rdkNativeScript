@@ -114,12 +114,15 @@ JSRuntimeServer::JSRuntimeServer() : mServerPort(0)
 {
 }
 
-void JSRuntimeServer::initialize(int serverport, std::shared_ptr<JsRuntime::NativeJSRenderer> renderer)
+void JSRuntimeServer::initialize(int serverport, std::shared_ptr<JsRuntime::NativeJSRenderer> renderer, std::shared_ptr<IExternalApplicationHandler> externalHandler)
 {
-    NativeJSLogger::log(INFO, "Enter: %s\n", __func__);
+    NativeJSLogger::log(INFO, "JSRuntimeServer::initialize - port=%d, externalHandler=%p\n", serverport, externalHandler.get());
 
     mServerPort = serverport;
     mRenderer = renderer;
+    mExternalHandler = externalHandler;
+    
+    NativeJSLogger::log(INFO, "JSRuntimeServer initialized - mExternalHandler=%p\n", mExternalHandler.get());
 }
 
 bool JSRuntimeServer::start()
@@ -202,7 +205,42 @@ void JSRuntimeServer::onMessage(websocketpp::connection_hdl hdl, message_ptr msg
         {
             break;
         }
-        if (method == "launchApplication")
+        
+        if (method == "runExternalApplication")
+        {
+            JsonWrap jParams(jRoot, "params");
+            if (jParams.get() == nullptr)
+            {
+                result = "error: missing params";
+                break;
+            }
+            
+            uint32_t id = jParams.getUint32("id", error);
+            if (error)
+            {
+                result = "error: invalid or missing id";
+                break;
+            }
+            
+            std::string url = jParams.getString("url", error);
+            if (error)
+            {
+                result = "error: invalid or missing url";
+                break;
+            }
+            
+            if (!mExternalHandler)
+            {
+                result = "error: external handler not available";
+                NativeJSLogger::log(ERROR, "External handler not initialized\n");
+                break;
+            }
+            
+            mExternalHandler->runExternalApplication(url, id);
+            result = "ok";
+            NativeJSLogger::log(INFO, "Queued external application: id=%d, url=%s\n", id, url.c_str());
+        }
+        else if (method == "launchApplication")
         {
             JsonWrap jParams(jRoot, "params");
             if (jParams.get() == nullptr)
@@ -217,13 +255,27 @@ void JSRuntimeServer::onMessage(websocketpp::connection_hdl hdl, message_ptr msg
             std::string options = jParams.getString("moduleSettings", error);
             ModuleSettings moduleSettings;
             moduleSettings.fromString(options);
-	    uint32_t id = mRenderer->createApplication(moduleSettings);
-            mRenderer->runApplication(id, url);
+	        uint32_t id = mRenderer->createApplication(moduleSettings);
+            
+            NativeJSLogger::log(INFO, "launchApplication: checking URL=%s for HTML extension\n", url.c_str());
+            if (url.find(".html") != std::string::npos || url.find(".htm") != std::string::npos)
+            {
+                NativeJSLogger::log(INFO, "Detected HTML file, mExternalHandler=%p\n", mExternalHandler.get());
+                if (mExternalHandler)
+                {
+                    mExternalHandler->runExternalApplication(url, id);
+                }
+            }
+            else
+            {
+                mRenderer->runApplication(id, url);
+            }
+            
             std::ostringstream oss;
-	    oss<< "ID : " << id;
-	    result = oss.str();
+	        oss<< "ID : " << id;
+	        result = oss.str();
         }
-        if (method == "createApplication")
+        else if (method == "createApplication")
         {
             JsonWrap jParams(jRoot, "params");
             if (jParams.get() == nullptr)
@@ -242,7 +294,7 @@ void JSRuntimeServer::onMessage(websocketpp::connection_hdl hdl, message_ptr msg
             oss<< "ID : " << id;
             result = oss.str();
         }
-        if (method == "runApplication")
+        else if (method == "runApplication")
         {
             JsonWrap jParams(jRoot, "params");
             if (jParams.get() == nullptr)
