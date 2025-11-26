@@ -144,6 +144,34 @@ std::map<uint32_t, std::vector<std::string>> keyMappings = {
 	{ WAYLAND_KEY_MUTE, {  "AudioVolumeMute", "AudioVolumeMute", "AudioVolumeMute", "AudioVolumeMute" } },
 	{ WAYLAND_KEY_VOLUME_DOWN, { "AudioVolumeDown", "AudioVolumeDown", "AudioVolumeDown", "AudioVolumeDown" } },
 	{ WAYLAND_KEY_VOLUME_UP, { "AudioVolumeUp", "AudioVolumeUp", "AudioVolumeUp", "AudioVolumeUp" }  }
+
+	#if defined(UNIT_TEST_BUILD)
+        #ifdef WAYLAND_KEY_PLAYPAUSE
+        , { WAYLAND_KEY_PLAYPAUSE, { "PlayPause", "PlayPause", "PlayPause", "PlayPause" } }
+        #endif
+        #ifdef WAYLAND_KEY_PLAY
+        , { WAYLAND_KEY_PLAY, { "Play", "Play", "Play", "Play" } }
+        #endif
+        #ifdef WAYLAND_KEY_FASTFORWARD
+        , { WAYLAND_KEY_FASTFORWARD, { "FastForward", "FastForward", "FastForward", "FastForward" } }
+        #endif
+        #ifdef WAYLAND_KEY_REWIND
+        , { WAYLAND_KEY_REWIND, { "Rewind", "Rewind", "Rewind", "Rewind" } }
+        #endif
+        #ifdef WAYLAND_KEY_KPENTER
+        , { WAYLAND_KEY_KPENTER, { "Enter", "Enter", "Enter", "Enter" } }
+        #endif
+        #ifdef WAYLAND_KEY_BACK
+        , { WAYLAND_KEY_BACK, { "Back", "Back", "Back", "Back" } }
+        #endif
+        #ifdef WAYLAND_KEY_MENU
+        , { WAYLAND_KEY_MENU, { "Menu", "Menu", "Menu", "Menu" } }
+        #endif
+        #ifdef WAYLAND_KEY_HOMEPAGE
+        , { WAYLAND_KEY_HOMEPAGE, { "Homepage", "Homepage", "Homepage", "Homepage" } }
+        #endif
+        #endif // UNIT_TEST_BUILD
+
 };
     
 static void getJavaScriptKeyCode(uint32_t waylandKeyCode, std::string& keyCode, uint32_t& keyCodeValue)
