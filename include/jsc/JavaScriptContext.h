@@ -91,8 +91,16 @@ class JavaScriptContext: public JavaScriptContextBase, public NetworkMetricsList
     double getExecutionDuration() const;
 
     void handleExternalApplication(const std::string& url);
+#ifdef UNIT_TEST_BUILD
+    bool evaluateScript(const char *script, const char *name, const char *args = nullptr, bool module = false);
+    void processKeyEvent(struct JavaScriptKeyDetails& details, bool keyPress);
+    void registerUtils();
+    void loadAAMPJSBindingsLib();
+    void unloadAAMPJSBindingsLib();
+#endif
 
   private:
+#ifndef UNIT_TEST_BUILD
     bool evaluateScript(const char *script, const char *name, const char *args = nullptr, bool module = false);
     void processKeyEvent(struct JavaScriptKeyDetails& details, bool keyPress);
     void registerUtils();
@@ -101,6 +109,7 @@ class JavaScriptContext: public JavaScriptContextBase, public NetworkMetricsList
     void loadAAMPJSBindingsLib();
     void unloadAAMPJSBindingsLib();
     void *jscLibHandle = nullptr;
+#endif
 #endif
 #endif
     JSContextGroupRef mContextGroup;
