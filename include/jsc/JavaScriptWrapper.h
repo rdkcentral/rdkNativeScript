@@ -33,6 +33,9 @@
 
 rtError jsToRt(JSContextRef context, JSValueRef value, rtValue &result, JSValueRef *exception);
 JSValueRef rtToJs(JSContextRef context, const rtValue &rtval);
+#ifdef UNIT_TEST_BUILD
+void clearGlobalWrapperCacheForTests();
+#endif
 
 class JSObjectWrapper: public jsruntime::RefCounted<rtIObject>, public rtJSCWrapperBase
 {
@@ -50,6 +53,7 @@ public:
 
 class JSFunctionWrapper: public jsruntime::RefCounted<rtIFunction>, public rtJSCWrapperBase
 {
+private:
   size_t hash() override { return mHash; }
   void setHash(size_t hash) override { UNUSED_PARAM(hash); }
   rtError Send(int numArgs, const rtValue* args, rtValue* result) override;
