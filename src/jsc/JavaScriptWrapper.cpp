@@ -969,3 +969,12 @@ rtError JSFunctionWrapper::Send(int numArgs, const rtValue* args, rtValue* resul
     return RT_OK;
   }
 }
+
+#ifdef UNIT_TEST_BUILD
+
+void clearGlobalWrapperCacheForTests()
+{
+  assertIsMainThread();
+  globalWrapperCache.clear();
+}
+#endif

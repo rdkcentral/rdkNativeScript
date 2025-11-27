@@ -90,12 +90,23 @@ public:
 
     std::string getState();
 
+#ifdef UNIT_TEST_BUILD
+protected:
+    void onMessage(websocketpp::connection_hdl hdl, message_ptr msg);
+    void setState(const std::string &state);
+    void onOpen(websocketpp::connection_hdl hdl);
+    void onFail(websocketpp::connection_hdl hdl);
+    void onClose(websocketpp::connection_hdl hdl);
+#endif
+
+#ifndef UNIT_TEST_BUILD 
 private:
     void onMessage(websocketpp::connection_hdl hdl, message_ptr msg);
     void setState(const std::string &state);
     void onOpen(websocketpp::connection_hdl hdl);
     void onFail(websocketpp::connection_hdl hdl);
     void onClose(websocketpp::connection_hdl hdl);
+#endif
 
 private:
     JSRuntimeClient();
