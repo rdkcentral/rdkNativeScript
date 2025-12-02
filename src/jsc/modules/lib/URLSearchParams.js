@@ -3,7 +3,7 @@ const urlencoded = require("./urlencoded");
 
 exports.implementation = class URLSearchParamsImpl {
   constructor(globalObject, constructorArgs = [""], options = {}) {
-    const { doNotStripQMark = false } = options || {}; 
+    var doNotStripQMark = options && typeof options.doNotStripQMark === "boolean" ? options.doNotStripQMark : false;
     let init = constructorArgs[0];
     this._list = [];
     this._url = null;
