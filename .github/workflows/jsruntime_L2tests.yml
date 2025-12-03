@@ -1,0 +1,137 @@
+name: JSRuntime L2 Tests with Coverage
+permissions:
+  contents: read
+  checks: write
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [develop]
+  pull_request:
+    branches: [develop]
+
+jobs:
+  build-nativescript:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main source repository
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y \
+            git cmake gperf ruby-dev libglew-dev libglut-dev \
+            libglib2.0-dev libglib2.0-0 g++ meson bison libjpeg-dev libpng-dev \
+            libfreetype6-dev libicu-dev autoconf libtool libxml2-dev \
+            libcurl4-openssl-dev libexpat1-dev doxygen vim libcjson-dev \
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+            gstreamer1.0-plugins-good gstreamer1.0-plugins-bad \
+            gstreamer1.0-plugins-ugly gstreamer1.0-libav \
+            gstreamer1.0-tools gstreamer1.0-x gstreamer1.0-alsa \
+            libwayland-bin libwayland-dev wayland-protocols \
+            libreadline-dev net-tools libmount1 libpcre3 libselinux1 zlib1g \
+            libunwind-dev libboost-dev libboost-system-dev libboost-thread-dev libboost-chrono-dev libwebsocketpp-dev jq \
+            lcov
+      
+      - name: Get asset ID for externals.zip
+        id: asset
+        run: |
+          ASSET_ID=$(curl -s -H "Authorization: Bearer ${{ secrets.GH_PAT }}" \
+            https://api.github.com/repos/rdk-e/rdkNativeScript_tests/releases/tags/extlibs | \
+            jq '.assets[] | select(.name=="externals.zip") | .id')
+          echo "ASSET_ID=$ASSET_ID" >> $GITHUB_ENV
+
+      - name: Download externals.zip using asset ID
+        run: |
+          curl -L \
+            -H "Authorization: Bearer ${{ secrets.GH_PAT }}" \
+            -H "Accept: application/octet-stream" \
+            -o externals.zip \
+            https://api.github.com/repos/rdk-e/rdkNativeScript_tests/releases/assets/$ASSET_ID
+
+      - name: Check externals.zip download
+        run: |
+          file externals.zip
+          ls -lh externals.zip
+          unzip -l externals.zip | head -20
+
+      - name: Extract externals.zip
+        run: |
+          unzip -o externals.zip
+
+      - name: Set LD_LIBRARY_PATH for ICU 66
+        run: echo "LD_LIBRARY_PATH=$(pwd)/externals/extlibs/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+
+      - name: Configure and build nativescript with coverage
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. \
+            -DENABLE_JSRUNTIME_ESSOS=ON \
+            -DJSRUNTIME_ENGINE_NAME=jsc \
+            -DENABLE_JSRUNTIME_PLAYER=ON \
+            -DENABLE_AAMP_JSBINDINGS_DYNAMIC=ON \
+            -DBUILD_JSRUNTIME_CLIENT=ON \
+            -DENABLE_JSRUNTIME_SERVER=ON \
+            -DENABLE_COVERAGE=ON \
+            -DNATIVEJS_DEVELOPER_MODE=ON \
+            -DNATIVEJS_L2_BUILD=ON \
+            -DCMAKE_CXX_FLAGS="-I../externals/extlibs/include/rtcore" \
+            -DCMAKE_BUILD_TYPE=Debug
+          cmake --build .
+
+      - name: Setup modules directory
+        run: |
+          cd build
+          mkdir -p modules
+          cp -R ../utils jsc_modules
+          cp -R ../src/jsc/modules/* modules/.
+          cp -R ../utils/* modules/.
+
+      - name: Set library paths
+        run: |
+          echo "LD_LIBRARY_PATH=$(pwd)/build:$(pwd)/externals/extlibs/lib:/usr/lib/javascriptcore:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+
+      - name: Checkout L2 test repository
+        uses: actions/checkout@v3
+        with:
+          repository: rdk-e/rdkNativeScript_tests
+          token: ${{ secrets.GH_PAT }}
+          path: rdkNativeScript_tests
+          ref: topic/RDKEMW-9172
+
+      - name: Run L2 tests with coverage
+        run: |
+          export SRC_REPO_DIR="${GITHUB_WORKSPACE}"
+          export BUILD_DIR="${SRC_REPO_DIR}/build"
+          export TEST_REPO_DIR="${GITHUB_WORKSPACE}/rdkNativeScript_tests"
+          export TEST_FRAMEWORK_DIR="${TEST_REPO_DIR}/L2/test_framework"
+          export TEST_SCRIPTS_DIR="${TEST_REPO_DIR}/L2/test_scripts"
+          export TEST_RESULTS_DIR="${TEST_FRAMEWORK_DIR}/../test_results"
+          export JSRUNTIME_BINARY="${BUILD_DIR}/JSRuntimeJSC"
+          export LD_LIBRARY_PATH="${BUILD_DIR}:${SRC_REPO_DIR}/externals/extlibs/lib:${SRC_REPO_DIR}/externals/extlibs/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}"
+          cd "${TEST_FRAMEWORK_DIR}"
+          chmod +x ./coverage.sh ./run_tests.sh
+          ./coverage.sh
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: l2-coverage-report
+          path: rdkNativeScript_tests/L2/coverage_report/
+          if-no-files-found: error
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: l2-test-results
+          path: rdkNativeScript_tests/L2/test_results/
+          if-no-files-found: warn
+
+      - name: Check coverage summary
+        run: |
+          if [ -f "rdkNativeScript_tests/L2/coverage_report/coverage_summary.txt" ]; then
+            echo "=== Coverage Summary ==="
+            cat rdkNativeScript_tests/L2/coverage_report/coverage_summary.txt
+          fi
