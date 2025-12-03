@@ -2,6 +2,8 @@ name: L1 Unit Tests for rdkNativeScript
 permissions:
   contents: read
   checks: write
+  issues: write
+  pull-requests: write
 
 on:
   push:
@@ -90,7 +92,22 @@ jobs:
           lcov --capture --directory . --output-file coverage.info --ignore-errors mismatch --rc geninfo_unexecuted_blocks=1
           lcov --remove coverage.info '/usr/*' '*/test/*' '*/tests/*' '*/L1/*' '*/mocks/*' '*/gtest/*' '*/gmock/*' '*/googletest/*' '*/include/*' --output-file coverage.cleaned.info --ignore-errors unused
           lcov --extract coverage.cleaned.info '*/src/*' --output-file coverage.final.info
-          genhtml coverage.final.info --output-directory html_coverage_report
+          genhtml coverage.final.info --output-directory html_coverage_report | tee genhtml.log
+
+      - name: Extract coverage percentage
+        run: |
+          COVERAGE_LINE=$(grep 'lines......:' build_l1/genhtml.log | grep -oE '[0-9.]+%' | head -n1)
+          echo "COVERAGE_LINE=$COVERAGE_LINE"
+          echo "COVERAGE_LINE=$COVERAGE_LINE" >> $GITHUB_ENV
+
+      - name: Post coverage percent to PR
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ## Test Coverage Report
+            **Lines:** ${{ env.COVERAGE_LINE }}
 
       - name: Upload test result file (JUnit XML)
         uses: actions/upload-artifact@v4
