@@ -140,8 +140,25 @@ int main(int argc, char* argv[])
 #if defined(NATIVEJS_DEVELOPER_MODE)
         std::this_thread::sleep_for(std::chrono::milliseconds(500)); 
         renderer->getApplications();
-        sleep(10);	
-        renderer->terminateApplication(id);
+        
+    #ifdef NATIVEJS_L2_BUILD
+        int waitTime = 10;
+        if (moduleSettings.enableWebSocket || moduleSettings.enableWebSocketEnhanced) {
+            waitTime = 30;
+            NativeJSLogger::log(INFO, "WebSocket enabled - using extended wait time: %d seconds\n", waitTime);
+        }
+        sleep(waitTime);
+    #else
+        sleep(10);
+    #endif
+
+    renderer->terminateApplication(id);
+
+    #ifdef NATIVEJS_L2_BUILD
+        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+        renderer->terminate();
+    #endif
+
 #endif
         });
     }

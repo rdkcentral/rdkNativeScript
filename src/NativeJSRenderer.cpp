@@ -571,6 +571,11 @@ void NativeJSRenderer::runDeveloperConsole(ModuleSettings moduleSettings)
         // Short-cirtuit: in case consoleLoop was altered by signal handler we shouldn't execute lines below
         if (!consoleLoop || input == "exit") {
             delete mConsoleState->consoleContext;
+            
+          #ifdef NATIVEJS_L2_BUILD
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+            terminate();
+          #endif
             break;
         }
 

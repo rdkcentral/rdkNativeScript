@@ -31,6 +31,7 @@
 #include <ModuleSettings.h>
 #include <condition_variable>
 #include <list>
+#include <thread>
 
 namespace JsRuntime {
 
