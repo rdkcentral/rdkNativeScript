@@ -573,10 +573,10 @@ void NativeJSRenderer::runDeveloperConsole(ModuleSettings moduleSettings)
             delete mConsoleState->consoleContext;
             
           #ifdef NATIVEJS_L2_BUILD
-	    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-	    terminate();
-	  #endif	    
-	    break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+            terminate();
+          #endif
+            break;
         }
 
         mConsoleState->inputMutex.lock();
