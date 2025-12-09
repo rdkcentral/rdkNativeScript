@@ -149,7 +149,7 @@ int main(int argc, char* argv[])
         }
         sleep(waitTime);
     #else
-        sleep(10) ;
+        sleep(10);
     #endif
 
     renderer->terminateApplication(id);
