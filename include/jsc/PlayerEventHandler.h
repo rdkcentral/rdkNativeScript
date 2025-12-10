@@ -41,8 +41,13 @@ class PlayerEventHandler : public AAMPEventObjectListener
         void removeEventListener(AAMPEventType type, JSObjectRef callback);
         void removeAllEventListeners();
 	void Event(const AAMPEventPtr& e);
+#ifdef UNIT_TEST_BUILD	
+	void sendEvent(AAMPEventType type, JSObjectRef event);
+#endif
     private:
+#ifndef UNIT_TEST_BUILD  
         void sendEvent(AAMPEventType type, JSObjectRef event);
+#endif        
         JSContextRef mContext;
         PlayerInstanceAAMP* mPlayer;
         std::map<AAMPEventType, std::vector<EventHandlerData>> mEventListeners;

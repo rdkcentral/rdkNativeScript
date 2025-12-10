@@ -1128,7 +1128,11 @@ JSValueRef AAMPMediaPlayerJS_setVideoZoom (JSContextRef ctx, JSObjectRef functio
 	return JSValueMakeUndefined(ctx);
 }
 
+#ifdef UNIT_TEST_BUILD
+JSValueRef AAMPMediaPlayerJS_getAvailableAudioTracks(JSContextRef ctx, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef *exception)
+#else
 static JSValueRef AAMPMediaPlayerJS_getAvailableAudioTracks(JSContextRef ctx, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef *exception)
+#endif
 {
         PlayerWrapper* privObj = (PlayerWrapper*)JSObjectGetPrivate(thisObject);
         if (!privObj || !privObj->mPlayer)
@@ -1163,7 +1167,11 @@ static JSValueRef AAMPMediaPlayerJS_getAvailableAudioTracks(JSContextRef ctx, JS
  * @param[out] exception pointer to a JSValueRef in which to return an exception, if any
  * @retval JSValue that is the function's return value
  */
+ #ifdef UNIT_TEST_BUILD
+JSValueRef AAMPMediaPlayerJS_getAvailableTextTracks(JSContextRef ctx, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef *exception)
+#else
 static JSValueRef AAMPMediaPlayerJS_getAvailableTextTracks(JSContextRef ctx, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef *exception)
+#endif
 {
         PlayerWrapper* privObj = (PlayerWrapper*)JSObjectGetPrivate(thisObject);
         if (!privObj || !privObj->mPlayer)
@@ -1198,7 +1206,11 @@ static JSValueRef AAMPMediaPlayerJS_getAvailableTextTracks(JSContextRef ctx, JSO
  * @param[out] exception pointer to a JSValueRef in which to return an exception, if any
  * @retval JSValue that is the function's return value
  */
+#ifdef UNIT_TEST_BUILD
+JSValueRef AAMPMediaPlayerJS_getVideoRectangle(JSContextRef ctx, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef *exception)
+#else
 static JSValueRef AAMPMediaPlayerJS_getVideoRectangle(JSContextRef ctx, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef *exception)
+#endif
 {
         PlayerWrapper* privObj = (PlayerWrapper*)JSObjectGetPrivate(thisObject);
         if (!privObj || !privObj->mPlayer)
@@ -1221,7 +1233,11 @@ static JSValueRef AAMPMediaPlayerJS_getVideoRectangle(JSContextRef ctx, JSObject
  * @param[out] exception pointer to a JSValueRef in which to return an exception, if any
  * @retval JSValue that is the function's return value
  */
-static JSValueRef AAMPMediaPlayerJS_setAlternateContent(JSContextRef ctx, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef *exception)	
+#ifdef UNIT_TEST_BUILD
+JSValueRef AAMPMediaPlayerJS_setAlternateContent(JSContextRef ctx, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef *exception)	
+#else
+static JSValueRef AAMPMediaPlayerJS_setAlternateContent(JSContextRef ctx, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef *exception)
+#endif	
 {
         PlayerWrapper* privObj = (PlayerWrapper*)JSObjectGetPrivate(thisObject);
         if (!privObj || !privObj->mPlayer)
@@ -1405,7 +1421,11 @@ JSValueRef AAMPMediaPlayerJS_setPreferredTextLanguage(JSContextRef ctx, JSObject
 	return JSValueMakeUndefined(ctx);
 }
 
+#ifdef UNIT_TEST_BUILD
+JSValueRef AAMPMediaPlayerJS_notifyReservationCompletion(JSContextRef ctx, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef *exception)
+#else
 static JSValueRef AAMPMediaPlayerJS_notifyReservationCompletion(JSContextRef ctx, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef *exception)
+#endif
 {
         PlayerWrapper* privObj = (PlayerWrapper*)JSObjectGetPrivate(thisObject);
         if (!privObj || !privObj->mPlayer)
@@ -1458,7 +1478,11 @@ JSValueRef AAMPMediaPlayerJS_setTextStyleOptions(JSContextRef ctx, JSObjectRef f
 	return JSValueMakeUndefined(ctx);
 }
 
+#ifdef UNIT_TEST_BUILD
+JSValueRef AAMPMediaPlayerJS_setAuxiliaryLanguage(JSContextRef ctx, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef *exception)
+#else
 static JSValueRef AAMPMediaPlayerJS_setAuxiliaryLanguage(JSContextRef ctx, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef *exception)
+#endif
 {
         PlayerWrapper* privObj = (PlayerWrapper*)JSObjectGetPrivate(thisObject);
         if (!privObj || !privObj->mPlayer)
