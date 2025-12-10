@@ -65,6 +65,7 @@ const GlobalObjectMethodTable s_globalObjectMethodTableMadan = {
     nullptr, // deriveShadowRealmGlobalObject
 };
 
+#ifndef USE_JSCLIB_MOCK
 struct MemoryStruct
 {
     MemoryStruct()
@@ -98,6 +99,7 @@ struct MemoryStruct
     char* contentsBuffer;
     size_t readSize;
 };
+#endif // !USE_JSCLIB_MOCK
 
 static size_t CallbackHeader(void *contents, size_t size, size_t nmemb, void *userp)
 {
@@ -140,6 +142,11 @@ bool downloadFile(std::string& url, MemoryStruct& chunk)
     bool ret = false;
     CURL *curl;
     CURLcode res;
+#ifdef USE_JSCLIB_MOCK
+    if (MockControl::simulate_curl_init_failure)
+        curl = nullptr;
+    else
+#endif
     curl = curl_easy_init();
     if (curl)
     {
@@ -178,6 +185,116 @@ bool downloadFile(std::string& url, MemoryStruct& chunk)
     }
     return ret;
 }
+
+#ifdef USE_JSCLIB_MOCK
+// Non-static versions for testing
+UChar pathSeparator()
+{
+#if OS(WINDOWS)
+    return '\\';
+#else
+    return '/';
+#endif
+}
+
+bool isAbsolutePath(StringView path)
+{
+#if OS(WINDOWS)
+    // Just look for local drives like C:\.
+    return path.length() > 2 && isASCIIAlpha(path[0]) && path[1] == ':' && (path[2] == '\\' || path[2] == '/');
+#else
+    return path.startsWith('/');
+#endif
+}
+
+bool isDottedRelativePath(StringView path)
+{
+#if OS(WINDOWS)
+    auto length = path.length();
+    if (length < 2 || path[0] != '.')
+        return false;
+
+    if (path[1] == '/' || path[1] == '\\')
+        return true;
+
+    return length > 2 && path[1] == '.' && (path[2] == '/' || path[2] == '\\');
+#else
+    return path.startsWith("./"_s) || path.startsWith("../"_s);
+#endif
+}
+
+void convertShebangToJSCommentWrapper(char* buffer, size_t size)
+{
+    if (size >= 2) {
+        if (buffer[0] == '#' && buffer[1] == '!')
+            buffer[0] = buffer[1] = '/';
+    }
+}
+
+bool fetchScriptFromLocalFileSystemWrapper(const char* fileName, char** outBuffer, size_t* outSize)
+{
+    String fileNameStr = String::fromUTF8(fileName);
+    Vector<char> buffer;
+    FILE* f = fopen(fileName, "rb");
+    if (!f)
+        return false;
+    
+#ifdef USE_JSCLIB_MOCK
+    if (MockControl::simulate_fseek_failure) {
+        fclose(f);
+        return false;
+    }
+#endif
+    if (fseek(f, 0, SEEK_END) == -1) {
+        fclose(f);
+        return false;
+    }
+#ifdef USE_JSCLIB_MOCK
+    if (MockControl::simulate_ftell_failure) {
+        fclose(f);
+        return false;
+    }
+#endif
+    long bufferCapacity = ftell(f);
+    if (bufferCapacity == -1) {
+        fclose(f);
+        return false;
+    }
+    if (fseek(f, 0, SEEK_SET) == -1) {
+        fclose(f);
+        return false;
+    }
+    buffer.resize(bufferCapacity);
+#ifdef USE_JSCLIB_MOCK
+    size_t readSize;
+    if (MockControl::simulate_fread_short) {
+        readSize = 0;  // Simulate partial/failed read
+    } else {
+        readSize = fread(buffer.data(), 1, bufferCapacity, f);
+    }
+#else
+    size_t readSize = fread(buffer.data(), 1, bufferCapacity, f);
+#endif
+    fclose(f);
+    
+    if (readSize != static_cast<size_t>(bufferCapacity))
+        return false;
+    
+    // Convert shebang
+    if (buffer.size() >= 2) {
+        if (buffer[0] == '#' && buffer[1] == '!')
+            buffer[0] = buffer[1] = '/';
+    }
+    
+    *outSize = buffer.size();
+    *outBuffer = (char*)malloc(*outSize + 1);
+    memcpy(*outBuffer, buffer.data(), *outSize);
+    (*outBuffer)[*outSize] = 0;
+    return true;
+}
+
+#endif // USE_JSCLIB_MOCK
+
 template<typename Vector>
 
 class GlobalObject;
@@ -225,13 +342,7 @@ static inline String stringFromUTF(const Vector& utf8)
     return String::fromUTF8WithLatin1Fallback(utf8.data(), utf8.size());
 }
 
-/*
-Copyright (C) 1999-2000 Harri Porten ([porten@kde.org](mailto:porten@kde.org))
-Copyright (C) 2004-2020 Apple Inc. All rights reserved.
-Copyright (C) 2006 Bjoern Graf ([bjoern.graf@gmail.com](mailto:bjoern.graf@gmail.com))
-Licensed under the LGPL License, Version 2.0
-*/
-
+#ifndef USE_JSCLIB_MOCK
 static UChar pathSeparator()
 {
 #if OS(WINDOWS)
@@ -240,6 +351,7 @@ static UChar pathSeparator()
     return '/';
 #endif
 }
+#endif // !USE_JSCLIB_MOCK
 
 static URL currentWorkingDirectory()
 {
@@ -285,6 +397,7 @@ static URL currentWorkingDirectory()
 // FIXME: We may wish to support module specifiers beginning with a (back)slash on Windows. We could either:
 // - align with V8 and SM:  treat '/foo' as './foo'
 // - align with PowerShell: treat '/foo' as 'C:/foo'
+#ifndef USE_JSCLIB_MOCK
 static bool isAbsolutePath(StringView path)
 {
 #if OS(WINDOWS)
@@ -310,6 +423,7 @@ static bool isDottedRelativePath(StringView path)
     return path.startsWith("./"_s) || path.startsWith("../"_s);
 #endif
 }
+#endif // !USE_JSCLIB_MOCK
 
 static URL absoluteFileURL(const String& fileName)
 {
@@ -402,6 +516,97 @@ static bool fetchScriptFromLocalFileSystem(const String& fileName, Vector<char>&
     convertShebangToJSComment(buffer);
     return true;
 }
+
+#ifdef USE_JSCLIB_MOCK
+// Wrapper functions for testing - must be after static function definitions
+String stringFromUTFWrapper(const char* data, size_t size)
+{
+    Vector<char> vec;
+    vec.resize(size);
+    memcpy(vec.data(), data, size);
+    return stringFromUTF(vec);
+}
+
+bool fillBufferWithContentsOfFileWrapper(const char* fileName, char** outBuffer, size_t* outSize)
+{
+    String fileNameStr = String::fromUTF8(fileName);
+    Vector<char> buffer;
+    
+    if (!fillBufferWithContentsOfFile(fileNameStr, buffer))
+        return false;
+    
+    *outSize = buffer.size();
+    *outBuffer = (char*)malloc(*outSize + 1);
+    memcpy(*outBuffer, buffer.data(), *outSize);
+    (*outBuffer)[*outSize] = 0;
+    return true;
+}
+
+bool absoluteFileURLWrapper(const char* fileName, char** outURL, size_t* outSize)
+{
+    String fileNameStr = String::fromUTF8(fileName);
+    URL url = absoluteFileURL(fileNameStr);
+    
+    if (!url.isValid())
+        return false;
+    
+    String urlString = url.string();
+    CString utf8 = urlString.utf8();
+    *outSize = utf8.length();
+    *outURL = (char*)malloc(*outSize + 1);
+    memcpy(*outURL, utf8.data(), *outSize);
+    (*outURL)[*outSize] = 0;
+    return true;
+}
+
+bool fetchScriptFromLocalFileSystemVectorWrapper(const char* fileName, char** outBuffer, size_t* outSize)
+{
+    String fileNameStr = String::fromUTF8(fileName);
+    Vector<char> buffer;
+    
+    if (!fetchScriptFromLocalFileSystem(fileNameStr, buffer))
+        return false;
+    
+    *outSize = buffer.size();
+    *outBuffer = (char*)malloc(*outSize + 1);
+    memcpy(*outBuffer, buffer.data(), *outSize);
+    (*outBuffer)[*outSize] = 0;
+    return true;
+}
+
+bool fillBufferWithContentsOfFileUint8Wrapper(const char* fileName, unsigned char** outBuffer, size_t* outSize)
+{
+    String fileNameStr = String::fromUTF8(fileName);
+    RefPtr<Uint8Array> result = fillBufferWithContentsOfFile(fileNameStr);
+    
+    if (!result) {
+        *outBuffer = nullptr;
+        *outSize = 0;
+        return false;
+    }
+    
+    *outSize = result->byteLength();
+    *outBuffer = (unsigned char*)malloc(*outSize);
+    memcpy(*outBuffer, result->data(), *outSize);
+    return true;
+}
+
+bool currentWorkingDirectoryWrapper(char** outPath, size_t* outSize)
+{
+    URL cwd = currentWorkingDirectory();
+    
+    if (!cwd.isValid())
+        return false;
+    
+    String cwdString = cwd.string();
+    CString utf8 = cwdString.utf8();
+    *outSize = utf8.length();
+    *outPath = (char*)malloc(*outSize + 1);
+    memcpy(*outPath, utf8.data(), *outSize);
+    (*outPath)[*outSize] = 0;
+    return true;
+}
+#endif // USE_JSCLIB_MOCK
 
 class ShellSourceProvider final : public StringSourceProvider {
 public:
@@ -854,3 +1059,4 @@ void functionLoadModule(JSGlobalContextRef ref, JSObjectRef globalObjectRef, cha
     //promise->then(exec, nullptr, errorHandler);
     promise->then(toJS(ref), fulfillHandler, rejectHandler);
 }
+
