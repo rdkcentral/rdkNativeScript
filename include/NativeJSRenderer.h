@@ -126,11 +126,11 @@ namespace JsRuntime {
                 bool terminate();
                 void run();
                 void setEnvForConsoleMode(ModuleSettings& moduleSettings);
-                static std::atomic_bool consoleLoop;
+		static std::atomic_bool consoleLoop;
 		std::atomic_bool mShutdownConsole{false};
-                std::thread mConsoleThread;
+		std::thread mConsoleThread;
 		bool runApplication(uint32_t id, std::string url);
-                bool runJavaScript(uint32_t id, std::string code);
+		bool runJavaScript(uint32_t id, std::string code);
                 uint32_t createApplication(ModuleSettings& moduleSettings, std::string userAgent = DEFAULT_USER_AGENT) ;
                 bool terminateApplication(uint32_t id);
                 std::list<ApplicationDetails> getApplications();
