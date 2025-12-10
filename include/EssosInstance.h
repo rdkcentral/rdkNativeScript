@@ -42,7 +42,7 @@ class EssosInstance
     private:
         EssosInstance();
         static EssosInstance* mInstance;
-	EssCtx * mEssosContext;
+        EssCtx * mEssosContext;
         bool mUseWayland;
         JavaScriptKeyListener* mJavaScriptKeyListener;
 };
