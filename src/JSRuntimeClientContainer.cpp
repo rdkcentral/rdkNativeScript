@@ -4,6 +4,8 @@
 #include <vector>
 #include <unistd.h>
 #include "NativeJSLogger.h"
+
+#ifndef UNIT_TEST_BUILD
 int main()
 {
     std::string containerId = "com.sky.as.apps_TestApp";
@@ -12,8 +14,12 @@ int main()
     
     std::string ipAddress = JSRuntimeContainer::getContainerIpAddress(containerId);
     if (ipAddress.empty()) {
-	NativeJSLogger::log(ERROR, "Failed to retrieve IP address for container");
+    #ifdef UNIT_TEST_BUILD
+        ipAddress = "127.0.0.1";
+    #else
+	NativeJSLogger::log(ERROR, "Failed to retrieve IP address for container");	
 	return 1; 
+    #endif
     }
 
     for (const auto &app : apps) {
@@ -28,4 +34,5 @@ int main()
 
     return 0;
 }
+#endif
 
