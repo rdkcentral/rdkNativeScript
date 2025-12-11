@@ -77,7 +77,7 @@ void JavaScriptContextBase::registerCommonUtils()
     }
 }
 
-/*std::string JavaScriptContextBase::readFile(const char *file)
+std::string JavaScriptContextBase::readFile(const char *file)
 {
     bool isModule = true;
     std::ifstream src_file;
@@ -96,47 +96,6 @@ void JavaScriptContextBase::registerCommonUtils()
         src_file.open(fileName);
         src_script << src_file.rdbuf();
     }
-    return src_script.str();
-}*/
-std::string JavaScriptContextBase::readFile(const char *file)
-{
-    bool isModule = true;
-    std::ifstream src_file;
-    std::stringstream src_script;
-    struct stat path;
-
-    // Try CWD first
-    if(stat(file, &path) == 0){
-        isModule = false;
-    }
-    if(!isModule){
-        src_file.open(file);
-        src_script << src_file.rdbuf();
-        return src_script.str();  // <--- Early return if found in CWD!
-    }
-
-    // Try sModulesPath + file
-    std::string fileName = sModulesPath + std::string(file);
-    std::cout << "[DEBUG] JS module loader: Trying " << fileName << std::endl;
-    src_file.open(fileName);
-    if(src_file.is_open()) {
-        src_script << src_file.rdbuf();
-        return src_script.str();
-    }
-
-    // If not found, and not ending with '.js', try adding '.js'
-    std::string fileStr(file);
-    if(fileStr.size() < 3 || fileStr.substr(fileStr.size()-3) != ".js") {
-        std::string fileNameJs = sModulesPath + fileStr + ".js";
-        std::cout << "[DEBUG] JS module loader: Trying " << fileNameJs << std::endl;
-        src_file.open(fileNameJs);
-        if(src_file.is_open()) {
-            src_script << src_file.rdbuf();
-            return src_script.str();
-        }
-    }
-
-    std::cout << "[ERROR] JS module loader: Could not find " << file << " as " << fileName << " or " << fileName << ".js" << std::endl;
     return src_script.str();
 }
 

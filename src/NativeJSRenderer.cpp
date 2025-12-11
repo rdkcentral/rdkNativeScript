@@ -179,19 +179,32 @@ NativeJSRenderer::NativeJSRenderer(std::string waylandDisplay): mEngine(nullptr)
 
 NativeJSRenderer::~NativeJSRenderer()
 {
+    mShutdownConsole = true;
+    if (mConsoleThread.joinable()) {
+        mConsoleThread.join();
+    }
     gPendingRequests.clear();
-    if (mEngine)
-    {
+    
+    if (mConsoleState && mConsoleState->consoleContext) {
+        delete mConsoleState->consoleContext;
+        mConsoleState->consoleContext = nullptr;
+    }
+    if (mEngine){
         delete mEngine;
         mEngine = nullptr;
     }
-    if (mConsoleState && mConsoleState->consoleContext) {
-        delete mConsoleState->consoleContext;
-    }
+  
 }
 
 void NativeJSRenderer::setEnvForConsoleMode(ModuleSettings& moduleSettings)
 {
+
+   if (mConsoleThread.joinable()) {
+        mShutdownConsole = true;
+        mConsoleThread.join();
+    }
+
+    mShutdownConsole = false;
     mConsoleState = std::make_unique<ConsoleState>();
     mConsoleState->moduleSettings = moduleSettings;
 
@@ -205,8 +218,7 @@ void NativeJSRenderer::setEnvForConsoleMode(ModuleSettings& moduleSettings)
     mConsoleState->consoleContext = context;
 
     NativeJSLogger::log(INFO, "Running developer console...\n");
-    std::thread consoleThread(&JsRuntime::NativeJSRenderer::runDeveloperConsole, this, std::ref(mConsoleState->moduleSettings));
-    consoleThread.detach();
+    mConsoleThread = std::thread(&JsRuntime::NativeJSRenderer::runDeveloperConsole, this, std::ref(mConsoleState->moduleSettings));
 
     mConsoleMode = true;
 }
@@ -542,12 +554,10 @@ void NativeJSRenderer::processDevConsoleRequests()
     mConsoleState->inputMutex.unlock();
 }
 
-namespace {
-    bool consoleLoop = true;
-    void handleDevConsoleSigInt(int /*sig*/){
-        consoleLoop = false;
-    }
-} // namespace
+std::atomic_bool NativeJSRenderer::consoleLoop = true;
+void handleDevConsoleSigInt(int /*sig*/) {
+    NativeJSRenderer::consoleLoop = false;
+}
 
 void NativeJSRenderer::runDeveloperConsole(ModuleSettings moduleSettings)
 {
@@ -557,7 +567,17 @@ void NativeJSRenderer::runDeveloperConsole(ModuleSettings moduleSettings)
     NativeJSLogger::log(INFO, "Type 'exit' or press CTRL+C and ENTER to quit.\n");
 
     signal(SIGINT, handleDevConsoleSigInt);
-    while (consoleLoop) {
+    
+    #ifdef UNIT_TEST_BUILD
+    input = "exit";
+    NativeJSLogger::log(INFO, "[UNIT_TEST_BUILD] Auto-exiting developer console");
+    delete mConsoleState->consoleContext;
+    mConsoleState->consoleContext = nullptr;
+    signal(SIGINT, SIG_DFL);
+    return;
+    #else
+
+    while (consoleLoop && !mShutdownConsole) {
         // Don't display another input prompt until previous code is processed (prevents)
         {
             std::unique_lock<std::mutex> lk(mConsoleState->isProcessing_cv_m);
@@ -566,17 +586,21 @@ void NativeJSRenderer::runDeveloperConsole(ModuleSettings moduleSettings)
             mConsoleState->isProcessing = true;
         }
 
+        if (mShutdownConsole) break;
         std::getline(std::cin, input);
+	if (mShutdownConsole) break;
 
         // Short-cirtuit: in case consoleLoop was altered by signal handler we shouldn't execute lines below
         if (!consoleLoop || input == "exit") {
             delete mConsoleState->consoleContext;
-            
+            mConsoleState->consoleContext = nullptr;
+
           #ifdef NATIVEJS_L2_BUILD
-	    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-	    terminate();
-	  #endif	    
-	    break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+            terminate();
+          #endif
+
+            break;
         }
 
         mConsoleState->inputMutex.lock();
@@ -585,6 +609,7 @@ void NativeJSRenderer::runDeveloperConsole(ModuleSettings moduleSettings)
     }
 
     signal(SIGINT, SIG_DFL);
+ #endif
 }
 
 bool NativeJSRenderer::downloadFile(std::string& url, MemoryStruct& chunk)

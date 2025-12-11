@@ -38,7 +38,7 @@ class EssosInstance
         void onKeyRelease(struct JavaScriptKeyDetails& details);
         void update();
         void registerKeyListener(JavaScriptKeyListener*);
-
+    
     private:
         EssosInstance();
         static EssosInstance* mInstance;

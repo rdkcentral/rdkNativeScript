@@ -17,6 +17,7 @@
 * limitations under the License.
 **/
 
+//Creating baseline for coverity incremental scan
 #include <NativeJSRenderer.h>
 #include <NativeJSLogger.h>
 #if defined(ENABLE_JSRUNTIME_SERVER)
@@ -149,7 +150,7 @@ int main(int argc, char* argv[])
         }
         sleep(waitTime);
     #else
-        sleep(10) ;
+        sleep(10);
     #endif
 
     renderer->terminateApplication(id);
