@@ -12,8 +12,8 @@ int main()
     
     std::string ipAddress = JSRuntimeContainer::getContainerIpAddress(containerId);
     if (ipAddress.empty()) {
-	    NativeJSLogger::log(ERROR, "Failed to retrieve IP address for container");
-        return 1; 
+	NativeJSLogger::log(ERROR, "Failed to retrieve IP address for container");
+	return 1; 
     }
 
     for (const auto &app : apps) {
