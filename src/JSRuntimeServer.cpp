@@ -270,7 +270,6 @@ void JSRuntimeServer::onMessage(websocketpp::connection_hdl hdl, message_ptr msg
             {
                 mRenderer->runApplication(id, url);
             }
-            
             std::ostringstream oss;
 	        oss<< "ID : " << id;
 	        result = oss.str();
