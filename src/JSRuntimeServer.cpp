@@ -205,7 +205,6 @@ void JSRuntimeServer::onMessage(websocketpp::connection_hdl hdl, message_ptr msg
         {
             break;
         }
-        
         if (method == "runExternalApplication")
         {
             JsonWrap jParams(jRoot, "params");
