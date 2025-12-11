@@ -112,3 +112,24 @@
 #endif
 
 void functionLoadModule(JSGlobalContextRef ref, JSObjectRef globalObjectRef, char *buffer, int len, char* name);
+
+#ifdef USE_JSCLIB_MOCK
+
+typedef unsigned short UChar;
+UChar pathSeparator();
+bool isAbsolutePath(JSC::StringView path);
+bool isDottedRelativePath(JSC::StringView path);
+void convertShebangToJSCommentWrapper(char* buffer, size_t size);
+bool fetchScriptFromLocalFileSystemWrapper(const char* fileName, char** outBuffer, size_t* outSize);
+JSC::String stringFromUTFWrapper(const char* data, size_t size);
+bool fillBufferWithContentsOfFileWrapper(const char* fileName, char** outBuffer, size_t* outSize);
+bool absoluteFileURLWrapper(const char* fileName, char** outURL, size_t* outSize);
+bool fetchScriptFromLocalFileSystemVectorWrapper(const char* fileName, char** outBuffer, size_t* outSize);
+bool fillBufferWithContentsOfFileUint8Wrapper(const char* fileName, unsigned char** outBuffer, size_t* outSize);
+bool currentWorkingDirectoryWrapper(char** outPath, size_t* outSize);
+
+
+struct MemoryStruct;
+
+bool downloadFile(std::string& url, MemoryStruct& chunk);
+#endif 

@@ -19,6 +19,7 @@
 
 #pragma once
 #include <NativeJSRenderer.h>
+#include <IExternalApplicationHandler.h>
 
 #ifdef USE_WEBSOCKET_MOCK
 #include "websocketpp.hpp" 
@@ -40,15 +41,30 @@ public:
     static JSRuntimeServer *getInstance();
     ~JSRuntimeServer() = default;
 
-    void initialize(int serverport, std::shared_ptr<JsRuntime::NativeJSRenderer> renderer);
+    void initialize(int serverport, std::shared_ptr<JsRuntime::NativeJSRenderer> renderer, std::shared_ptr<IExternalApplicationHandler> externalHandler = nullptr);
     bool start();
     bool stop();
 
+private:
+#ifdef UNIT_TEST_BUILD
+public:
+    // Expose private methods for testing
+    void send(websocketpp::connection_hdl hdl, const std::string &msg);
+    void onMessage(websocketpp::connection_hdl hdl, message_ptr msg);
+    void onOpen(websocketpp::connection_hdl hdl);
+    void onClose(websocketpp::connection_hdl hdl);
+    
+    const std::set<websocketpp::connection_hdl, std::owner_less<websocketpp::connection_hdl>>& getConnections() const { return mConnections; }
+    WsServer& getServer() { return mServer; }
+#endif
+
+#ifndef UNIT_TEST_BUILD
 private:
     void send(websocketpp::connection_hdl hdl, const std::string &msg);
     void onMessage(websocketpp::connection_hdl hdl, message_ptr msg);
     void onOpen(websocketpp::connection_hdl hdl);
     void onClose(websocketpp::connection_hdl hdl);
+#endif
 
 private:
     typedef std::set<websocketpp::connection_hdl, std::owner_less<websocketpp::connection_hdl>> ConnectionSet;
@@ -62,4 +78,5 @@ private:
     ConnectionSet mConnections;
     int mServerPort;
     std::shared_ptr<JsRuntime::NativeJSRenderer> mRenderer;
+    std::shared_ptr<IExternalApplicationHandler> mExternalHandler;
 };
