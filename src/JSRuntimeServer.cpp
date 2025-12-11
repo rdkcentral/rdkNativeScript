@@ -213,7 +213,6 @@ void JSRuntimeServer::onMessage(websocketpp::connection_hdl hdl, message_ptr msg
                 result = "error: missing params";
                 break;
             }
-            
             uint32_t id = jParams.getUint32("id", error);
             if (error)
             {
