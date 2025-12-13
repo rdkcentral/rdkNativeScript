@@ -1,0 +1,233 @@
+/**
+* If not stated otherwise in this file or this component's LICENSE
+* file the following copyright and licenses apply:
+*
+* Copyright 2024 RDK Management
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+* http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+**/
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 8bb7d65fb87f..c5a9351e4356 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -17,7 +17,7 @@ project(WebKit)
+ if (${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.20")
+     cmake_policy(SET CMP0116 OLD)
+ endif ()
+-
++set(CMAKE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+ # -----------------------------------------------------------------------------
+ # Common configuration
+ #------------------------------------------------------------------------------
+diff --git a/Source/JavaScriptCore/API/WebKitAvailability.h b/Source/JavaScriptCore/API/WebKitAvailability.h
+index 2a1ce7ce16f6..50bd7f1ebb2b 100644
+--- a/Source/JavaScriptCore/API/WebKitAvailability.h
++++ b/Source/JavaScriptCore/API/WebKitAvailability.h
+@@ -31,10 +31,11 @@
+ #include <AvailabilityMacros.h>
+ #include <CoreFoundation/CoreFoundation.h>
+ 
+-#if defined(BUILDING_GTK__)
++//#if defined(BUILDING_GTK__)
+ #undef JSC_API_AVAILABLE
+ #define JSC_API_AVAILABLE(...)
+-#endif
++//#endif
++
+ 
+ #else
+ #define JSC_API_AVAILABLE(...)
+diff --git a/Source/JavaScriptCore/PlatformJSCOnly.cmake b/Source/JavaScriptCore/PlatformJSCOnly.cmake
+index 931ffcec61b7..de3847c70db3 100644
+--- a/Source/JavaScriptCore/PlatformJSCOnly.cmake
++++ b/Source/JavaScriptCore/PlatformJSCOnly.cmake
+@@ -1,3 +1,46 @@
++find_package(GLIB 2.36 REQUIRED COMPONENTS gio gio-unix gobject gthread gmodule)
++add_definitions(-DSTATICALLY_LINKED_WITH_WTF)
++
++set(DERIVED_SOURCES_JAVASCRIPCORE_GLIB_API_DIR ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/javascriptcorewpe/jsc)
++set(JavaScriptCoreGLib_FRAMEWORK_HEADERS_DIR "${CMAKE_BINARY_DIR}/JavaScriptCoreGLib/Headers")
++set(JavaScriptCoreGLib_DERIVED_SOURCES_DIR "${CMAKE_BINARY_DIR}/JavaScriptCoreGLib/DerivedSources")
++
++include(GLib.cmake)
++
++list(APPEND JavaScriptCore_LIBRARIES
++    ${GLIB_LIBRARIES}
++)
++
++list(APPEND JavaScriptCore_SYSTEM_INCLUDE_DIRECTORIES
++    ${GLIB_INCLUDE_DIRS}
++)
++
++list(APPEND JavaScriptCore_SOURCES
++    API/JSRemoteInspector.cpp
++
++    inspector/remote/RemoteAutomationTarget.cpp
++    inspector/remote/RemoteConnectionToTarget.cpp
++    inspector/remote/RemoteControllableTarget.cpp
++    inspector/remote/RemoteInspectionTarget.cpp
++    inspector/remote/RemoteInspector.cpp
++
++    inspector/remote/glib/RemoteInspectorGlib.cpp
++    inspector/remote/glib/RemoteInspectorServer.cpp
++    inspector/remote/glib/RemoteInspectorUtils.cpp
++)
++
++list(APPEND JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
++    inspector/remote/glib/RemoteInspectorServer.h
++    inspector/remote/glib/RemoteInspectorUtils.h
++)
++
++if (APPLE)
++add_definitions(-DJSC_COMPILATION -D_LIBCPP_OPTIONAL)
++else ()
++add_definitions(-DJSC_COMPILATION)
++endif (APPLE)                                             
++
++ add_definitions(-DSTATICALLY_LINKED_WITH_WTF)
+ if (ENABLE_REMOTE_INSPECTOR)
+     if (USE_GLIB)
+         include(inspector/remote/GLib.cmake)
+diff --git a/Source/WTF/wtf/FileSystem.h b/Source/WTF/wtf/FileSystem.h
+index 5e91ad48fcb1..170a61b7f245 100644
+--- a/Source/WTF/wtf/FileSystem.h
++++ b/Source/WTF/wtf/FileSystem.h
+@@ -63,8 +63,10 @@ namespace FileSystemImpl {
+ 
+ // PlatformFileHandle
+ #if USE(GLIB) && !OS(WINDOWS)
+-typedef GFileIOStream* PlatformFileHandle;
+-const PlatformFileHandle invalidPlatformFileHandle = 0;
++typedef GFileIOStream* PlatformFileHandle;
++const PlatformFileHandle invalidPlatformFileHandle = 0;
++//typedef int PlatformFileHandle;
++//const PlatformFileHandle invalidPlatformFileHandle = -1;
+ #elif OS(WINDOWS)
+ typedef HANDLE PlatformFileHandle;
+ // FIXME: -1 is INVALID_HANDLE_VALUE, defined in <winbase.h>. Chromium tries to
+diff --git a/Source/WTF/wtf/Platform.h b/Source/WTF/wtf/Platform.h
+index 629d8594b44f..6d4ef826b188 100644
+--- a/Source/WTF/wtf/Platform.h
++++ b/Source/WTF/wtf/Platform.h
+@@ -81,7 +81,7 @@
+    are currently dependent on macros they should not be and need to be refined or do not
+    belong as part of Platform.h at all. */
+ 
+-
++#define USE_GLIB 1
+ #if PLATFORM(GTK)
+ #define GLIB_VERSION_MIN_REQUIRED GLIB_VERSION_2_44
+ #if USE(GTK4)
+diff --git a/Source/WTF/wtf/PlatformJSCOnly.cmake b/Source/WTF/wtf/PlatformJSCOnly.cmake
+index 2f4fc6b6b986..a7461d5afa2c 100644
+--- a/Source/WTF/wtf/PlatformJSCOnly.cmake
++++ b/Source/WTF/wtf/PlatformJSCOnly.cmake
+@@ -120,10 +120,27 @@ else ()
+     )
+ endif ()
+ 
++list(APPEND WTF_PUBLIC_HEADERS
++    glib/GLibUtilities.h
++    glib/GMutexLocker.h
++    glib/GSocketMonitor.h
++    glib/GRefPtr.h
++    glib/GTypedefs.h
++    glib/GUniquePtr.h
++    glib/RunLoopSourcePriority.h
++    glib/WTFGType.h
++    glib/SocketConnection.h
++)
++
++list(APPEND WTF_SOURCES
++    glib/GLibUtilities.cpp
++)
+ if (LOWERCASE_EVENT_LOOP_TYPE STREQUAL "glib")
+     list(APPEND WTF_SOURCES
+         glib/GRefPtr.cpp
++        glib/GSocketMonitor.cpp
+         glib/RunLoopGLib.cpp
++        glib/SocketConnection.cpp
+     )
+     list(APPEND WTF_PUBLIC_HEADERS
+         glib/GRefPtr.h
+diff --git a/Source/WTF/wtf/glib/GRefPtr.h b/Source/WTF/wtf/glib/GRefPtr.h
+index afdc33d1e79a..3d8244ec6dec 100644
+--- a/Source/WTF/wtf/glib/GRefPtr.h
++++ b/Source/WTF/wtf/glib/GRefPtr.h
+@@ -25,7 +25,7 @@
+ #if USE(GLIB)
+ 
+ #include <algorithm>
+-#include <glib.h>
++#include <glib-object.h>
+ #include <wtf/HashTraits.h>
+ 
+ extern "C" {
+diff --git a/Source/cmake/OptionsJSCOnly.cmake b/Source/cmake/OptionsJSCOnly.cmake
+index e892b4274b19..425342bfaafa 100644
+--- a/Source/cmake/OptionsJSCOnly.cmake
++++ b/Source/cmake/OptionsJSCOnly.cmake
+@@ -9,6 +9,11 @@ else ()
+ endif ()
+ 
+ add_definitions(-DBUILDING_JSCONLY__)
++add_definitions(-DJSC_GLIB_API_ENABLED)
++
++SET_AND_EXPOSE_TO_BUILD(LOG_DISABLED FALSE)
++SET_AND_EXPOSE_TO_BUILD(ERROR_DISABLED FALSE)
++SET_AND_EXPOSE_TO_BUILD(FATAL_DISABLED FALSE)
+ 
+ set(PROJECT_VERSION_MAJOR 1)
+ set(PROJECT_VERSION_MINOR 0)
+@@ -17,7 +22,7 @@ set(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_
+ 
+ WEBKIT_OPTION_BEGIN()
+ WEBKIT_OPTION_DEFINE(ENABLE_STATIC_JSC "Whether to build JavaScriptCore as a static library." PUBLIC OFF)
+-WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_REMOTE_INSPECTOR PRIVATE OFF)
++WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_REMOTE_INSPECTOR PRIVATE ON)
+ if (WIN32)
+     # FIXME: Enable FTL on Windows. https://bugs.webkit.org/show_bug.cgi?id=145366
+     WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_FTL_JIT PRIVATE OFF)
+@@ -34,7 +39,7 @@ set(ALL_EVENT_LOOP_TYPES
+     Generic
+ )
+ 
+-set(DEFAULT_EVENT_LOOP_TYPE "Generic")
++set(DEFAULT_EVENT_LOOP_TYPE "Glib")
+ 
+ set(EVENT_LOOP_TYPE ${DEFAULT_EVENT_LOOP_TYPE} CACHE STRING "Implementation of event loop to be used in JavaScriptCore (one of ${ALL_EVENT_LOOP_TYPES})")
+ 
+@@ -51,7 +56,7 @@ else ()
+ endif ()
+ 
+ if (WTF_CPU_ARM OR WTF_CPU_MIPS)
+-    SET_AND_EXPOSE_TO_BUILD(USE_CAPSTONE TRUE)
++    SET_AND_EXPOSE_TO_BUILD(USE_CAPSTONE TRUE)
+ endif ()
+ 
+ # FIXME: JSCOnly on WIN32 seems to only work with fully static build
+@@ -96,7 +101,7 @@ endif ()
+ 
+ string(TOLOWER ${EVENT_LOOP_TYPE} LOWERCASE_EVENT_LOOP_TYPE)
+ if (LOWERCASE_EVENT_LOOP_TYPE STREQUAL "glib")
+-    find_package(GLIB 2.36 REQUIRED COMPONENTS gio gio-unix gobject)
++    find_package(GLIB 2.36 REQUIRED COMPONENTS gio gobject gio-unix gthread gmodule)
+     SET_AND_EXPOSE_TO_BUILD(USE_GLIB 1)
+     SET_AND_EXPOSE_TO_BUILD(USE_GLIB_EVENT_LOOP 1)
+     SET_AND_EXPOSE_TO_BUILD(WTF_DEFAULT_EVENT_LOOP 0)
+@@ -109,3 +114,4 @@ find_package(ICU 61.2 REQUIRED COMPONENTS data i18n uc)
+ if (APPLE)
+     add_definitions(-DU_DISABLE_RENAMING=1)
+ endif ()
++add_definitions(-DGETTEXT_PACKAGE="JSCOnly")
