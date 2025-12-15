@@ -23,7 +23,7 @@ try
     {
         window = jsdom.window;
         window.location = {"href":"", "host":"127.0.0.1", "protocol":"http"}
-	/*
+	
         window.frames = []
         window.screen = {
         "width":1920,
@@ -32,7 +32,79 @@ try
         "availHeight":1080
         }
         screen = window.screen;
-        */
+		 
+		var BlobPolyfill = function(parts, options) 
+		{
+			parts = parts || [];
+			options = options || {};
+			this.size = 0;
+			this.type = options.type || '';
+			this._parts = parts;
+			
+			for (var i = 0; i < parts.length; i++) 
+			{
+				if (typeof parts[i] === 'string')
+				{
+					this.size += parts[i].length;
+				} 
+				else if (parts[i] && parts[i].byteLength) 
+				{
+					this.size += parts[i].byteLength;
+				}
+			}
+		};
+    
+		BlobPolyfill.prototype.slice = function(start, end, contentType) 
+		{
+			return new BlobPolyfill(this._parts, { type: contentType || this.type });
+		};
+    
+		BlobPolyfill.prototype.text = function() 
+		{
+			var text = '';
+			for (var i = 0; i < this._parts.length; i++) 
+			{
+				if (typeof this._parts[i] === 'string') 
+				{
+					text += this._parts[i];
+				}
+			}
+			return Promise.resolve(text);
+		};
+    
+		BlobPolyfill.prototype.arrayBuffer = function() 
+		{
+			return Promise.resolve(new ArrayBuffer(0));
+		};
+    
+		if (typeof global.Blob === 'undefined') {
+			global.Blob = BlobPolyfill;
+		}
+		if (typeof window !== 'undefined' && typeof window.Blob === 'undefined') {
+			window.Blob = BlobPolyfill;
+		}
+		if (typeof self !== 'undefined' && typeof self.Blob === 'undefined') {
+			self.Blob = BlobPolyfill;
+		}
+		if (typeof this !== 'undefined' && typeof this.Blob === 'undefined') {
+			this.Blob = BlobPolyfill;
+		}    
+		if (typeof window !== 'undefined') {
+			
+			if (!window.top) window.top = window;
+			if (!window.parent) window.parent = window;
+			
+			if (!window.__tcfapi) {
+				window.__tcfapi = function(cmd, ver, callback) {
+					if (callback) callback({gdprApplies: false}, true);
+				};
+			}
+			if (!window.__uspapi) {
+				window.__uspapi = function(cmd, ver, callback) {
+					if (callback) callback({uspString: '1---'}, true);
+				};
+			}
+		}    
     }
 }
 catch(err)
