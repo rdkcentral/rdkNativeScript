@@ -51,6 +51,12 @@ int main(int argc, char* argv[])
     std::vector<std::string> applications;
     ModuleSettings moduleSettings;
     bool consoleMode = false;
+    
+    // COVERITY TEST: Deliberate leak for testing
+    int* leak = new int[10];
+    leak[0] = 42;
+    // no delete[]
+   
     while (i<argc)
     {	    
         if (strcmp(argv[i], "--display") == 0)
