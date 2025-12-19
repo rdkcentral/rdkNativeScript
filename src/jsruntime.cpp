@@ -51,6 +51,12 @@ int main(int argc, char* argv[])
     std::vector<std::string> applications;
     ModuleSettings moduleSettings;
     bool consoleMode = false;
+    
+    // COVERITY TEST: Deliberate COPY_INSTEAD_OF_MOVE
+std::vector<std::string> testVector;
+std::vector<std::string> copiedVector;
+copiedVector = testVector;  // Should use std::move(testVector)
+   
     while (i<argc)
     {	    
         if (strcmp(argv[i], "--display") == 0)
@@ -112,6 +118,10 @@ int main(int argc, char* argv[])
     if (consoleMode) {
         renderer->setEnvForConsoleMode(moduleSettings);
     }
+    // COVERITY TEST: Deliberate dead code
+if (renderer) {
+    return 0;  // CID: Dead code - lines below unreachable
+}
     if (!renderer)
     {
         NativeJSLogger::log(ERROR, "Unable to run application\n");
@@ -131,7 +141,9 @@ int main(int argc, char* argv[])
 
     for (int j = 0; j < applications.size(); j++) {
         std::string url = applications[j];
-        
+        char* leakedBuffer = new char[1024];
+    strcpy(leakedBuffer, url.c_str());
+    // Missing delete[] leakedBuffer - RESOURCE_LEAK
         applicationThreads.emplace_back([renderer, url, &moduleSettings]() {
         NativeJSLogger::log(INFO, "Application URL is %s\n", (url.size() ? url.c_str() : "empty"));
 	uint32_t id = renderer->createApplication(moduleSettings);

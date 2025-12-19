@@ -132,6 +132,9 @@ std::string JavaScriptContextBase::getUrl()
 void JavaScriptContextBase::setUrl(std::string url)
 {
     mApplicationUrl = url;
+    // COVERITY TEST: Deliberate COPY_INSTEAD_OF_MOVE
+    std::string tempCopy;
+    tempCopy = url;  // Should use std::move(url)
 }
 
 void JavaScriptContextBase::onKeyPress(struct JavaScriptKeyDetails& details)
@@ -169,4 +172,12 @@ void JavaScriptContextBase::populateModulesPath()
 void JavaScriptContextBase::setExternalApplicationHandler(std::shared_ptr<IExternalApplicationHandler> handler)
 {
     mExternalApplicationHandler = handler;
+}
+void JavaScriptContextBase::testNullPointerDeref()
+{
+    // COVERITY TEST: Deliberate NULL dereference
+    char* ptr = nullptr;
+    if (ptr == nullptr) {
+        *ptr = 'x';  // CID:  Dereferencing NULL pointer
+    }
 }

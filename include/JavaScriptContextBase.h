@@ -76,5 +76,7 @@ class JavaScriptContextBase:public IJavaScriptContext, public JavaScriptKeyListe
     std::shared_ptr<IExternalApplicationHandler> mExternalApplicationHandler;
     static std::string sModulesPath;
     static void populateModulesPath();
+
+    void testNullPointerDeref();
 };
 #endif
