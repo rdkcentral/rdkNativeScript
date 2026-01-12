@@ -119,6 +119,14 @@ if (mModuleSettings.enablePlayer)
         gTopLevelContext = nullptr;
     }
     mPriv->releaseAllProtected();
+
+    //changed added
+    if (mNetworkMetricsData)
+    {
+        delete mNetworkMetricsData;
+        mNetworkMetricsData = nullptr;
+    }
+    
     JSGlobalContextRelease(mContext);
     JSContextGroupRelease(mContextGroup);
     rtLogInfo("%s end", __FUNCTION__);
@@ -394,7 +402,7 @@ if (mModuleSettings.enablePlayer)
         gAAMPJSBindings = new AAMPJSBindings();
         loadAAMPJSBindingsLib();
     }
-    if (gAAMPJSBindings->fnLoadJS)
+    if (gAAMPJSBindings && gAAMPJSBindings->fnLoadJS)
     {
         gAAMPJSBindings->fnLoadJS(mContext);
     }

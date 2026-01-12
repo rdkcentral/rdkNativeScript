@@ -37,6 +37,7 @@ using namespace JsRuntime;
 #ifndef UNIT_TEST_BUILD
 int main(int argc, char* argv[])
 {
+    try {
     if (argc < 2)
     {
         NativeJSLogger::log(WARN, "Pass the URL to run\n");
@@ -108,14 +109,31 @@ int main(int argc, char* argv[])
 	i++;
     }
 
+    //CID:430751:Use of untrusted string value (TAINTED_STRING)
+    // Validate waylanddisplay to prevent injection attacks
+    if (!waylanddisplay.empty()) {
+        if (waylanddisplay.length() > 256) {
+            NativeJSLogger::log(ERROR, "Invalid Wayland display name: too long\n");
+            waylanddisplay = "";
+        } else {
+            bool valid = true;
+            for (char c : waylanddisplay) {
+                if (!isalnum(c) && c != '-' && c != '_' && c != '/' && c != '.') {
+                    valid = false;
+                    break;
+                }
+            }
+            if (!valid) {
+                NativeJSLogger::log(ERROR, "Invalid Wayland display name: contains invalid characters\n");
+                waylanddisplay = "";
+            }
+        }
+    }
+
+
     std::shared_ptr<NativeJSRenderer> renderer = std::make_shared<NativeJSRenderer>(waylanddisplay);
     if (consoleMode) {
         renderer->setEnvForConsoleMode(moduleSettings);
-    }
-    if (!renderer)
-    {
-        NativeJSLogger::log(ERROR, "Unable to run application\n");
-        return -1;
     }
 
 #if defined(ENABLE_JSRUNTIME_SERVER)
@@ -172,6 +190,13 @@ int main(int argc, char* argv[])
     }
     
     return 0;
+    } catch (const std::exception& e) {
+        NativeJSLogger::log(ERROR, "Uncaught exception in main: %s\n", e.what());
+        return -1;
+    } catch (...) {
+        NativeJSLogger::log(ERROR, "Unknown exception caught in main\n");
+        return -1;
+    }
 }
 
 #endif
