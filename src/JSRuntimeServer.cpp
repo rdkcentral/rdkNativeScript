@@ -85,6 +85,7 @@ public:
         if (!itm || !cJSON_IsNumber(itm))
         {
             std::cerr << "Error: " << name << "is not a Uint32_t" << std::endl;
+            res=0;
             err = true;
         }
         else
