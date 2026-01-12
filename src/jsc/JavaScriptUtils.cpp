@@ -115,7 +115,7 @@ void dispatchPending()
 {
   std::unique_lock<std::mutex> lock(gDispatchMutex);
   std::list<std::function<void ()>> pending = std::move(gPendingFun);
-  gDispatchMutex.unlock();
+  lock.unlock();
   for(auto& fun : pending)
     fun();
 }
@@ -321,17 +321,32 @@ rtError rtReadBinaryBinding(int numArgs, const rtValue* args, rtValue* result, v
   const char *fd = "hello.wasm";
   struct stat buf;
 
-  stat(fd, &buf);
+  if (stat(fd, &buf) != 0)
+  {
+    rtLogError("Failed to stat file: %s", fd);
+    fclose(ptr);
+    return RT_ERROR;
+  }
+  
   int size = buf.st_size;
 
   buffer = (char*)malloc(size);
-  fread(buffer,size,1,ptr); // read 10 bytes to our buffer
+  size_t bytesRead = fread(buffer, size, 1, ptr);
   fclose(ptr);
+
+  if (bytesRead != 1)
+  {
+    rtLogError("Failed to read file: expected 1 item, read %zu items", bytesRead);
+    free(buffer);
+    return RT_ERROR;
+  }
 
   if (result)
   {
       result->setString(buffer);
   }
+
+  free(buffer);
   return RT_OK;
 }
 
@@ -693,6 +708,7 @@ rtError rtJSRuntimeDownloadMetrics(int numArgs, const rtValue* args, rtValue* re
   rtValue keys;
   if (map->Get("allKeys", &keys) != RT_OK) {
     rtLogWarn("Could not retrieve url for network metrics data.");
+    delete netMetricsArray; //newly added
     return RT_FAIL;
   }
   rtObjectRef objRef = keys.toObject();
@@ -700,6 +716,7 @@ rtError rtJSRuntimeDownloadMetrics(int numArgs, const rtValue* args, rtValue* re
 
   if (!keysArray) {
     rtLogWarn("No url found in the network metrics data.");
+    delete netMetricsArray; //newly added
     return RT_FAIL;
   }
 
@@ -715,6 +732,7 @@ rtError rtJSRuntimeDownloadMetrics(int numArgs, const rtValue* args, rtValue* re
       NetworkMetrics* metrics = (NetworkMetrics*)storedValue.toVoidPtr();
       if (!metrics) {
         rtLogError("Failed to cast stored value to NetworkMetrics structure for url: %s.", key.cString());
+        delete netMetricsArray; //newly added
         return RT_FAIL;
       }
       rtMapObject* metricsMap = new rtMapObject();
