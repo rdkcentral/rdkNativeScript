@@ -76,7 +76,9 @@ bool JSRuntimeClient::run()
     t.detach();
 
     std::unique_lock<std::mutex> lock(mStateMutex);
-    mStateCondition.wait_for(lock, std::chrono::seconds(5));
+    mStateCondition.wait_for(lock, std::chrono::seconds(5), [this]() { 
+        return mState != "none"; 
+    });
     return mState == "open";
 }
 
@@ -152,37 +154,45 @@ void JSRuntimeClient::onClose(websocketpp::connection_hdl hdl)
 #ifndef UNIT_TEST_BUILD
 int main(int argc, char **argv)
 {
-    std::string command;
-    std::string response;
+    try {
+        std::string command;
+        std::string response;
 
-    if (argc > 1)
-    {
-	NativeJSLogger::log(INFO, "Send input commands at ws://localhost:%s\n", std::to_string(WS_SERVER_PORT).c_str());
+        if (argc > 1)
+        {
+	    NativeJSLogger::log(INFO, "Send input commands at ws://localhost:%s\n", std::to_string(WS_SERVER_PORT).c_str());
+            return -1;
+        }
+
+        JSRuntimeClient *client = JSRuntimeClient::getInstance();
+        client->initialize(WS_SERVER_PORT);
+        if (!client->run())
+        {
+	    NativeJSLogger::log(ERROR, "Unable to connect to server\n");
+            return -1;
+        }
+
+        while (client->getState() == "open" && std::getline(std::cin, command))
+        {
+            client->sendCommand(command, response);
+            if (!response.empty())
+            {
+	        NativeJSLogger::log(INFO, "Response: %s\n", response.c_str());
+            }
+            else
+            {
+                NativeJSLogger::log(WARN, "Missing response\n");
+                break;
+            }
+        }
+
+        return 0;
+    } catch (const std::exception& e) {
+        NativeJSLogger::log(ERROR, "Uncaught exception in main: %s\n", e.what());
+        return -1;
+    } catch (...) {
+        NativeJSLogger::log(ERROR, "Unknown exception caught in main\n");
         return -1;
     }
-
-    JSRuntimeClient *client = JSRuntimeClient::getInstance();
-    client->initialize(WS_SERVER_PORT);
-    if (!client->run())
-    {
-	NativeJSLogger::log(ERROR, "Unable to connect to server\n");
-        return -1;
-    }
-
-    while (client->getState() == "open" && std::getline(std::cin, command))
-    {
-        client->sendCommand(command, response);
-        if (!response.empty())
-        {
-	     NativeJSLogger::log(INFO, "Response: %s\n", response.c_str());
-        }
-        else
-        {
-            NativeJSLogger::log(WARN, "Missing response\n");
-            break;
-        }
-    }
-
-    return 0;
 }
 #endif
