@@ -37,6 +37,7 @@ using namespace JsRuntime;
 #ifndef UNIT_TEST_BUILD
 int main(int argc, char* argv[])
 {
+    try {
     if (argc < 2)
     {
         NativeJSLogger::log(WARN, "Pass the URL to run\n");
@@ -57,7 +58,9 @@ int main(int argc, char* argv[])
         {
             appendindex = i-1;
 	    i++;
-            waylanddisplay = argv[i];
+            if (i < argc) {
+                waylanddisplay = argv[i];
+            }
         }
 	else if (strcmp(argv[i], "--enableHttp") == 0)
         {
@@ -107,15 +110,15 @@ int main(int argc, char* argv[])
         }
 	i++;
     }
-
+    
+    // CID:430751 - Intentional: waylanddisplay from command line argument
+    // This is a display socket name passed to Wayland compositor, used only for
+    // local display connection. The value is passed to system compositor APIs
+    // which handle validation. No injection risk as it's used as display identifier only.
+    /* coverity[tainted_data] */
     std::shared_ptr<NativeJSRenderer> renderer = std::make_shared<NativeJSRenderer>(waylanddisplay);
     if (consoleMode) {
         renderer->setEnvForConsoleMode(moduleSettings);
-    }
-    if (!renderer)
-    {
-        NativeJSLogger::log(ERROR, "Unable to run application\n");
-        return -1;
     }
 
 #if defined(ENABLE_JSRUNTIME_SERVER)
@@ -172,6 +175,13 @@ int main(int argc, char* argv[])
     }
     
     return 0;
+    } catch (const std::exception& e) {
+        NativeJSLogger::log(ERROR, "Uncaught exception in main: %s\n", e.what());
+        return -1;
+    } catch (...) {
+        NativeJSLogger::log(ERROR, "Unknown exception caught in main\n");
+        return -1;
+    }
 }
 
 #endif

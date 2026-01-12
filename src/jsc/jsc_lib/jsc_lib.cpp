@@ -29,9 +29,9 @@ static bool supportsRichSourceInfo(const JSGlobalObject*) { return true; }
 static bool shouldInterruptScript(const JSGlobalObject*) { return true; }
 static bool shouldInterruptScriptBeforeTimeout(const JSGlobalObject*) { return false; }
 static RuntimeFlags javaScriptRuntimeFlags(const JSGlobalObject*) { return RuntimeFlags(); }
-static void reportUncaughtExceptionAtEventLoop(JSGlobalObject*, Exception* exception)
+static void reportUncaughtExceptionAtEventLoop(JSGlobalObject* globalObject, Exception* exception)
 {
-    NativeJSLogger::log(ERROR, "Uncaught Exception at run loop: %s\n", exception->value());
+    NativeJSLogger::log(ERROR, "Uncaught Exception at run loop: %s\n", exception->value().toWTFString(globalObject).utf8().data());
 }
 static JSObject* currentScriptExecutionOwner(JSGlobalObject* global) { return global; }
 static ScriptExecutionStatus scriptExecutionStatus(JSGlobalObject*, JSObject*) { return ScriptExecutionStatus::Running; }
@@ -150,18 +150,78 @@ bool downloadFile(std::string& url, MemoryStruct& chunk)
     curl = curl_easy_init();
     if (curl)
     {
-        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
-        curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, CallbackHeader);
-        curl_easy_setopt(curl, CURLOPT_HEADERDATA, (void *)&chunk);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CallbackOnMemoryWrite);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
-        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
-        curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2);
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, true);
-        curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
-        curl_easy_setopt(curl, CURLOPT_PROXY, "");
+        res = curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        if (res != CURLE_OK) {
+            NativeJSLogger::log(ERROR, "Failed to set CURLOPT_URL: %s\n", curl_easy_strerror(res));
+            curl_easy_cleanup(curl);
+            return ret;
+        }
+        res = curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
+        if (res != CURLE_OK) {
+            NativeJSLogger::log(ERROR, "Failed to set CURLOPT_FOLLOWLOCATION: %s\n", curl_easy_strerror(res));
+            curl_easy_cleanup(curl);
+            return ret;
+        }
+        res = curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, CallbackHeader);
+        if (res != CURLE_OK) {
+            NativeJSLogger::log(ERROR, "Failed to set CURLOPT_HEADERFUNCTION: %s\n", curl_easy_strerror(res));
+            curl_easy_cleanup(curl);
+            return ret;
+        }
+        res = curl_easy_setopt(curl, CURLOPT_HEADERDATA, (void *)&chunk);
+        if (res != CURLE_OK) {
+            NativeJSLogger::log(ERROR, "Failed to set CURLOPT_HEADERDATA: %s\n", curl_easy_strerror(res));
+            curl_easy_cleanup(curl);
+            return ret;
+        }
+        res = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CallbackOnMemoryWrite);
+        if (res != CURLE_OK) {
+            NativeJSLogger::log(ERROR, "Failed to set CURLOPT_WRITEFUNCTION: %s\n", curl_easy_strerror(res));
+            curl_easy_cleanup(curl);
+            return ret;
+        }
+        res = curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
+        if (res != CURLE_OK) {
+            NativeJSLogger::log(ERROR, "Failed to set CURLOPT_WRITEDATA: %s\n", curl_easy_strerror(res));
+            curl_easy_cleanup(curl);
+            return ret;
+        }
+        res = curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
+        if (res != CURLE_OK) {
+            NativeJSLogger::log(ERROR, "Failed to set CURLOPT_TIMEOUT: %s\n", curl_easy_strerror(res));
+            curl_easy_cleanup(curl);
+            return ret;
+        }
+        res = curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+        if (res != CURLE_OK) {
+            NativeJSLogger::log(ERROR, "Failed to set CURLOPT_NOSIGNAL: %s\n", curl_easy_strerror(res));
+            curl_easy_cleanup(curl);
+            return ret;
+        }
+        res = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2);
+        if (res != CURLE_OK) {
+            NativeJSLogger::log(ERROR, "Failed to set CURLOPT_SSL_VERIFYHOST: %s\n", curl_easy_strerror(res));
+            curl_easy_cleanup(curl);
+            return ret;
+        }
+        res = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, true);
+        if (res != CURLE_OK) {
+            NativeJSLogger::log(ERROR, "Failed to set CURLOPT_SSL_VERIFYPEER: %s\n", curl_easy_strerror(res));
+            curl_easy_cleanup(curl);
+            return ret;
+        }
+        res = curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
+        if (res != CURLE_OK) {
+            NativeJSLogger::log(ERROR, "Failed to set CURLOPT_USERAGENT: %s\n", curl_easy_strerror(res));
+            curl_easy_cleanup(curl);
+            return ret;
+        }
+        res = curl_easy_setopt(curl, CURLOPT_PROXY, "");
+        if (res != CURLE_OK) {
+            NativeJSLogger::log(ERROR, "Failed to set CURLOPT_PROXY: %s\n", curl_easy_strerror(res));
+            curl_easy_cleanup(curl);
+            return ret;
+        }
 
 
         //curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
@@ -388,8 +448,9 @@ static URL currentWorkingDirectory()
         return { };
 
     // Add a trailing slash if needed so the URL resolves to a directory and not a file.
-    if (directoryString[directoryString.length() - 1] != pathSeparator())
-        directoryString = makeString(directoryString, pathSeparator());
+    auto separator = pathSeparator();
+    if (!directoryString.endsWith(separator))
+        directoryString = makeString(directoryString, separator);
 
     return URL::fileURLWithFileSystemPath(directoryString);
 }

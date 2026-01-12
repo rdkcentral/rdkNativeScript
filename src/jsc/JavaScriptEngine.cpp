@@ -135,7 +135,7 @@ bool JavaScriptEngine::initialize()
   if (garbageCollectInterval)
   {
       garbageCollectIntervalValue = atof(garbageCollectInterval);
-      NativeJSLogger::log(INFO, "garbage collection interval value: %d\n", garbageCollectIntervalValue);
+      NativeJSLogger::log(INFO, "garbage collection interval value: %f\n", garbageCollectIntervalValue);
   }
   mGarbageCollectionTag = installTimeout(garbageCollectIntervalValue, true,
     [engine] () mutable {
