@@ -48,9 +48,15 @@ public:
         if (derived.send(command))
         {
             std::unique_lock<std::mutex> lock(mResponseMutex);
-            mResponseCondition.wait_for(lock, std::chrono::seconds(5));
-            response = mLastResponse;
-            return true;
+            mResponseReceived = false;
+            bool gotResponse = mResponseCondition.wait_for(lock, std::chrono::seconds(5), 
+                [this]() { return mResponseReceived; });
+            
+            if (gotResponse)
+            {
+                response = mLastResponse;
+                return true;
+            }
         }
 
         return false;
@@ -63,6 +69,7 @@ protected:
     {
         std::lock_guard<std::mutex> lock(mResponseMutex);
         mLastResponse = message;
+        mResponseReceived = true;
         mResponseCondition.notify_one();
     }
 
@@ -71,6 +78,7 @@ private:
     CommandInterface &operator=(const CommandInterface &) = delete;
 
     std::string mLastResponse;
+    bool mResponseReceived = false;
     std::mutex mResponseMutex;
     std::condition_variable mResponseCondition;
 };
