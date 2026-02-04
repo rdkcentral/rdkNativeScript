@@ -332,6 +332,7 @@ rtError rtReadBinaryBinding(int numArgs, const rtValue* args, rtValue* result, v
   {
       result->setString(buffer);
   }
+  free(buffer);
   return RT_OK;
 }
 
@@ -693,6 +694,7 @@ rtError rtJSRuntimeDownloadMetrics(int numArgs, const rtValue* args, rtValue* re
   rtValue keys;
   if (map->Get("allKeys", &keys) != RT_OK) {
     rtLogWarn("Could not retrieve url for network metrics data.");
+    delete netMetricsArray;
     return RT_FAIL;
   }
   rtObjectRef objRef = keys.toObject();

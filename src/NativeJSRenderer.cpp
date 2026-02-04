@@ -506,8 +506,9 @@ void NativeJSRenderer::run()
         if(!mTestFileName.empty())
         {
             ModuleSettings settings;
+            uint32_t id = createApplicationIdentifier();
 	    settings.enableJSDOM = mEnableTestFileDOMSupport;
-	    ApplicationRequest appRequest(id, RUN, mTestFileName, settings.enableHttp, settings.enableXHR, settings.enableWebSocket, settings.enableWebSocketEnhanced, settings.enableFetch, settings.enableJSDOM, settings.enableWindow, settings.enablePlayer);
+        ApplicationRequest appRequest(id, RUN, mTestFileName, settings.enableHttp, settings.enableXHR, settings.enableWebSocket, settings.enableWebSocketEnhanced, settings.enableFetch, settings.enableJSDOM, settings.enableWindow, settings.enablePlayer);
 	    NativeJSRenderer::createApplicationInternal(appRequest);
 	    NativeJSRenderer::runApplicationInternal(appRequest);
 	    mTestFileName = "";
