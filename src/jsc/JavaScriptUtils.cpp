@@ -314,24 +314,61 @@ rtError rtSetVideoStartTimeBinding(int numArgs, const rtValue* args, rtValue* re
 
 rtError rtReadBinaryBinding(int numArgs, const rtValue* args, rtValue* result, void* context)
 {
-  char *buffer = nullptr;
-  FILE *ptr = nullptr;
-  ptr = fopen("hello.wasm","rb");  // r for read, b for binary
+  UNUSED_PARAM(context);
 
-  const char *fd = "hello.wasm";
-  struct stat buf;
-
-  stat(fd, &buf);
-  int size = buf.st_size;
-
-  buffer = (char*)malloc(size);
-  fread(buffer,size,1,ptr); // read 10 bytes to our buffer
-  fclose(ptr);
-
-  if (result)
-  {
-      result->setString(buffer);
+  // 1. Validate numArgs and use args for filename
+  if (numArgs < 1 || args[0].getType() != RT_stringType) {
+    rtLogError("%s: missing or invalid file path", __FUNCTION__);
+    return RT_ERROR_INVALID_ARG;
   }
+
+  const char *fd = args[0].toString().cString();
+  FILE *ptr = fopen(fd, "rb");
+
+  // 2. Check fopen
+  if (!ptr) {
+    rtLogError("Failed to open file: %s", fd);
+    return RT_ERROR;
+  }
+
+  // 3. Check stat
+  struct stat buf;
+  if (stat(fd, &buf) != 0) {
+    rtLogError("Failed to stat file: %s", fd);
+    fclose(ptr);
+    return RT_ERROR;
+  }
+
+  int size = buf.st_size;
+  if (size <= 0) {
+    rtLogError("Invalid file size: %d", size);
+    fclose(ptr);
+    return RT_ERROR;
+  }
+
+  // 4. Check malloc
+  char *buffer = (char*)malloc(size);
+  if (!buffer) {
+    rtLogError("Failed to allocate memory for file: %s", fd);
+    fclose(ptr);
+    return RT_ERROR;
+  }
+
+  // 5. Robust fread
+  size_t bytesRead = fread(buffer, 1, size, ptr);
+  if (bytesRead != (size_t)size) {
+    rtLogError("Failed to read complete file. Expected %d bytes, read %zu bytes", size, bytesRead);
+    free(buffer);
+    fclose(ptr);
+    return RT_ERROR;
+  }
+
+  // 6. Set result only if buffer is valid
+  if (result) {
+    result->setString(buffer);
+  }
+  free(buffer);
+  fclose(ptr);
   return RT_OK;
 }
 
@@ -693,6 +730,7 @@ rtError rtJSRuntimeDownloadMetrics(int numArgs, const rtValue* args, rtValue* re
   rtValue keys;
   if (map->Get("allKeys", &keys) != RT_OK) {
     rtLogWarn("Could not retrieve url for network metrics data.");
+    delete netMetricsArray;
     return RT_FAIL;
   }
   rtObjectRef objRef = keys.toObject();
@@ -700,6 +738,7 @@ rtError rtJSRuntimeDownloadMetrics(int numArgs, const rtValue* args, rtValue* re
 
   if (!keysArray) {
     rtLogWarn("No url found in the network metrics data.");
+    delete netMetricsArray;
     return RT_FAIL;
   }
 
@@ -715,6 +754,7 @@ rtError rtJSRuntimeDownloadMetrics(int numArgs, const rtValue* args, rtValue* re
       NetworkMetrics* metrics = (NetworkMetrics*)storedValue.toVoidPtr();
       if (!metrics) {
         rtLogError("Failed to cast stored value to NetworkMetrics structure for url: %s.", key.cString());
+        delete netMetricsArray;
         return RT_FAIL;
       }
       rtMapObject* metricsMap = new rtMapObject();

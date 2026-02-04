@@ -121,6 +121,10 @@ if (mModuleSettings.enablePlayer)
     mPriv->releaseAllProtected();
     JSGlobalContextRelease(mContext);
     JSContextGroupRelease(mContextGroup);
+    if (mNetworkMetricsData) {
+        delete mNetworkMetricsData;
+        mNetworkMetricsData = nullptr;
+    }
     rtLogInfo("%s end", __FUNCTION__);
 }
 
