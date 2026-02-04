@@ -63,6 +63,9 @@ int main(int argc, char* argv[])
             else {
                 NativeJSLogger::log(WARN, "--display flag provided without a value\n");
             }
+            else {
+                NativeJSLogger::log(WARN, "Warning: --display flag provided without a value, using default display\n");
+            }
         }
 	else if (strcmp(argv[i], "--enableHttp") == 0)
         {
