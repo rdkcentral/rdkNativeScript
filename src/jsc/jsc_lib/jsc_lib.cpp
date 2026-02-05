@@ -31,6 +31,15 @@ static bool shouldInterruptScriptBeforeTimeout(const JSGlobalObject*) { return f
 static RuntimeFlags javaScriptRuntimeFlags(const JSGlobalObject*) { return RuntimeFlags(); }
 static void reportUncaughtExceptionAtEventLoop(JSGlobalObject* globalObject, Exception* exception)
 {
+    if (!exception) {
+        NativeJSLogger::log(ERROR, "Uncaught Exception at run loop: <no exception object>\n");
+        return;
+    }
+
+    if (!globalObject) {
+        NativeJSLogger::log(ERROR, "Uncaught Exception at run loop: <globalObject is null, cannot format exception>\n");
+        return;
+    }
     NativeJSLogger::log(ERROR, "Uncaught Exception at run loop: %s\n", exception->value().toWTFString(globalObject).utf8().data());
 }
 static JSObject* currentScriptExecutionOwner(JSGlobalObject* global) { return global; }
