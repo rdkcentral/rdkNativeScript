@@ -34,6 +34,35 @@
 using namespace std;
 using namespace JsRuntime;
 
+// Sanitize wayland display name for security
+static bool sanitizeDisplayName(const char* input, std::string& output) {
+    if (!input) return false;
+    
+    size_t len = strlen(input);
+    if (len == 0 || len > 64) return false;
+    
+    // Build output string character-by-character to break taint chain
+    output.clear();
+    output.reserve(len);
+    
+    for (size_t i = 0; i < len; ++i) {
+        char c = input[i];
+        bool isAlphaNum = (c >= '0' && c <= '9') || 
+                          (c >= 'a' && c <= 'z') || 
+                          (c >= 'A' && c <= 'Z');
+        if (isAlphaNum || c == '-' || c == '_' || c == '.') {
+            // Append only validated characters
+            output += c;
+        } else {
+            // Invalid character found - clear and fail
+            output.clear();
+            return false;
+        }
+    }
+    
+    return true;
+}
+
 #ifndef UNIT_TEST_BUILD
 int main(int argc, char* argv[])
 {
@@ -58,10 +87,17 @@ int main(int argc, char* argv[])
         {
 	    i++;
             if (i < argc) {
-                waylanddisplay = argv[i];
+                std::cout << "Received display argument: '" << argv[i] << "'" << std::endl;
+                std::string sanitizedDisplay;
+                if (!sanitizeDisplayName(argv[i], sanitizedDisplay)) {
+                    std::cout << "Invalid display name '" << argv[i] << "'. Must be 1-64 characters containing only alphanumeric, hyphens, underscores, and dots" << std::endl;
+                } else {
+                    std::cout << "Sanitized display name: '" << sanitizedDisplay << "'" << std::endl;
+                    waylanddisplay = sanitizedDisplay;
+                }
             } 
             else {
-                NativeJSLogger::log(WARN, "--display flag provided without a value\n");
+                std::cout << "--display flag provided without a value" << std::endl;
             }
         }
 	else if (strcmp(argv[i], "--enableHttp") == 0)
@@ -113,11 +149,7 @@ int main(int argc, char* argv[])
 	i++;
     }
     
-    // CID:430751 - Intentional: waylanddisplay from command line argument
-    // This is a display socket name passed to Wayland compositor, used only for
-    // local display connection. The value is passed to system compositor APIs
-    // which handle validation. No injection risk as it's used as display identifier only.
-    /* coverity[tainted_data] */
+
     std::shared_ptr<NativeJSRenderer> renderer = std::make_shared<NativeJSRenderer>(waylanddisplay);
     if (consoleMode) {
         renderer->setEnvForConsoleMode(moduleSettings);
