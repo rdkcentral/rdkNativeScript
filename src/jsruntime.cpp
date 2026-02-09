@@ -58,7 +58,28 @@ int main(int argc, char* argv[])
         {
 	    i++;
             if (i < argc) {
-                waylanddisplay = argv[i];
+                // Validate wayland display name to prevent injection
+                std::string displayArg = argv[i];
+                if (displayArg.empty() || displayArg.length() > 64) {
+                    NativeJSLogger::log(WARN, "Invalid display name length\n");
+                } else {
+                    // Allow only alphanumeric, hyphens, underscores, and dots
+                    bool isValid = true;
+                    for (char c : displayArg) {
+                        bool isAlphaNum = (c >= '0' && c <= '9') || 
+                                          (c >= 'a' && c <= 'z') || 
+                                          (c >= 'A' && c <= 'Z');
+                        if (!isAlphaNum && c != '-' && c != '_' && c != '.') {
+                            isValid = false;
+                            break;
+                        }
+                    }
+                    if (isValid) {
+                        waylanddisplay = displayArg;
+                    } else {
+                        NativeJSLogger::log(WARN, "Invalid display name format. Only alphanumeric, hyphens, underscores, and dots allowed\n");
+                    }
+                }
             } 
             else {
                 NativeJSLogger::log(WARN, "--display flag provided without a value\n");
@@ -113,11 +134,6 @@ int main(int argc, char* argv[])
 	i++;
     }
     
-    // CID:430751 - Intentional: waylanddisplay from command line argument
-    // This is a display socket name passed to Wayland compositor, used only for
-    // local display connection. The value is passed to system compositor APIs
-    // which handle validation. No injection risk as it's used as display identifier only.
-    /* coverity[tainted_data] */
     std::shared_ptr<NativeJSRenderer> renderer = std::make_shared<NativeJSRenderer>(waylanddisplay);
     if (consoleMode) {
         renderer->setEnvForConsoleMode(moduleSettings);
