@@ -34,6 +34,32 @@
 using namespace std;
 using namespace JsRuntime;
 
+// Sanitize wayland display name for security
+static bool sanitizeDisplayName(const char* input, std::string& output) {
+    if (!input) return false;
+    
+    size_t len = strlen(input);
+    if (len == 0 || len > 64) return false;
+    
+    output.clear();
+    output.reserve(len);
+    
+    for (size_t i = 0; i < len; ++i) {
+        char c = input[i];
+        bool isAlphaNum = (c >= '0' && c <= '9') || 
+                          (c >= 'a' && c <= 'z') || 
+                          (c >= 'A' && c <= 'Z');
+        if (isAlphaNum || c == '-' || c == '_' || c == '.') {
+            output += c;
+        } else {
+            output.clear();
+            return false;
+        }
+    }
+    
+    return true;
+}
+
 #ifndef UNIT_TEST_BUILD
 int main(int argc, char* argv[])
 {
@@ -58,7 +84,13 @@ int main(int argc, char* argv[])
         {
 	    i++;
             if (i < argc) {
-                waylanddisplay = argv[i];
+                std::string sanitizedDisplay;
+                if (!sanitizeDisplayName(argv[i], sanitizedDisplay)) {
+                    NativeJSLogger::log(WARN, "Invalid display name provided. Must be 1-64 characters containing only alphanumeric, hyphens, underscores, and dots\n");
+                } else {
+                    NativeJSLogger::log(INFO, "Using display: '%s'\n", sanitizedDisplay.c_str());
+                    waylanddisplay = sanitizedDisplay;
+                }
             } 
             else {
                 NativeJSLogger::log(WARN, "--display flag provided without a value\n");
@@ -113,11 +145,6 @@ int main(int argc, char* argv[])
 	i++;
     }
     
-    // CID:430751 - Intentional: waylanddisplay from command line argument
-    // This is a display socket name passed to Wayland compositor, used only for
-    // local display connection. The value is passed to system compositor APIs
-    // which handle validation. No injection risk as it's used as display identifier only.
-    /* coverity[tainted_data] */
     std::shared_ptr<NativeJSRenderer> renderer = std::make_shared<NativeJSRenderer>(waylanddisplay);
     if (consoleMode) {
         renderer->setEnvForConsoleMode(moduleSettings);
