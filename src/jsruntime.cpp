@@ -128,6 +128,10 @@ int main(int argc, char* argv[])
         {
             moduleSettings.enablePlayer = true;
         }
+	else if (strcmp(argv[i], "--enableMiniJSDOM") == 0)
+        {
+            moduleSettings.enableMiniJSDOM = true;
+        }
     else if (strcmp(argv[i], "--console") == 0)
         {
             consoleMode = true;
