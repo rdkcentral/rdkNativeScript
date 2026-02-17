@@ -19,7 +19,7 @@
 #include <ModuleSettings.h>
 
 ModuleSettings::ModuleSettings(): enableHttp(false), enableXHR(false), enableWebSocket(false), enableWebSocketEnhanced(false)
-				  , enableFetch(false), enableJSDOM(false), enableWindow(false), enablePlayer(false)
+				  , enableFetch(false), enableJSDOM(false), enableWindow(false), enablePlayer(false), enableMiniJSDOM(false)
 {
 }
 
@@ -30,7 +30,8 @@ ModuleSettings::ModuleSettings(ModuleSettings& settings): enableHttp(settings.en
 							  enableFetch(settings.enableFetch),
 							  enableJSDOM(settings.enableJSDOM), 
 							  enableWindow(settings.enableWindow),
-							  enablePlayer(settings.enablePlayer)
+							  enablePlayer(settings.enablePlayer),
+                              enableMiniJSDOM(settings.enableMiniJSDOM)
 {
 }
 
@@ -56,7 +57,11 @@ void ModuleSettings::fromString(std::string& options)
     {
         enableFetch = true;
     }	    
-    if (options.find("jsdom") != std::string::npos)
+    if (options.find("minijsdom") != std::string::npos)
+    {
+        enableMiniJSDOM = true;
+    }
+    else if (options.find("jsdom") != std::string::npos)
     {
         enableJSDOM = true;
     }	    
@@ -67,5 +72,5 @@ void ModuleSettings::fromString(std::string& options)
     if (options.find("player") != std::string::npos)
     {
         enablePlayer = true;
-    }	    
+    }	   
 }

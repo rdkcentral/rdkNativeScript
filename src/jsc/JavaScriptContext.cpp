@@ -466,6 +466,12 @@ if (mModuleSettings.enablePlayer)
         runFile("linkedjsdomwrapper.js", nullptr/*, true*/);
         runFile("windowwrapper.js", nullptr/*, true*/);
 		runFile("url.js", nullptr/*, true*/);
+
+    }
+    else if (mModuleSettings.enableMiniJSDOM)
+    {
+        runFile("minified_linkedjsdom.js", nullptr/*, true*/);
+		runFile("url.js", nullptr/*, true*/);
         if(getenv("FIREBOLT_ENDPOINT")!=NULL)
         {
             auto FireboltEndpoint = std::string(getenv("FIREBOLT_ENDPOINT"));

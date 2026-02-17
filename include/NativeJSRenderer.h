@@ -95,7 +95,7 @@ namespace JsRuntime {
 
         struct ApplicationRequest
         {
-          ApplicationRequest(uint32_t id, RequestType requestType, std::string url="", bool enableHttp=false, bool enableXHR=false, bool enableWebSocket=false, bool enableWebSocketEnhanced=false, bool enableFetch=false, bool enableJSDOM=false, bool enableWindow=false, bool enablePlayer=false, std::string userAgent=""): mId(id), mRequestType(requestType), mUrl(url), mEnableHttp(enableHttp), mEnableXHR(enableXHR), mEnableWebSocket(enableWebSocket), mEnableWebSocketEnhanced(enableWebSocketEnhanced), mEnableFetch(enableFetch), mEnableJSDOM(enableJSDOM), mEnableWindow(enableWindow), mEnablePlayer(enablePlayer), mUserAgent(userAgent)
+          ApplicationRequest(uint32_t id, RequestType requestType, std::string url="", bool enableHttp=false, bool enableXHR=false, bool enableWebSocket=false, bool enableWebSocketEnhanced=false, bool enableFetch=false, bool enableJSDOM=false, bool enableWindow=false, bool enablePlayer=false, bool enableMiniJSDOM=false, std::string userAgent=""): mId(id), mRequestType(requestType), mUrl(url), mEnableHttp(enableHttp), mEnableXHR(enableXHR), mEnableWebSocket(enableWebSocket), mEnableWebSocketEnhanced(enableWebSocketEnhanced), mEnableFetch(enableFetch), mEnableJSDOM(enableJSDOM), mEnableWindow(enableWindow), mEnablePlayer(enablePlayer), mEnableMiniJSDOM(enableMiniJSDOM), mUserAgent(userAgent)
           {
           }
           uint32_t mId;
@@ -109,6 +109,7 @@ namespace JsRuntime {
           bool mEnableJSDOM;
           bool mEnableWindow;
           bool mEnablePlayer;
+          bool mEnableMiniJSDOM;
           std::string mUserAgent;
 
         };
