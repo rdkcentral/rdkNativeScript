@@ -398,12 +398,18 @@ if (mModuleSettings.enablePlayer)
 #else
     if ((nullptr == gAAMPJSBindings) && (gTopLevelContext == mContext))
     {
+        NativeJSLogger::log(INFO, "Initializing AAMPJSBindings - creating new AAMPJSBindings object\n");
         gAAMPJSBindings = new AAMPJSBindings();
+        NativeJSLogger::log(INFO, "AAMPJSBindings object created successfully\n");
+        NativeJSLogger::log(INFO, "Loading AAMP JS Bindings Library\n");
         loadAAMPJSBindingsLib();
+        NativeJSLogger::log(INFO, "AAMP JS Bindings Library loaded successfully\n");
     }
     if (gAAMPJSBindings && gAAMPJSBindings->fnLoadJS)
     {
+        NativeJSLogger::log(INFO, "Calling AAMPJSBindings->fnLoadJS with context\n");
         gAAMPJSBindings->fnLoadJS(mContext);
+        NativeJSLogger::log(INFO, "AAMPJSBindings->fnLoadJS completed successfully\n");
     }
 #endif
 #else
@@ -413,40 +419,65 @@ if (mModuleSettings.enablePlayer)
 #endif
     auto injectFun =
       [](JSContextRef jsContext, const char* name, JSObjectCallAsFunctionCallback callback) {
+          NativeJSLogger::log(INFO, "injectFun: Injecting function '%s' into global context\n", name);
           JSContextRef globalCtx = JSContextGetGlobalContext(jsContext);
+          NativeJSLogger::log(INFO, "injectFun: Got global context for function '%s'\n", name);
           JSObjectRef globalObj = JSContextGetGlobalObject(globalCtx);
+          NativeJSLogger::log(INFO, "injectFun: Got global object for function '%s'\n", name);
           JSStringRef funcName = JSStringCreateWithUTF8CString(name);
+          NativeJSLogger::log(INFO, "injectFun: Created JSString for function '%s'\n", name);
           JSObjectRef funcObj = JSObjectMakeFunctionWithCallback(jsContext, funcName, callback);
+          NativeJSLogger::log(INFO, "injectFun: Created function object for '%s'\n", name);
           JSObjectSetProperty(jsContext, globalObj, funcName, funcObj, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete, nullptr);
+          NativeJSLogger::log(INFO, "injectFun: Set property on global object for '%s'\n", name);
           JSStringRelease(funcName);
+          NativeJSLogger::log(INFO, "injectFun: Successfully injected function '%s'\n", name);
       };
     injectFun(mContext, "require", requireCallback);
     if(mModuleSettings.enablePlayer)
     {
+       NativeJSLogger::log(INFO, "Loading video.js (Player enabled)\n");
        runFile("video.js", nullptr);
+       NativeJSLogger::log(INFO, "Loaded video.js successfully\n");
     }
     if (mModuleSettings.enableXHR)
     {
+        NativeJSLogger::log(INFO, "Loading xhr.js (XHR enabled)\n");
         runFile("xhr.js", nullptr);
+        NativeJSLogger::log(INFO, "Loaded xhr.js successfully\n");
     }
     if (mModuleSettings.enableHttp)
     {
+        NativeJSLogger::log(INFO, "Loading http.js (HTTP enabled)\n");
         runFile("http.js", nullptr);
+        NativeJSLogger::log(INFO, "Loaded http.js successfully\n");
+        NativeJSLogger::log(INFO, "Loading https.js (HTTP enabled)\n");
         runFile("https.js", nullptr);
+        NativeJSLogger::log(INFO, "Loaded https.js successfully\n");
     }
     if (mModuleSettings.enableFetch)
     {
+        NativeJSLogger::log(INFO, "Loading node-fetch.js (Fetch enabled)\n");
         runFile("node-fetch.js" , nullptr/*, true*/);
+        NativeJSLogger::log(INFO, "Loaded node-fetch.js successfully\n");
     }
+    NativeJSLogger::log(INFO, "Loading utils.js\n");
     runFile("utils.js", nullptr);
+    NativeJSLogger::log(INFO, "Loaded utils.js successfully\n");
     if (mModuleSettings.enableWebSocketEnhanced)
     {
+        NativeJSLogger::log(INFO, "Loading event.js (WebSocketEnhanced enabled)\n");
         runFile("event.js", nullptr);
+        NativeJSLogger::log(INFO, "Loaded event.js successfully\n");
+        NativeJSLogger::log(INFO, "Loading wsenhanced.js (WebSocketEnhanced enabled)\n");
         runFile("wsenhanced.js", nullptr);
+        NativeJSLogger::log(INFO, "Loaded wsenhanced.js successfully\n");
 }
     else if(mModuleSettings.enableWebSocket)
     {
+        NativeJSLogger::log(INFO, "Loading ws.js (WebSocket enabled)\n");
         runFile("ws.js", nullptr);
+        NativeJSLogger::log(INFO, "Loaded ws.js successfully\n");
     }
 #ifdef WS_SERVER_ENABLED
     if (mEnableWebSockerServer)
@@ -457,21 +488,37 @@ if (mModuleSettings.enablePlayer)
 #endif
     if (mModuleSettings.enableWindow)
     {
+        NativeJSLogger::log(INFO, "Loading window.js (Window enabled)\n");
         runFile("window.js", nullptr/*, true*/);
+        NativeJSLogger::log(INFO, "Loaded window.js successfully\n");
+        NativeJSLogger::log(INFO, "Loading windowwrapper.js (Window enabled)\n");
         runFile("windowwrapper.js", nullptr/*, true*/);
+        NativeJSLogger::log(INFO, "Loaded windowwrapper.js successfully\n");
     }
     else if (mModuleSettings.enableJSDOM)
     {
+        NativeJSLogger::log(INFO, "Loading linkedjsdom.js (JSDOM enabled)\n");
         runFile("linkedjsdom.js", nullptr/*, true*/);
+        NativeJSLogger::log(INFO, "Loaded linkedjsdom.js successfully\n");
+        NativeJSLogger::log(INFO, "Loading linkedjsdomwrapper.js (JSDOM enabled)\n");
         runFile("linkedjsdomwrapper.js", nullptr/*, true*/);
+        NativeJSLogger::log(INFO, "Loaded linkedjsdomwrapper.js successfully\n");
+        NativeJSLogger::log(INFO, "Loading windowwrapper.js (JSDOM enabled)\n");
         runFile("windowwrapper.js", nullptr/*, true*/);
+        NativeJSLogger::log(INFO, "Loaded windowwrapper.js successfully\n");
+        NativeJSLogger::log(INFO, "Loading url.js (JSDOM enabled)\n");
 		runFile("url.js", nullptr/*, true*/);
+        NativeJSLogger::log(INFO, "Loaded url.js successfully\n");
 
     }
     else if (mModuleSettings.enableMiniJSDOM)
     {
+        NativeJSLogger::log(INFO, "Loading minified_linkedjsdom.js (MiniJSDOM enabled)\n");
         runFile("minified_linkedjsdom.js", nullptr/*, true*/);
+        NativeJSLogger::log(INFO, "Loaded minified_linkedjsdom.js successfully\n");
+        NativeJSLogger::log(INFO, "Loading url.js (MiniJSDOM enabled)\n");
 		runFile("url.js", nullptr/*, true*/);
+        NativeJSLogger::log(INFO, "Loaded url.js successfully\n");
         if(getenv("FIREBOLT_ENDPOINT")!=NULL)
         {
             auto FireboltEndpoint = std::string(getenv("FIREBOLT_ENDPOINT"));

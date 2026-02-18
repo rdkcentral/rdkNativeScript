@@ -160,6 +160,10 @@ void JavaScriptContextBase::populateModulesPath()
     else{
             char* cwd = getcwd(nullptr,0);
             std::string PWD=cwd;
+            if(PWD == "/")
+            {
+                PWD="/home/root";
+            }
             sModulesPath=PWD+"/modules/";
     }
     std::cout<<"Modules Path:"<<sModulesPath<<std::endl;
