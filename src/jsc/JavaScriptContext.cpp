@@ -139,16 +139,16 @@ void JavaScriptContext::loadAAMPJSBindingsLib()
     if (nullptr == gAAMPJSBindings->PlayerLibHandle)
     {
         static const char *aampJSBindingsLib = "libaampjsbindings.so";
-	// This is required for NativeJS Plugin 
-	#if 0
-	static const char *jscLib = "libJavaScriptCore.so";
-	jscLibHandle = dlopen(jscLib, RTLD_NOW | RTLD_GLOBAL);
-	if (!jscLibHandle)
+	if(!getenv("ETHAN_LOGGING_PIPE"))
 	{
-	    std::cout<<"dlopen error for jsc library " << dlerror() << std::endl;
+		// This is required for NativeJS Plugin 
+		static const char *jscLib = "libJavaScriptCore.so";
+		jscLibHandle = dlopen(jscLib, RTLD_NOW | RTLD_GLOBAL);
+		if (!jscLibHandle)
+	    {
+	        std::cout<<"dlopen error for jsc library " << dlerror() << std::endl;
+	    }
 	}
-	#endif
-        
 	void *aampJSBindingsLibHandle = dlopen(aampJSBindingsLib, RTLD_NOW | RTLD_GLOBAL);
         if (aampJSBindingsLibHandle)
         {
@@ -174,7 +174,8 @@ void JavaScriptContext::unloadAAMPJSBindingsLib()
     if (nullptr != gAAMPJSBindings->PlayerLibHandle)
     {
         dlclose(gAAMPJSBindings->PlayerLibHandle);
-	//dlclose(jscLibHandle);
+	 if(!getenv("ETHAN_LOGGING_PIPE"))
+            dlclose(jscLibHandle);
 
     }
 }
