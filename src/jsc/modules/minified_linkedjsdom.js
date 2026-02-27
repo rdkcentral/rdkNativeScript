@@ -29,6 +29,26 @@ var document = {
 function Event(t) { this.type = t; }
 Event.prototype.preventDefault = function() {};
 
+function HTMLElement() {
+    this.style = {};
+    this.classList = { add: function() {}, remove: function() {}, toggle: function() {}, contains: function() { return false; } };
+    this.children = [];
+    this.childNodes = [];
+}
+HTMLElement.prototype.setAttribute = function() {};
+HTMLElement.prototype.getAttribute = function() { return null; };
+HTMLElement.prototype.hasAttribute = function() { return false; };
+HTMLElement.prototype.removeAttribute = function() {};
+HTMLElement.prototype.appendChild = function(c) { this.children.push(c); this.childNodes.push(c); return c; };
+HTMLElement.prototype.removeChild = function(c) { return c; };
+HTMLElement.prototype.addEventListener = function() {};
+HTMLElement.prototype.removeEventListener = function() {};
+HTMLElement.prototype.dispatchEvent = function() {};
+HTMLElement.prototype.getBoundingClientRect = function() { return {top:0,left:0,right:0,bottom:0,width:0,height:0,x:0,y:0}; };
+HTMLElement.prototype.focus = function() {};
+HTMLElement.prototype.blur = function() {};
+HTMLElement.prototype.click = function() {};
+
 function DOMParser() {}
 DOMParser.prototype.parseFromString = function() { return document; };
 
@@ -114,11 +134,13 @@ var window = {
     clearInterval: wrappedClearInterval,
     addEventListener: function() {},
     Event: Event,
+    HTMLElement: HTMLElement,
     DOMParser: DOMParser,
     Blob: Blob,
     AbortController: AbortController,
     fetch: fetch,
-    Promise: Promise
+    Promise: Promise,
+    frames: { length: 0 }
 };
 
 window.window = window;
@@ -127,6 +149,7 @@ var navigator = window.navigator;
 var location = window.location;
 window.top = window;
 var tv = window.tv = {};
+var HTMLElement = window.HTMLElement;
 var DOMParser = window.DOMParser;
 var Event = window.Event;
 var Blob = window.Blob;
