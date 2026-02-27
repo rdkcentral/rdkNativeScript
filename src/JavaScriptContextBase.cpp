@@ -154,13 +154,26 @@ void JavaScriptContextBase::populateModulesPath()
     if(getenv("JSRUNTIME_MODULES_PATH"))
     {
         std::cout<<"JSRUNTIME_MODULES_PATH variable is set"<<std::endl;
-        sModulesPath = std::string(getenv("JSRUNTIME_MODULES_PATH"));
-        return;
+	const char* envModulesPath = getenv("JSRUNTIME_MODULES_PATH");
+        if(envModulesPath)
+        {
+            sModulesPath = envModulesPath;
+            if (! sModulesPath.empty() && sModulesPath.back() != '/')
+            {
+                sModulesPath += '/';
+            }
+        }
     }
     else{
             char* cwd = getcwd(nullptr,0);
             std::string PWD=cwd;
-            sModulesPath=PWD+"/modules/";
+	    free(cwd);
+            //Required for Plugin
+            if(PWD == "/")
+            {
+                PWD="/home/root";
+            }
+            sModulesPath=PWD+"/modules/"; 
     }
     std::cout<<"Modules Path:"<<sModulesPath<<std::endl;
     return;

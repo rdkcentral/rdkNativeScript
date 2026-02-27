@@ -235,7 +235,7 @@ uint32_t  NativeJSRenderer::createApplication(ModuleSettings& moduleSettings, st
     uint32_t id=0;
 	mUserMutex.lock();
     id = createApplicationIdentifier();
-	ApplicationRequest request(id, CREATE, "", moduleSettings.enableHttp, moduleSettings.enableXHR, moduleSettings.enableWebSocket, moduleSettings.enableWebSocketEnhanced, moduleSettings.enableFetch, moduleSettings.enableJSDOM, moduleSettings.enableWindow, moduleSettings.enablePlayer, userAgent);
+	ApplicationRequest request(id, CREATE, "", moduleSettings.enableHttp, moduleSettings.enableXHR, moduleSettings.enableWebSocket, moduleSettings.enableWebSocketEnhanced, moduleSettings.enableFetch, moduleSettings.enableJSDOM, moduleSettings.enableWindow, moduleSettings.enablePlayer, moduleSettings.enableMiniJSDOM, userAgent);
 	gPendingRequests.push_back(request);
 	mUserMutex.unlock();
 	return id;
@@ -305,6 +305,7 @@ void NativeJSRenderer::createApplicationInternal(ApplicationRequest& appRequest)
 	settings.enableJSDOM = appRequest.mEnableJSDOM;
 	settings.enableWindow = appRequest.mEnableWindow;
 	settings.enablePlayer = appRequest.mEnablePlayer;
+    settings.enableMiniJSDOM = appRequest.mEnableMiniJSDOM;
 	uint32_t id= appRequest.mId;
 	std::string userAgent = appRequest.mUserAgent;
 	JavaScriptContextFeatures features(mEmbedThunderJS, mEmbedRdkWebBridge, mEnableWebSocketServer, settings);
@@ -358,7 +359,7 @@ void NativeJSRenderer::runApplicationInternal(ApplicationRequest& appRequest)
 			}
 			JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
 			context->setUrl(mContextMap[id].url);
-			if(context->getModuleSettings().enableJSDOM)
+			if(context->getModuleSettings().enableMiniJSDOM)
 			{
 				std::stringstream window;
             	    		window<<"window.location = {\"href\":\"" << url << "\"};";
@@ -377,7 +378,7 @@ void NativeJSRenderer::runApplicationInternal(ApplicationRequest& appRequest)
 			NativeJSLogger::log(INFO, "About to launch local app\n");
 			JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
                        context->setUrl(mContextMap[id].url);
-			if(context->getModuleSettings().enableJSDOM)
+			if(context->getModuleSettings().enableMiniJSDOM)
             		{
 			    std::stringstream window;
                 	    window<<"window.location = {\"href\":\"file:/" << url << "\"};";
@@ -509,7 +510,7 @@ void NativeJSRenderer::run()
             ModuleSettings settings;
             uint32_t id = createApplicationIdentifier();
 	    settings.enableJSDOM = mEnableTestFileDOMSupport;
-	    ApplicationRequest appRequest(id, RUN, mTestFileName, settings.enableHttp, settings.enableXHR, settings.enableWebSocket, settings.enableWebSocketEnhanced, settings.enableFetch, settings.enableJSDOM, settings.enableWindow, settings.enablePlayer);
+	    ApplicationRequest appRequest(id, RUN, mTestFileName, settings.enableHttp, settings.enableXHR, settings.enableWebSocket, settings.enableWebSocketEnhanced, settings.enableFetch, settings.enableJSDOM, settings.enableWindow, settings.enablePlayer, settings.enableMiniJSDOM);
 	    mUserMutex.lock();
 	    NativeJSRenderer::createApplicationInternal(appRequest);
 	    NativeJSRenderer::runApplicationInternal(appRequest);

@@ -86,14 +86,14 @@ void NativeJSLogger::log(LogLevel level, const char* format, ...)
 
         vethanlog(ethanLogLevel, "JsRuntime", nullptr, -1, newFormat, args);
     }
-#else
-    
-    const char* levelStr = logLevelNames[level];
-    char buffer[512];
-    vsnprintf(buffer, sizeof(buffer), format, args);
-    printf("\n[%s] JsRuntime Thread-%d: %s\n", levelStr, threadId, buffer);
 
-#endif //USE_ETHANLOG    
-
+    else
+#endif //USE_ETHANLOG
+    {
+        const char* levelStr = logLevelNames[level];
+        char buffer[512];
+        vsnprintf(buffer, sizeof(buffer), format, args);
+        printf("\n[%s] JsRuntime Thread-%d: %s\n", levelStr, threadId, buffer);
+    }
     va_end(args);
-}
+ }
