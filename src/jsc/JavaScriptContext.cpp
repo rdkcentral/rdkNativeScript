@@ -156,10 +156,10 @@ void JavaScriptContext::loadAAMPJSBindingsLib()
 
             gAAMPJSBindings->fnLoadJS =
                     reinterpret_cast<decltype(AAMPJSBindings::fnLoadJS)>(
-                            dlsym(aampJSBindingsLibHandle, "_Z17AAMPPlayer_LoadJSPv"));
+                            dlsym(aampJSBindingsLibHandle, "aamp_LoadJSController"));
             gAAMPJSBindings->fnUnloadJS =
                     reinterpret_cast<decltype(AAMPJSBindings::fnUnloadJS)>(
-                            dlsym(aampJSBindingsLibHandle, "_Z19AAMPPlayer_UnloadJSPv"));
+                            dlsym(aampJSBindingsLibHandle, "aamp_UnloadJSController"));
         }
         else
         {
@@ -467,6 +467,18 @@ if (mModuleSettings.enablePlayer)
         runFile("linkedjsdomwrapper.js", nullptr/*, true*/);
         runFile("windowwrapper.js", nullptr/*, true*/);
 		runFile("url.js", nullptr/*, true*/);
+        if(getenv("FIREBOLT_ENDPOINT")!=NULL)
+        {
+            auto FireboltEndpoint = std::string(getenv("FIREBOLT_ENDPOINT"));
+            std::stringstream ss;
+            ss << "window.__firebolt = {\"endpoint\":\"" << FireboltEndpoint << "\"};";
+            NativeJSLogger::log(INFO, "Adding the Firebolt EndPoint value: %s to window.js file\n", FireboltEndpoint.c_str());
+            ss << "var self = window;";
+            ss << "let videoDiv = document.createElement(\"div\");";
+            ss << "videoDiv.id = \"videoDiv\";";
+            ss << "document.body.appendChild(videoDiv)";
+            evaluateScript(ss.str().c_str(),nullptr);
+        }
 
     }
     else if (mModuleSettings.enableMiniJSDOM)
