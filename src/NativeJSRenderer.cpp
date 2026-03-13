@@ -29,7 +29,6 @@
 #include <string.h>
 #include <vector>
 #include <thread>
-#include <atomic>
 #include <signal.h>
 #ifndef __APPLE__
 #include <linux/input.h>
@@ -226,8 +225,10 @@ void NativeJSRenderer::setEnvForConsoleMode(ModuleSettings& moduleSettings)
 
 uint32_t NativeJSRenderer::createApplicationIdentifier()
 {
-    static std::atomic<uint32_t> id{1};
-    return id++;
+    static uint32_t id = 1;
+    uint32_t ret = id;
+    id++;
+    return ret;
 }
 
 uint32_t  NativeJSRenderer::createApplication(ModuleSettings& moduleSettings, std::string userAgent)
@@ -291,7 +292,6 @@ bool NativeJSRenderer::terminateApplication(uint32_t id)
 	return true;
 }
 
-// REQUIRES: Caller must hold mUserMutex
 void NativeJSRenderer::createApplicationInternal(ApplicationRequest& appRequest)
 {
         double startTime = getTimeInMilliSec();
@@ -331,9 +331,9 @@ void NativeJSRenderer::createApplicationInternal(ApplicationRequest& appRequest)
         context->setCreateApplicationEndTime(endTime, id);
 
         mContextMap[id].context=context;
+        mUserMutex.unlock();
 }
 
-// REQUIRES: Caller must hold mUserMutex
 void NativeJSRenderer::runApplicationInternal(ApplicationRequest& appRequest)
 {
 	uint32_t id = appRequest.mId;
@@ -366,7 +366,7 @@ void NativeJSRenderer::runApplicationInternal(ApplicationRequest& appRequest)
            			NativeJSLogger::log(INFO, "Adding the window location: %s to js file\n", window.str().c_str());
             			context->runScript(window.str().c_str(),true, url, nullptr, true);
 			}
-			NativeJSLogger::log(INFO, "nativeJS application thunder execution url: %s\n", url.c_str());
+			NativeJSLogger::log(INFO, "nativeJS application thunder execution url: %s, result: %d\n", url.c_str(), ret ? 1 : 0);
 			ret = context->runScript(chunk.contentsBuffer, true, url, nullptr, true);
 			NativeJSLogger::log(INFO, "nativeJS application execution result: %d\n", ret ? 1 : 0);
 			double duration = context->getExecutionDuration();
@@ -399,7 +399,6 @@ void NativeJSRenderer::runApplicationInternal(ApplicationRequest& appRequest)
 	}
 }
 
-// REQUIRES: Caller must hold mUserMutex
 void NativeJSRenderer::runJavaScriptInternal(ApplicationRequest& appRequest)
 {
 	uint32_t id = appRequest.mId;
@@ -429,7 +428,6 @@ void NativeJSRenderer::runJavaScriptInternal(ApplicationRequest& appRequest)
 	}
 }
 
-// REQUIRES: Caller must hold mUserMutex
 void NativeJSRenderer::terminateApplicationInternal(ApplicationRequest& AppRequest)
 {
 	uint32_t id = AppRequest.mId;
@@ -448,7 +446,7 @@ void NativeJSRenderer::terminateApplicationInternal(ApplicationRequest& AppReque
 
 	else
 	{
-		NativeJSLogger::log(ERROR, "Unable to find application with id: %d\n", id);
+		NativeJSLogger::log(ERROR, "Unable to find application with id: %d and url: %s\n", id, mContextMap[id].url);
 		return ;
 	}
 
@@ -471,10 +469,11 @@ void NativeJSRenderer::run()
 {
     while(mRunning)
     {
+	uint32_t id;
+	mUserMutex.lock();
         if (mConsoleMode) {
             processDevConsoleRequests();
         }
-	mUserMutex.lock();
         for (int i=0; i<gPendingRequests.size(); i++)
         {
 
@@ -508,13 +507,10 @@ void NativeJSRenderer::run()
         if(!mTestFileName.empty())
         {
             ModuleSettings settings;
-            uint32_t id = createApplicationIdentifier();
 	    settings.enableJSDOM = mEnableTestFileDOMSupport;
 	    ApplicationRequest appRequest(id, RUN, mTestFileName, settings.enableHttp, settings.enableXHR, settings.enableWebSocket, settings.enableWebSocketEnhanced, settings.enableFetch, settings.enableJSDOM, settings.enableWindow, settings.enablePlayer, settings.enableMiniJSDOM);
-	    mUserMutex.lock();
 	    NativeJSRenderer::createApplicationInternal(appRequest);
 	    NativeJSRenderer::runApplicationInternal(appRequest);
-	    mUserMutex.unlock();
 	    mTestFileName = "";
         }
 
@@ -536,23 +532,18 @@ void NativeJSRenderer::run()
 
 void NativeJSRenderer::processDevConsoleRequests()
 {
-    std::deque<std::string> localQueue;
-    
-    // Move items from shared queue to local queue while holding the lock
     mConsoleState->inputMutex.lock();
+
     if (mConsoleState->codeToExecute.empty()) {
         mConsoleState->inputMutex.unlock();
         return;
     }
-    localQueue.swap(mConsoleState->codeToExecute);
-    mConsoleState->inputMutex.unlock();
 
     std::lock_guard<std::mutex> lockg(mConsoleState->isProcessing_cv_m);
     bool dataProcessed = false;
 
-    // Process items from local queue (no race condition)
-    for (const auto& code : localQueue) {
-        bool ret = mConsoleState->consoleContext->runScript(code.c_str(), false);
+    for (; !mConsoleState->codeToExecute.empty(); mConsoleState->codeToExecute.pop_front()) {
+        bool ret = mConsoleState->consoleContext->runScript(mConsoleState->codeToExecute.front().c_str(), false);
         dataProcessed = true;
     }
 
@@ -560,6 +551,8 @@ void NativeJSRenderer::processDevConsoleRequests()
         mConsoleState->isProcessing = false;
         mConsoleState->isProcessing_cv.notify_one();
     }
+
+    mConsoleState->inputMutex.unlock();
 }
 
 std::atomic_bool NativeJSRenderer::consoleLoop = true;
@@ -628,34 +621,18 @@ bool NativeJSRenderer::downloadFile(std::string& url, MemoryStruct& chunk)
     curl = curl_easy_init();
     if (curl)
     {
-        // Helper lambda to check curl_easy_setopt results
-        auto setOptWithCheck = [curl](CURLoption option, auto value, const char* optionName) -> bool {
-            CURLcode optRes = curl_easy_setopt(curl, option, value);
-            if (optRes != CURLE_OK) {
-                NativeJSLogger::log(ERROR, "Failed to set %s: %s\n", optionName, curl_easy_strerror(optRes));
-                return false;
-            }
-            return true;
-        };
-
-        // Set options; cleanup and return if any fail
-        if (
-            !setOptWithCheck(CURLOPT_URL, url.c_str(), "CURLOPT_URL") ||
-            !setOptWithCheck(CURLOPT_FOLLOWLOCATION, 1L, "CURLOPT_FOLLOWLOCATION") ||
-            !setOptWithCheck(CURLOPT_HEADERFUNCTION, HeaderCallback, "CURLOPT_HEADERFUNCTION") ||
-            !setOptWithCheck(CURLOPT_HEADERDATA, (void *)&chunk, "CURLOPT_HEADERDATA") ||
-            !setOptWithCheck(CURLOPT_WRITEFUNCTION, WriteMemoryCallback, "CURLOPT_WRITEFUNCTION") ||
-            !setOptWithCheck(CURLOPT_WRITEDATA, (void *)&chunk, "CURLOPT_WRITEDATA") ||
-            !setOptWithCheck(CURLOPT_TIMEOUT, 30L, "CURLOPT_TIMEOUT") ||
-            !setOptWithCheck(CURLOPT_NOSIGNAL, 1L, "CURLOPT_NOSIGNAL") ||
-            !setOptWithCheck(CURLOPT_SSL_VERIFYHOST, 2L, "CURLOPT_SSL_VERIFYHOST") ||
-            !setOptWithCheck(CURLOPT_SSL_VERIFYPEER, 1L, "CURLOPT_SSL_VERIFYPEER") ||
-            !setOptWithCheck(CURLOPT_USERAGENT, "libcurl-agent/1.0", "CURLOPT_USERAGENT") ||
-            !setOptWithCheck(CURLOPT_PROXY, "", "CURLOPT_PROXY")
-        ) {
-            curl_easy_cleanup(curl);
-            return ret;
-        }
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
+        curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCallback);
+        curl_easy_setopt(curl, CURLOPT_HEADERDATA, (void *)&chunk);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
+        curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2);
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, true);
+        curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
+        curl_easy_setopt(curl, CURLOPT_PROXY, "");
 
 
         //curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);

@@ -113,11 +113,9 @@ rtString jsToRtString(JSStringRef str)
 
 void dispatchPending()
 {
-  std::list<std::function<void ()>> pending;
-  {
-    std::lock_guard<std::mutex> lock(gDispatchMutex);
-    pending = std::move(gPendingFun);
-  }
+  std::unique_lock<std::mutex> lock(gDispatchMutex);
+  std::list<std::function<void ()>> pending = std::move(gPendingFun);
+  gDispatchMutex.unlock();
   for(auto& fun : pending)
     fun();
 }
@@ -190,10 +188,7 @@ void assertIsMainThread()
   {
     AddRef();
     if (!downloadRequest->errorString().isEmpty()) {
-      // Lambda captures by value - pointer fields are properly initialized
-      // coverity[uninit_member : FALSE]
       dispatchOnMainLoop(
-        /* coverity[uninit_member : FALSE] */
         [this, errorString = downloadRequest->errorString(), statusCode = downloadRequest->downloadStatusCode()] ()
 	{
           if (statusCode == 28)
@@ -246,10 +241,7 @@ void assertIsMainThread()
       }
 
       rtObjectRef protectedRef = resp;
-      // Lambda captures by value - pointer fields are properly initialized
-      // coverity[uninit_member : FALSE]
       dispatchOnMainLoop(
-        /* coverity[uninit_member : FALSE] */
         [this, resp = resp, ref = protectedRef] () {
           mEmit.send("response", ref);
           resp->onData();
@@ -322,57 +314,24 @@ rtError rtSetVideoStartTimeBinding(int numArgs, const rtValue* args, rtValue* re
 
 rtError rtReadBinaryBinding(int numArgs, const rtValue* args, rtValue* result, void* context)
 {
+  char *buffer = nullptr;
   FILE *ptr = nullptr;
   ptr = fopen("hello.wasm","rb");  // r for read, b for binary
-  
-  if (!ptr)
-  {
-    rtLogError("Failed to open file: hello.wasm");
-    return RT_ERROR;
-  }
 
   const char *fd = "hello.wasm";
   struct stat buf;
 
-  if (stat(fd, &buf) != 0)
-  {
-    rtLogError("Failed to stat file: %s", fd);
-    fclose(ptr);
-    return RT_ERROR;
-  }
-  
-  if (buf.st_size <= 0)
-  {
-    rtLogError("File size is zero or negative: %ld", (long)buf.st_size);
-    fclose(ptr);
-    return RT_ERROR;
-  }
+  stat(fd, &buf);
+  int size = buf.st_size;
 
-  size_t size = (size_t)buf.st_size;
-
-  std::unique_ptr<char, decltype(&free)> buffer(static_cast<char*>(malloc(size + 1)), &free);
-  if (!buffer)
-  {
-    rtLogError("Failed to allocate memory for file buffer");
-    fclose(ptr);
-    return RT_ERROR;
-  }
-  size_t bytesRead = fread(buffer.get(), 1, size, ptr);
+  buffer = (char*)malloc(size);
+  fread(buffer,size,1,ptr); // read 10 bytes to our buffer
   fclose(ptr);
-
-  if (bytesRead != size)
-  {
-    rtLogError("Failed to read file: expected %zu bytes, read %zu bytes", size, bytesRead);
-    return RT_ERROR;
-  }
-
-  buffer.get()[bytesRead] = '\0';
 
   if (result)
   {
-      result->setString(buffer.get());
+      result->setString(buffer);
   }
-
   return RT_OK;
 }
 
@@ -734,7 +693,6 @@ rtError rtJSRuntimeDownloadMetrics(int numArgs, const rtValue* args, rtValue* re
   rtValue keys;
   if (map->Get("allKeys", &keys) != RT_OK) {
     rtLogWarn("Could not retrieve url for network metrics data.");
-    delete netMetricsArray; 
     return RT_FAIL;
   }
   rtObjectRef objRef = keys.toObject();
@@ -742,7 +700,6 @@ rtError rtJSRuntimeDownloadMetrics(int numArgs, const rtValue* args, rtValue* re
 
   if (!keysArray) {
     rtLogWarn("No url found in the network metrics data.");
-    delete netMetricsArray; 
     return RT_FAIL;
   }
 
@@ -758,7 +715,6 @@ rtError rtJSRuntimeDownloadMetrics(int numArgs, const rtValue* args, rtValue* re
       NetworkMetrics* metrics = (NetworkMetrics*)storedValue.toVoidPtr();
       if (!metrics) {
         rtLogError("Failed to cast stored value to NetworkMetrics structure for url: %s.", key.cString());
-        delete netMetricsArray; 
         return RT_FAIL;
       }
       rtMapObject* metricsMap = new rtMapObject();

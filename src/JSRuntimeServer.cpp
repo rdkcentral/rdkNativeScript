@@ -80,7 +80,7 @@ public:
 
     uint32_t getUint32(const char *name, bool &err)
     {
-        uint32_t res = 0;
+        uint32_t res;
         cJSON *itm = cJSON_GetObjectItem(mPtr, name);
         if (!itm || !cJSON_IsNumber(itm))
         {
