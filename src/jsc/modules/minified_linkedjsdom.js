@@ -1,17 +1,37 @@
 var document = {
-    createElement: function() { 
+    createElement: function() {
+        document.getElementsByTagName = function(tag) {
+            tag = String(tag).toLowerCase();
+
+            if (tag === "head") return [document.head];
+            if (tag === "body") return [document.body];
+            if (tag === "html") return [document.documentElement];
+
+            return []; 
+        };
+
+        // ensure tagName exists on head/body/html
+        document.head.tagName = "HEAD";
+        document.body.tagName = "BODY";
+
+        document.documentElement = {
+            tagName: "HTML",
+            children: [document.head, document.body],
+            childNodes: [document.head, document.body]
+        };
+
         return {
             style: {},
             setAttribute: function() {},
             getAttribute: function() { return null; },
-			hasAttribute: function() { return false; },
+            hasAttribute: function() { return false; },
             appendChild: function(c) { return c; },
             removeChild: function(c) { return c; },
             addEventListener: function() {},
             getBoundingClientRect: function() { return {top:0,left:0,right:0,bottom:0,width:0,height:0,x:0,y:0}; }
-        }; 
+        };
     },
-	createEvent: function(type) {
+    createEvent: function(type) {
         return {
             initEvent: function(t, bubbles, cancelable) { this.type = t; this.bubbles = bubbles; this.cancelable = cancelable; },
             type: '',
@@ -55,90 +75,16 @@ DOMParser.prototype.parseFromString = function() { return document; };
 function Blob(parts, options) { this.size = 0; this.type = (options && options.type) || ''; }
 Blob.prototype.slice = function() { return new Blob([], {}); };
 
-// AbortController for fetch API
-function AbortController() {
-    this.signal = { aborted: false, addEventListener: function() {} };
-}
-AbortController.prototype.abort = function() {
-    this.signal.aborted = true;
-};
-
-// Minimal fetch stub
-function fetch(url, options) {
-    return new Promise(function(resolve, reject) {
-        if (options && options.signal && options.signal.aborted) {
-            var error = new Error('Aborted');
-            error.name = 'AbortError';
-            reject(error);
-            return;
-        }
-        // Stub response
-        resolve({
-            ok: true,
-            status: 200,
-            json: function() { return Promise.resolve({}); },
-            text: function() { return Promise.resolve(''); },
-            blob: function() { return Promise.resolve(new Blob([], {})); }
-        });
-    });
-}
-
-// Wrap timer functions to ensure .apply() works
-var _setTimeout = setTimeout;
-var _setInterval = setInterval;
-var _clearTimeout = clearTimeout;
-var _clearInterval = clearInterval;
-
-function wrappedSetTimeout(fn, delay) { 
-    var args = Array.prototype.slice.call(arguments, 2);
-    return _setTimeout(function() { fn.apply(null, args); }, delay); 
-}
-wrappedSetTimeout.apply = function(thisArg, argArray) {
-    if (!argArray || argArray.length === 0) return _setTimeout();
-    if (argArray.length === 1) return _setTimeout(argArray[0]);
-    if (argArray.length === 2) return _setTimeout(argArray[0], argArray[1]);
-    var args = Array.prototype.slice.call(argArray, 2);
-    return _setTimeout(function() { argArray[0].apply(null, args); }, argArray[1]);
-};
-
-function wrappedSetInterval(fn, delay) { 
-    var args = Array.prototype.slice.call(arguments, 2);
-    return _setInterval(function() { fn.apply(null, args); }, delay); 
-}
-wrappedSetInterval.apply = function(thisArg, argArray) {
-    if (!argArray || argArray.length === 0) return _setInterval();
-    if (argArray.length === 1) return _setInterval(argArray[0]);
-    if (argArray.length === 2) return _setInterval(argArray[0], argArray[1]);
-    var args = Array.prototype.slice.call(argArray, 2);
-    return _setInterval(function() { argArray[0].apply(null, args); }, argArray[1]);
-};
-
-function wrappedClearTimeout(id) { return _clearTimeout(id); }
-wrappedClearTimeout.apply = function(thisArg, argArray) {
-    return _clearTimeout(argArray ? argArray[0] : undefined);
-};
-
-function wrappedClearInterval(id) { return _clearInterval(id); }
-wrappedClearInterval.apply = function(thisArg, argArray) {
-    return _clearInterval(argArray ? argArray[0] : undefined);
-};
-
 var window = {
     document: document,
-    location: {href:'',host:'127.0.0.1',hostname:'127.0.0.1'},
-    navigator: {userAgent:'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36',platform:'Linux'},
+    location: {href:'', host:'127.0.0.1', hostname:'127.0.0.1'},
+    navigator: {userAgent:'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36', platform:'Linux'},
     console: console,
-    setTimeout: wrappedSetTimeout,
-    setInterval: wrappedSetInterval,
-    clearTimeout: wrappedClearTimeout,
-    clearInterval: wrappedClearInterval,
     addEventListener: function() {},
     Event: Event,
     HTMLElement: HTMLElement,
     DOMParser: DOMParser,
     Blob: Blob,
-    AbortController: AbortController,
-    fetch: fetch,
     Promise: Promise,
     frames: { length: 0 }
 };
@@ -153,12 +99,156 @@ var HTMLElement = window.HTMLElement;
 var DOMParser = window.DOMParser;
 var Event = window.Event;
 var Blob = window.Blob;
-var AbortController = window.AbortController;
-var fetch = window.fetch;
 var Promise = window.Promise;
 var top = window;
-var setTimeout = wrappedSetTimeout;
-var setInterval = wrappedSetInterval;
-var clearTimeout = wrappedClearTimeout;
-var clearInterval = wrappedClearInterval;
-var LinkedJSDOMLib = {parseHTML: function() { return {window:window,document:document,defaultView:window}; }};
+
+// Add .apply(), .call(), .bind() support to native timer functions for JSR compatibility
+setTimeout.apply = function(thisArg, args) {
+    if (!args || args.length === 0) return setTimeout(function() {}, 0);
+    var callback = args[0];
+    var delay = args[1];
+    var callbackArgs = args.slice(2);
+    return setTimeout(function() {
+        callback.apply(null, callbackArgs);
+    }, delay);
+};
+setTimeout.call = function(thisArg, callback, delay) {
+    var args = Array.prototype.slice.call(arguments, 3);
+    return setTimeout(function() {
+        callback.apply(null, args);
+    }, delay);
+};
+setTimeout.bind = function(thisArg) {
+    var boundArgs = Array.prototype.slice.call(arguments, 1);
+    return function() {
+        var args = boundArgs.concat(Array.prototype.slice.call(arguments));
+        return setTimeout.apply(null, args);
+    };
+};
+
+clearTimeout.apply = function(thisArg, args) {
+    return clearTimeout(args && args[0]);
+};
+clearTimeout.call = function(thisArg, id) {
+    return clearTimeout(id);
+};
+clearTimeout.bind = function(thisArg) {
+    return function(id) { return clearTimeout(id); };
+};
+
+setInterval.apply = function(thisArg, args) {
+    if (!args || args.length === 0) return setInterval(function() {}, 0);
+    var callback = args[0];
+    var delay = args[1];
+    var callbackArgs = args.slice(2);
+    return setInterval(function() {
+        callback.apply(null, callbackArgs);
+    }, delay);
+};
+setInterval.call = function(thisArg, callback, delay) {
+    var args = Array.prototype.slice.call(arguments, 3);
+    return setInterval(function() {
+        callback.apply(null, args);
+    }, delay);
+};
+setInterval.bind = function(thisArg) {
+    var boundArgs = Array.prototype.slice.call(arguments, 1);
+    return function() {
+        var args = boundArgs.concat(Array.prototype.slice.call(arguments));
+        return setInterval.apply(null, args);
+    };
+};
+
+clearInterval.apply = function(thisArg, args) {
+    return clearInterval(args && args[0]);
+};
+clearInterval.call = function(thisArg, id) {
+    return clearInterval(id);
+};
+clearInterval.bind = function(thisArg) {
+    return function(id) { return clearInterval(id); };
+};
+
+window.setInterval = setInterval;
+window.clearTimeout = clearTimeout;
+window.setTimeout = setTimeout;
+window.clearInterval = clearInterval;
+
+XMLHttpRequest = window.XMLHttpRequest;
+
+if (!window.screen) {
+    window.screen = {
+        width: 1920,
+        height: 1080
+    };
+}
+var screen = window.screen;
+
+var LinkedJSDOMLib = {
+    parseHTML: function() {
+        return {window:window, document:document, defaultView:window};
+    }
+};
+
+var BlobPolyfill = function(parts, options) {
+    parts = parts || [];
+    options = options || {};
+    this.size = 0;
+    this.type = options.type || '';
+    this._parts = parts;
+
+    for (var i = 0; i < parts.length; i++) {
+        if (typeof parts[i] === 'string') {
+            this.size += parts[i].length;
+        } else if (parts[i] && parts[i].byteLength) {
+            this.size += parts[i].byteLength;
+        }
+    }
+};
+
+BlobPolyfill.prototype.slice = function(start, end, contentType) {
+    return new BlobPolyfill(this._parts, { type: contentType || this.type });
+};
+
+BlobPolyfill.prototype.text = function() {
+    var text = '';
+    for (var i = 0; i < this._parts.length; i++) {
+        if (typeof this._parts[i] === 'string') {
+            text += this._parts[i];
+        }
+    }
+    return Promise.resolve(text);
+};
+
+BlobPolyfill.prototype.arrayBuffer = function() {
+    return Promise.resolve(new ArrayBuffer(0));
+};
+
+if (typeof global.Blob === 'undefined') {
+    global.Blob = BlobPolyfill;
+}
+if (typeof window !== 'undefined' && typeof window.Blob === 'undefined') {
+    window.Blob = BlobPolyfill;
+}
+if (typeof self !== 'undefined' && typeof self.Blob === 'undefined') {
+    self.Blob = BlobPolyfill;
+}
+if (typeof this !== 'undefined' && typeof this.Blob === 'undefined') {
+    this.Blob = BlobPolyfill;
+}
+
+if (typeof window !== 'undefined') {
+    if (!window.top) window.top = window;
+    if (!window.parent) window.parent = window;
+
+    if (!window.__tcfapi) {
+        window.__tcfapi = function(cmd, ver, callback) {
+            if (callback) callback({gdprApplies: false}, true);
+        };
+    }
+    if (!window.__uspapi) {
+        window.__uspapi = function(cmd, ver, callback) {
+            if (callback) callback({uspString: '1---'}, true);
+        };
+    }
+}
