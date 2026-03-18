@@ -42,6 +42,7 @@ catch(e)
     console.log("disabled with event");
 }
 XMLHttpRequest = window.XMLHttpRequest;
+HTMLElement = window.HTMLElement;
 window.location = {"href":"", "host":"127.0.0.1", "protocol":"http"}
 
 //below all are undefined
