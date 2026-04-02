@@ -132,6 +132,10 @@ int main(int argc, char* argv[])
         {
             moduleSettings.enableMiniJSDOM = true;
         }
+	else if (strcmp(argv[i], "--enableWasm") == 0)
+        {
+            moduleSettings.enableWasm = true;
+        }
     else if (strcmp(argv[i], "--console") == 0)
         {
             consoleMode = true;

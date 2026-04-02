@@ -839,3 +839,307 @@ rtError rtGetRandomValuesBinding(int numArgs, const rtValue* args, rtValue* /*re
     }
     return RT_OK;
 }
+
+// =============================================================================
+// WASMEdge dynamic integration — JSC backend only
+// libwasmedge.so.0 is dlopen'd at runtime; zero link-time dependency.
+// Enabled when compiled with -DENABLE_WASMEDGE_DYNAMIC (WASM_RUNTIME=wasmedge).
+// JS API exposed to running scripts:
+//   const vm = WasmEdge.load("/opt/wasm/app.wasm");  // or AOT .so
+//   const r  = vm.call("funcName", arg0, arg1, ...); // args/returns: JS numbers
+//   vm.destroy();                                     // optional; GC also cleans up
+// =============================================================================
+#ifdef ENABLE_WASMEDGE_DYNAMIC
+#include <dlfcn.h>
+#include <wasmedge/wasmedge.h>
+
+// ── Function-pointer table, populated once by wasmedgeLoadLib() ──────────────
+struct WasmEdgeBindings {
+    void*    libHandle = nullptr;
+
+    WasmEdge_VMContext*                 (*fnVMCreate)(const WasmEdge_ConfigureContext*, WasmEdge_StoreContext*)                                              = nullptr;
+    void                                (*fnVMDelete)(WasmEdge_VMContext*)                                                                                   = nullptr;
+    WasmEdge_Result                     (*fnVMLoadFromFile)(WasmEdge_VMContext*, const char*)                                                                = nullptr;
+    WasmEdge_Result                     (*fnVMValidate)(WasmEdge_VMContext*)                                                                                 = nullptr;
+    WasmEdge_Result                     (*fnVMInstantiate)(WasmEdge_VMContext*)                                                                              = nullptr;
+    WasmEdge_Result                     (*fnVMExecute)(WasmEdge_VMContext*, WasmEdge_String, const WasmEdge_Value*, uint32_t, WasmEdge_Value*, uint32_t)     = nullptr;
+    const WasmEdge_FunctionTypeContext* (*fnVMGetFunctionType)(const WasmEdge_VMContext*, WasmEdge_String)                                                   = nullptr;
+    uint32_t                            (*fnFuncTypeGetReturnsLength)(const WasmEdge_FunctionTypeContext*)                                                    = nullptr;
+    bool                                (*fnResultOK)(WasmEdge_Result)                                                                                       = nullptr;
+    WasmEdge_String                     (*fnStringCreateByCString)(const char*)                                                                              = nullptr;
+    void                                (*fnStringDelete)(WasmEdge_String)                                                                                   = nullptr;
+    WasmEdge_Value                      (*fnValueGenI32)(int32_t)                                                                                            = nullptr;
+    WasmEdge_Value                      (*fnValueGenI64)(int64_t)                                                                                            = nullptr;
+    WasmEdge_Value                      (*fnValueGenF32)(float)                                                                                              = nullptr;
+    WasmEdge_Value                      (*fnValueGenF64)(double)                                                                                             = nullptr;
+    int32_t                             (*fnValueGetI32)(WasmEdge_Value)                                                                                     = nullptr;
+    int64_t                             (*fnValueGetI64)(WasmEdge_Value)                                                                                     = nullptr;
+    float                               (*fnValueGetF32)(WasmEdge_Value)                                                                                     = nullptr;
+    double                              (*fnValueGetF64)(WasmEdge_Value)                                                                                     = nullptr;
+    enum WasmEdge_ValType               (*fnValueGetType)(WasmEdge_Value)                                                                                    = nullptr;
+};
+
+static WasmEdgeBindings* gWasmEdgeBindings = nullptr;
+
+// ── wasmedgeLoadLib / wasmedgeUnloadLib ───────────────────────────────────────
+
+void wasmedgeLoadLib()
+{
+    if (gWasmEdgeBindings && gWasmEdgeBindings->libHandle)
+        return; // already loaded
+
+    static const char* lib = "libwasmedge.so.0";
+    void* handle = dlopen(lib, RTLD_NOW | RTLD_GLOBAL);
+    if (!handle) {
+        NativeJSLogger::log(ERROR, "WASMEdge: dlopen(%s) failed: %s\n", lib, dlerror());
+        return;
+    }
+
+    gWasmEdgeBindings = new WasmEdgeBindings();
+    gWasmEdgeBindings->libHandle = handle;
+
+#define WE_BIND(member, sym) \
+    gWasmEdgeBindings->member = reinterpret_cast<decltype(WasmEdgeBindings::member)>(dlsym(handle, sym))
+
+    WE_BIND(fnVMCreate,                 "WasmEdge_VMCreate");
+    WE_BIND(fnVMDelete,                 "WasmEdge_VMDelete");
+    WE_BIND(fnVMLoadFromFile,           "WasmEdge_VMLoadWasmFromFile");
+    WE_BIND(fnVMValidate,               "WasmEdge_VMValidate");
+    WE_BIND(fnVMInstantiate,            "WasmEdge_VMInstantiate");
+    WE_BIND(fnVMExecute,                "WasmEdge_VMExecute");
+    WE_BIND(fnVMGetFunctionType,        "WasmEdge_VMGetFunctionType");
+    WE_BIND(fnFuncTypeGetReturnsLength, "WasmEdge_FunctionTypeGetReturnsLength");
+    WE_BIND(fnResultOK,                 "WasmEdge_ResultOK");
+    WE_BIND(fnStringCreateByCString,    "WasmEdge_StringCreateByCString");
+    WE_BIND(fnStringDelete,             "WasmEdge_StringDelete");
+    WE_BIND(fnValueGenI32,              "WasmEdge_ValueGenI32");
+    WE_BIND(fnValueGenI64,              "WasmEdge_ValueGenI64");
+    WE_BIND(fnValueGenF32,              "WasmEdge_ValueGenF32");
+    WE_BIND(fnValueGenF64,              "WasmEdge_ValueGenF64");
+    WE_BIND(fnValueGetI32,              "WasmEdge_ValueGetI32");
+    WE_BIND(fnValueGetI64,              "WasmEdge_ValueGetI64");
+    WE_BIND(fnValueGetF32,              "WasmEdge_ValueGetF32");
+    WE_BIND(fnValueGetF64,              "WasmEdge_ValueGetF64");
+    WE_BIND(fnValueGetType,             "WasmEdge_ValueGetType");
+#undef WE_BIND
+
+    NativeJSLogger::log(INFO, "WASMEdge: loaded %s successfully\n", lib);
+}
+
+void wasmedgeUnloadLib()
+{
+    if (!gWasmEdgeBindings)
+        return;
+    if (gWasmEdgeBindings->libHandle)
+        dlclose(gWasmEdgeBindings->libHandle);
+    delete gWasmEdgeBindings;
+    gWasmEdgeBindings = nullptr;
+    NativeJSLogger::log(INFO, "WASMEdge: library unloaded\n");
+}
+
+// ── JSClass: WasmEdgeVM — one instance wraps one WasmEdge_VMContext* ─────────
+
+static JSValueRef wasmVmCallFn(JSContextRef, JSObjectRef, JSObjectRef,
+                                size_t, const JSValueRef[], JSValueRef*);
+static JSValueRef wasmVmDestroyFn(JSContextRef, JSObjectRef, JSObjectRef,
+                                   size_t, const JSValueRef[], JSValueRef*);
+
+static void wasmVmFinalize(JSObjectRef obj)
+{
+    auto* vm = static_cast<WasmEdge_VMContext*>(JSObjectGetPrivate(obj));
+    if (vm && gWasmEdgeBindings && gWasmEdgeBindings->fnVMDelete)
+        gWasmEdgeBindings->fnVMDelete(vm);
+}
+
+static JSClassRef getWasmVmClass()
+{
+    static JSClassRef cls = nullptr;
+    if (!cls) {
+        static JSStaticFunction fns[] = {
+            { "call",    wasmVmCallFn,    kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
+            { "destroy", wasmVmDestroyFn, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
+            { nullptr, nullptr, 0 }
+        };
+        JSClassDefinition def = kJSClassDefinitionEmpty;
+        def.className       = "WasmEdgeVM";
+        def.finalize        = wasmVmFinalize;
+        def.staticFunctions = fns;
+        cls = JSClassCreate(&def);
+    }
+    return cls;
+}
+
+// ── JSClass: WasmEdge — singleton global object with .load() method ──────────
+
+static JSValueRef wasmLoadFn(JSContextRef, JSObjectRef, JSObjectRef,
+                              size_t, const JSValueRef[], JSValueRef*); // forward
+
+static JSClassRef getWasmEdgeClass()
+{
+    static JSClassRef cls = nullptr;
+    if (!cls) {
+        static JSStaticFunction fns[] = {
+            { "load", wasmLoadFn, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
+            { nullptr, nullptr, 0 }
+        };
+        JSClassDefinition def = kJSClassDefinitionEmpty;
+        def.className       = "WasmEdge";
+        def.staticFunctions = fns;
+        cls = JSClassCreate(&def);
+    }
+    return cls;
+}
+
+// ── WasmEdge.load(path) → WasmEdgeVM ─────────────────────────────────────────
+// path : absolute path to a .wasm bytecode file or AOT-compiled .so
+// Returns a WasmEdgeVM object on success, throws on error.
+
+static JSValueRef wasmLoadFn(JSContextRef ctx, JSObjectRef, JSObjectRef,
+    size_t argc, const JSValueRef argv[], JSValueRef* exception)
+{
+    if (!gWasmEdgeBindings || !gWasmEdgeBindings->libHandle) {
+        *exception = JSValueMakeString(ctx,
+            JSStringCreateWithUTF8CString("WasmEdge.load: library not available"));
+        return JSValueMakeUndefined(ctx);
+    }
+    if (argc < 1 || !JSValueIsString(ctx, argv[0])) {
+        *exception = JSValueMakeString(ctx,
+            JSStringCreateWithUTF8CString("WasmEdge.load: path string required"));
+        return JSValueMakeUndefined(ctx);
+    }
+
+    // Extract path string
+    JSStringRef pathJS = JSValueToStringCopy(ctx, argv[0], nullptr);
+    std::vector<char> path(JSStringGetMaximumUTF8CStringSize(pathJS));
+    JSStringGetUTF8CString(pathJS, path.data(), path.size());
+    JSStringRelease(pathJS);
+
+    // Create VM, load, validate, instantiate
+    WasmEdge_VMContext* vm = gWasmEdgeBindings->fnVMCreate(nullptr, nullptr);
+    bool ok = gWasmEdgeBindings->fnResultOK(gWasmEdgeBindings->fnVMLoadFromFile(vm, path.data()))
+           && gWasmEdgeBindings->fnResultOK(gWasmEdgeBindings->fnVMValidate(vm))
+           && gWasmEdgeBindings->fnResultOK(gWasmEdgeBindings->fnVMInstantiate(vm));
+
+    if (!ok) {
+        gWasmEdgeBindings->fnVMDelete(vm);
+        *exception = JSValueMakeString(ctx,
+            JSStringCreateWithUTF8CString("WasmEdge.load: failed to load/validate/instantiate WASM module"));
+        return JSValueMakeUndefined(ctx);
+    }
+
+    // vm stored as JSObject private data; wasmVmFinalize() frees it on GC
+    return JSObjectMake(ctx, getWasmVmClass(), vm);
+}
+
+// ── vm.call("funcName", arg0, arg1, ...) → JS number | undefined ─────────────
+// Numeric JS args are mapped to i32 (if integer) or f64 (if fractional).
+// Return value is converted from the first WASM return to a JS number.
+
+static JSValueRef wasmVmCallFn(JSContextRef ctx, JSObjectRef, JSObjectRef thisObj,
+    size_t argc, const JSValueRef argv[], JSValueRef* exception)
+{
+    auto* vm = static_cast<WasmEdge_VMContext*>(JSObjectGetPrivate(thisObj));
+    if (!vm || !gWasmEdgeBindings) {
+        *exception = JSValueMakeString(ctx,
+            JSStringCreateWithUTF8CString("WasmEdgeVM.call: invalid VM handle"));
+        return JSValueMakeUndefined(ctx);
+    }
+    if (argc < 1 || !JSValueIsString(ctx, argv[0])) {
+        *exception = JSValueMakeString(ctx,
+            JSStringCreateWithUTF8CString("WasmEdgeVM.call: function name string required"));
+        return JSValueMakeUndefined(ctx);
+    }
+
+    // Extract function name
+    JSStringRef nameJS = JSValueToStringCopy(ctx, argv[0], nullptr);
+    std::vector<char> fname(JSStringGetMaximumUTF8CStringSize(nameJS));
+    JSStringGetUTF8CString(nameJS, fname.data(), fname.size());
+    JSStringRelease(nameJS);
+
+    WasmEdge_String wname = gWasmEdgeBindings->fnStringCreateByCString(fname.data());
+
+    // Build WASM params: JS number args (argv[1..]) → i32 or f64
+    std::vector<WasmEdge_Value> params;
+    for (size_t i = 1; i < argc; ++i) {
+        double v = JSValueToNumber(ctx, argv[i], nullptr);
+        params.push_back((v == static_cast<double>(static_cast<int32_t>(v)))
+            ? gWasmEdgeBindings->fnValueGenI32(static_cast<int32_t>(v))
+            : gWasmEdgeBindings->fnValueGenF64(v));
+    }
+
+    // Query return count so void functions don't error
+    const WasmEdge_FunctionTypeContext* ftype =
+        gWasmEdgeBindings->fnVMGetFunctionType(vm, wname);
+    uint32_t retCount = ftype ? gWasmEdgeBindings->fnFuncTypeGetReturnsLength(ftype) : 0;
+
+    std::vector<WasmEdge_Value> returns(retCount > 0 ? retCount : 1);
+    WasmEdge_Result res = gWasmEdgeBindings->fnVMExecute(
+        vm, wname,
+        params.empty() ? nullptr : params.data(), static_cast<uint32_t>(params.size()),
+        returns.data(), retCount);
+
+    gWasmEdgeBindings->fnStringDelete(wname);
+
+    if (!gWasmEdgeBindings->fnResultOK(res)) {
+        *exception = JSValueMakeString(ctx,
+            JSStringCreateWithUTF8CString("WasmEdgeVM.call: WASM execution failed"));
+        return JSValueMakeUndefined(ctx);
+    }
+    if (retCount == 0)
+        return JSValueMakeUndefined(ctx);
+
+    // Map WASM return type → JS number
+    switch (gWasmEdgeBindings->fnValueGetType(returns[0])) {
+        case WasmEdge_ValType_I32:
+            return JSValueMakeNumber(ctx, gWasmEdgeBindings->fnValueGetI32(returns[0]));
+        case WasmEdge_ValType_I64:
+            return JSValueMakeNumber(ctx, static_cast<double>(gWasmEdgeBindings->fnValueGetI64(returns[0])));
+        case WasmEdge_ValType_F32:
+            return JSValueMakeNumber(ctx, gWasmEdgeBindings->fnValueGetF32(returns[0]));
+        case WasmEdge_ValType_F64:
+            return JSValueMakeNumber(ctx, gWasmEdgeBindings->fnValueGetF64(returns[0]));
+        default:
+            return JSValueMakeUndefined(ctx);
+    }
+}
+
+// ── vm.destroy() — explicit early cleanup ────────────────────────────────────
+// Optional: GC finalizer (wasmVmFinalize) also handles cleanup automatically.
+
+static JSValueRef wasmVmDestroyFn(JSContextRef ctx, JSObjectRef, JSObjectRef thisObj,
+    size_t, const JSValueRef[], JSValueRef*)
+{
+    auto* vm = static_cast<WasmEdge_VMContext*>(JSObjectGetPrivate(thisObj));
+    if (vm && gWasmEdgeBindings && gWasmEdgeBindings->fnVMDelete) {
+        gWasmEdgeBindings->fnVMDelete(vm);
+        JSObjectSetPrivate(thisObj, nullptr); // prevent double-free in GC finalizer
+    }
+    return JSValueMakeUndefined(ctx);
+}
+
+// ── Entry point — called from JavaScriptContext::registerUtils() ─────────────
+// Injects the 'WasmEdge' singleton global object into the JSC context.
+
+void registerWasmEdgeInterface(JSContextRef ctx)
+{
+    if (!gWasmEdgeBindings || !gWasmEdgeBindings->libHandle) {
+        NativeJSLogger::log(WARN,
+            "WASMEdge: library unavailable, WasmEdge global not injected\n");
+        return;
+    }
+
+    JSContextRef globalCtx = JSContextGetGlobalContext(ctx);
+    JSObjectRef  globalObj = JSContextGetGlobalObject(globalCtx);
+    JSObjectRef  weObj     = JSObjectMake(globalCtx, getWasmEdgeClass(), nullptr);
+
+    JSStringRef name = JSStringCreateWithUTF8CString("WasmEdge");
+    JSObjectSetProperty(globalCtx, globalObj, name, weObj,
+                        kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete,
+                        nullptr);
+    JSStringRelease(name);
+
+    NativeJSLogger::log(INFO,
+        "WASMEdge: WasmEdge global injected into JSC context\n");
+}
+
+#endif // ENABLE_WASMEDGE_DYNAMIC

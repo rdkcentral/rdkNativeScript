@@ -116,6 +116,10 @@ if (mModuleSettings.enablePlayer)
         {
             JSSynchronousGarbageCollectForDebugging(gTopLevelContext);
         }
+#ifdef ENABLE_WASMEDGE_DYNAMIC
+        if (mModuleSettings.enableWasm)
+            wasmedgeUnloadLib();
+#endif
         gTopLevelContext = nullptr;
     }
     mPriv->releaseAllProtected();
@@ -422,6 +426,12 @@ if (mModuleSettings.enablePlayer)
           JSStringRelease(funcName);
       };
     injectFun(mContext, "require", requireCallback);
+#ifdef ENABLE_WASMEDGE_DYNAMIC
+    if (mModuleSettings.enableWasm) {
+        wasmedgeLoadLib();
+        registerWasmEdgeInterface(mContext);
+    }
+#endif
     if(mModuleSettings.enablePlayer)
     {
        runFile("video.js", nullptr);

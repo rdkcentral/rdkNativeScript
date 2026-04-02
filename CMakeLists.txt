@@ -42,6 +42,10 @@ option(BUILD_JSRUNTIME_DESKTOP "BUILD_JSRUNTIME_DESKTOP" ON)
 option(USE_ETHANLOG "USE_ETHANLOG" OFF)
 option(ENABLE_COVERAGE "ENABLE_COVERAGE" OFF)
 option(PKG_CONFIG_SYSROOT_DIR "PKG_CONFIG_SYSROOT_DIR" "${CMAKE_CURRENT_SOURCE_DIR}/externals/extlibs")
+# WASMEdge dynamic WASM runtime support (JSC backend only)
+# Set to 'wasmedge' to enable: cmake -DWASM_RUNTIME=wasmedge
+# Maps to DISTRO_FEATURES 'wasmedge-wasm-runtime' in Yocto via rdknativescript_git.bb
+set(WASM_RUNTIME "" CACHE STRING "WASM runtime backend (empty or wasmedge)")
 
 if(JSRUNTIME_ENGINE_NAME STREQUAL "jsc")
     set(JSRUNTIME_LIBRARY_NAME "JSRuntimeJSC")
@@ -145,6 +149,19 @@ set(JSRUNTIME_FILES
 )
 
 set(JSRUNTIME_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/include/${JSRUNTIME_ENGINE_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/include/linux ${CMAKE_CURRENT_SOURCE_DIR}/src/jsc/jsc_lib ${JSRUNTIME_ENGINE_INCLUDE_DIRECTORIES})
+
+# WASMEdge dynamic integration: dlopen libwasmedge.so.0 at runtime (no -lwasmedge link).
+# Only the wasmedge headers are needed at build time for struct layouts (WasmEdge_Value, etc.).
+if (WASM_RUNTIME STREQUAL "wasmedge" AND JSRUNTIME_ENGINE_NAME STREQUAL "jsc")
+    add_definitions("-DENABLE_WASMEDGE_DYNAMIC")
+    if (BUILD_JSRUNTIME_DESKTOP)
+        set(JSRUNTIME_INCLUDE_DIRECTORIES ${JSRUNTIME_INCLUDE_DIRECTORIES}
+            $ENV{PKG_CONFIG_SYSROOT_DIR}/include/wasmedge)
+    else()
+        set(JSRUNTIME_INCLUDE_DIRECTORIES ${JSRUNTIME_INCLUDE_DIRECTORIES}
+            $ENV{PKG_CONFIG_SYSROOT_DIR}/usr/include/wasmedge)
+    endif()
+endif()
 
 set(JSRUNTIME_LIBRARY_LINK_DIRECTORIES ${JSRUNTIME_ENGINE_LIBRARY_LINK_DIRECTORIES})
 set(JSRUNTIME_LINK_LIBRARIES  -lssl -lcrypto -lffi -lcurl -lglib-2.0 -luWS -luv -lz)

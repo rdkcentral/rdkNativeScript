@@ -35,5 +35,6 @@ struct ModuleSettings
     bool enableWindow;
     bool enablePlayer;
     bool enableMiniJSDOM;
+    bool enableWasm;
 };
 #endif

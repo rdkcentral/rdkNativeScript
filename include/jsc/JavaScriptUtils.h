@@ -117,4 +117,14 @@ rtError rtGetRandomValuesBinding(int numArgs, const rtValue* args, rtValue* resu
 rtError rtInstallTimeout(int numArgs, const rtValue* args, rtValue* result, bool repeat);
 JSValueRef requireCallback(JSContextRef ctx, JSObjectRef, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef *exception);
 
+#ifdef ENABLE_WASMEDGE_DYNAMIC
+// Dynamic WASMEdge integration — dlopen libwasmedge.so.0 at runtime.
+// wasmedgeLoadLib()      : call once before registerWasmEdgeInterface (from registerUtils).
+// wasmedgeUnloadLib()    : call when the top-level context is destroyed.
+// registerWasmEdgeInterface : injects the 'WasmEdge' global object into the JSC context.
+void wasmedgeLoadLib();
+void wasmedgeUnloadLib();
+void registerWasmEdgeInterface(JSContextRef ctx);
+#endif
+
 #endif /* JAVASCRIPTMISC_H */
