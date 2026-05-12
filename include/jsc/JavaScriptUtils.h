@@ -117,4 +117,10 @@ rtError rtGetRandomValuesBinding(int numArgs, const rtValue* args, rtValue* resu
 rtError rtInstallTimeout(int numArgs, const rtValue* args, rtValue* result, bool repeat);
 JSValueRef requireCallback(JSContextRef ctx, JSObjectRef, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef *exception);
 
+JSValueRef consoleLogCallback(JSContextRef ctx, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception);
+JSValueRef consoleWarnCallback(JSContextRef ctx, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception);
+JSValueRef consoleErrorCallback(JSContextRef ctx, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception);
+JSValueRef consoleDebugCallback(JSContextRef ctx, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception);
+JSValueRef consoleInfoCallback(JSContextRef ctx, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception);
+
 #endif /* JAVASCRIPTMISC_H */
