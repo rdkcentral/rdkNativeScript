@@ -171,7 +171,7 @@ void assertIsMainThread()
   {
   }
 
-  void rtHttpRequestEx::onDownloadProgressImpl(double progress) 
+  void rtHttpRequestEx::onDownloadProgressImpl(double progress)
   {
 
     AddRef();
@@ -186,7 +186,7 @@ void assertIsMainThread()
         });
   }
 
-  void rtHttpRequestEx::onDownloadCompleteImpl(rtFileDownloadRequest* downloadRequest) 
+  void rtHttpRequestEx::onDownloadCompleteImpl(rtFileDownloadRequest* downloadRequest)
   {
     AddRef();
     if (!downloadRequest->errorString().isEmpty()) {
@@ -324,7 +324,7 @@ rtError rtReadBinaryBinding(int numArgs, const rtValue* args, rtValue* result, v
 {
   FILE *ptr = nullptr;
   ptr = fopen("hello.wasm","rb");  // r for read, b for binary
-  
+
   if (!ptr)
   {
     rtLogError("Failed to open file: hello.wasm");
@@ -340,7 +340,7 @@ rtError rtReadBinaryBinding(int numArgs, const rtValue* args, rtValue* result, v
     fclose(ptr);
     return RT_ERROR;
   }
-  
+
   if (buf.st_size <= 0)
   {
     rtLogError("File size is zero or negative: %ld", (long)buf.st_size);
@@ -734,7 +734,7 @@ rtError rtJSRuntimeDownloadMetrics(int numArgs, const rtValue* args, rtValue* re
   rtValue keys;
   if (map->Get("allKeys", &keys) != RT_OK) {
     rtLogWarn("Could not retrieve url for network metrics data.");
-    delete netMetricsArray; 
+    delete netMetricsArray;
     return RT_FAIL;
   }
   rtObjectRef objRef = keys.toObject();
@@ -742,7 +742,7 @@ rtError rtJSRuntimeDownloadMetrics(int numArgs, const rtValue* args, rtValue* re
 
   if (!keysArray) {
     rtLogWarn("No url found in the network metrics data.");
-    delete netMetricsArray; 
+    delete netMetricsArray;
     return RT_FAIL;
   }
 
@@ -758,7 +758,7 @@ rtError rtJSRuntimeDownloadMetrics(int numArgs, const rtValue* args, rtValue* re
       NetworkMetrics* metrics = (NetworkMetrics*)storedValue.toVoidPtr();
       if (!metrics) {
         rtLogError("Failed to cast stored value to NetworkMetrics structure for url: %s.", key.cString());
-        delete netMetricsArray; 
+        delete netMetricsArray;
         return RT_FAIL;
       }
       rtMapObject* metricsMap = new rtMapObject();
@@ -819,7 +819,7 @@ rtError rtSetExternalAppHandlerBinding(int numArgs, const rtValue* args, rtValue
     return RT_OK;
 }
 
-rtError rtGetRandomValuesBinding(int numArgs, const rtValue* args, rtValue* /*result*/, void* /*context*/) 
+rtError rtGetRandomValuesBinding(int numArgs, const rtValue* args, rtValue* /*result*/, void* /*context*/)
 {
     if (numArgs < 1 || args[0].getType() != RT_objectType) {
         rtLogError("rtGetRandomValuesBinding: Invalid arguments");
@@ -827,15 +827,83 @@ rtError rtGetRandomValuesBinding(int numArgs, const rtValue* args, rtValue* /*re
     }
 
     rtObjectRef arrObj = args[0].toObject();
-    
+
     uint32_t len = arrObj.get<uint32_t>("length");
-    
+
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<uint32_t> dist;
-    
+
     for (uint32_t i = 0; i < len; i++) {
-        arrObj.set(i, (double)dist(gen)); 
+        arrObj.set(i, (double)dist(gen));
     }
     return RT_OK;
+}
+
+//Wrapper for console logs, used when running inside widget
+static JSValueRef consoleCallbackImpl(JSContextRef ctx, size_t argumentCount,
+                                      const JSValueRef arguments[], JSValueRef* exception,
+                                      const char* methodName)
+{
+
+    if (argumentCount == 0)
+        return JSValueMakeUndefined(ctx);
+
+    std::ostringstream oss;
+    oss << methodName << " ";
+
+    for (size_t i = 0; i < argumentCount; i++) {
+        JSStringRef jsStr = JSValueToStringCopy(ctx, arguments[i], exception);
+        if (jsStr) {
+            size_t size = JSStringGetMaximumUTF8CStringSize(jsStr);
+            char* buffer = new char[size];
+            JSStringGetUTF8CString(jsStr, buffer, size);
+
+            if (i == 0 && buffer) {
+                oss << buffer;
+            } else {
+                oss << " " << buffer;
+            }
+            delete[] buffer;
+            JSStringRelease(jsStr);
+        }
+    }
+
+    NativeJSLogger::log(INFO, "%s", oss.str().c_str());
+    return JSValueMakeUndefined(ctx);
+}
+
+JSValueRef consoleLogCallback(JSContextRef ctx, JSObjectRef function,
+                               JSObjectRef thisObject, size_t argumentCount,
+                               const JSValueRef arguments[], JSValueRef* exception)
+{
+    return consoleCallbackImpl(ctx, argumentCount, arguments, exception, "console.log");
+}
+
+JSValueRef consoleWarnCallback(JSContextRef ctx, JSObjectRef function,
+                                JSObjectRef thisObject, size_t argumentCount,
+                                const JSValueRef arguments[], JSValueRef* exception)
+{
+    return consoleCallbackImpl(ctx, argumentCount, arguments, exception, "console.warn");
+}
+
+JSValueRef consoleErrorCallback(JSContextRef ctx, JSObjectRef function,
+                                 JSObjectRef thisObject, size_t argumentCount,
+                                 const JSValueRef arguments[], JSValueRef* exception)
+{
+    return consoleCallbackImpl(ctx, argumentCount, arguments, exception, "console.error");
+}
+
+JSValueRef consoleDebugCallback(JSContextRef ctx, JSObjectRef function,
+                                 JSObjectRef thisObject, size_t argumentCount,
+                                 const JSValueRef arguments[], JSValueRef* exception)
+{
+    return consoleCallbackImpl(ctx, argumentCount, arguments, exception,"console.debug");
+}
+
+JSValueRef consoleInfoCallback(JSContextRef ctx, JSObjectRef function,
+                                JSObjectRef thisObject, size_t argumentCount,
+                                const JSValueRef arguments[], JSValueRef* exception)
+{
+    return consoleCallbackImpl(ctx, argumentCount, arguments, exception, "console.info");
 }
