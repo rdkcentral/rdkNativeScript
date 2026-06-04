@@ -17,9 +17,6 @@
 * limitations under the License.
 **/
 
-#ifdef REMOTE_INSPECTOR_ENABLED
-#include <JavaScriptCore/RemoteInspectorServer.h>
-#endif
 #include <unistd.h>
 #include <errno.h>
 
@@ -30,8 +27,11 @@
 
 #define USE(WTF_FEATURE) (defined USE_##WTF_FEATURE  && USE_##WTF_FEATURE)
 #define ENABLE(WTF_FEATURE) (defined ENABLE_##WTF_FEATURE  && ENABLE_##WTF_FEATURE)
+
 #include <JavaScriptCore/JavaScript.h>
-#include <JavaScriptCore/JSRemoteInspector.h>
+#ifdef REMOTE_INSPECTOR_ENABLE
+#include <InspectorHTTPServer.h>
+#endif
 #include <NativeJSLogger.h>
 
 #include "JavaScriptEngine.h"
@@ -52,19 +52,9 @@ extern std::thread::id gMainThreadId;
 
 #define NATIVEJS_GC_DEFAULT_INTERVAL 60000
 
-#ifdef REMOTE_INSPECTOR_ENABLED
-#ifdef __cplusplus
-extern "C" {
-#endif
-  JS_EXPORT void JSRemoteInspectorStart(void);
-  JS_EXPORT void JSRemoteInspectorSetLogToSystemConsole(bool logToSystemConsole);
-  JS_EXPORT void JSRemoteInspectorSetInspectionEnabledByDefault(bool);
-#ifdef __cplusplus
-}
-#endif
+
 
 extern std::vector<rtIObject*> gWebSocketServers;
-#endif
 namespace WTF {
 void initializeMainThread();
 };
@@ -92,42 +82,14 @@ bool JavaScriptEngine::initialize()
       gst_init(0, nullptr);
     }
 #endif
+
   setenv("JSC_useBigInt", "1", 1);
+  
   WTF::initializeMainThread();
+  
   if (!gMainLoop && g_main_depth() == 0) {
     gMainLoop = g_main_loop_new (nullptr, false);
   }
-#ifdef REMOTE_INSPECTOR_ENABLED
-  char* inspectorDetails = getenv("NATIVEJS_INSPECTOR_SERVER");
-  if (inspectorDetails)
-  {
-    std::string host("0.0.0.0");
-    uint32_t port = 9226;
-    bool isFailedParsing = false;
-    std::string details(inspectorDetails);
-    int portIndex = details.find(":");
-    if (portIndex != -1)
-    {
-        port = atoi(details.substr(portIndex+1).c_str());
-        host = details.substr(0, portIndex);
-    }
-    else
-    {
-        isFailedParsing = true;
-	NativeJSLogger::log(ERROR, "failed to start remote inspector server due to parsing issues\n");
-    }		
-    if (!isFailedParsing)
-    {	    
-        std::stringstream serverDetails;
-	serverDetails << host.c_str() << ":" << port;
-        setenv("WEBKIT_INSPECTOR_SERVER", serverDetails.str().c_str(),1);
-        Inspector::RemoteInspectorServer::singleton().start(host.c_str(), port);
-        JSRemoteInspectorStart();
-        JSRemoteInspectorSetInspectionEnabledByDefault(true);
-        JSRemoteInspectorSetLogToSystemConsole(true);
-    }
-  }
-#endif
   gMainThreadId = std::this_thread::get_id();
   JavaScriptEngine* engine = this;
   char* garbageCollectInterval = getenv("NATIVEJS_GC_INTERVAL");
@@ -145,7 +107,31 @@ bool JavaScriptEngine::initialize()
       fflush(stdout);
       return 0;
     });
-  JSRemoteInspectorSetLogToSystemConsole(true);
+
+#ifdef REMOTE_INSPECTOR_ENABLE
+  // Start the custom web inspector server with HTTP/WebSocket endpoints
+  const char* inspectorServer = getenv("NATIVEJS_INSPECTOR_SERVER");
+  if (inspectorServer)
+  {
+    NativeJSLogger::log(INFO, "Starting Web Inspector Server on: %s\n", inspectorServer);
+    
+    // Parse the address (expecting "0.0.0.0:9226" format)
+    char* colonPos = strchr(const_cast<char*>(inspectorServer), ':');
+    int port = 9226; // default
+    if (colonPos) {
+      port = atoi(colonPos + 1);
+    }
+    
+    // Start the server (context will be registered later when created)
+    if (InspectorHTTPServer::singleton().start(inspectorServer, port)) {
+      mInspectorEnabled = true;
+      NativeJSLogger::log(INFO, "Web Inspector Server started successfully\n");
+    } else {
+      NativeJSLogger::log(ERROR, "Failed to start Web Inspector Server\n");
+    }
+  }
+#endif
+
   return true;
 }
 
@@ -157,6 +143,14 @@ bool JavaScriptEngine::terminate()
       gst_deinit();
   }
 #endif
+
+#ifdef REMOTE_INSPECTOR_ENABLE
+  if (mInspectorEnabled) {
+    InspectorHTTPServer::singleton().stop();
+    NativeJSLogger::log(INFO, "Web Inspector Server stopped\n");
+  }
+#endif
+
   clearTimeout(mGarbageCollectionTag);
   return true;
 }
@@ -179,13 +173,14 @@ void JavaScriptEngine::run()
       ret = g_main_context_iteration(nullptr, false);
     } while(ret);
   }
+  
   dispatchPending();
 #ifdef WS_SERVER_ENABLED
   for (int i=0; i<gWebSocketServers.size(); i++)
   {
     rtWebSocketServer* server = (rtWebSocketServer*)gWebSocketServers[i];
     server->poll();
-  }	  
+  }
 #endif
   isProcessing = false;
 }
@@ -198,3 +193,4 @@ void JavaScriptEngine::collectGarbage()
     JSGarbageCollect(gTopLevelContext);
   }
 }
+
