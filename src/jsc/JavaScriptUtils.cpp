@@ -57,7 +57,9 @@
 #endif
 #include "rtHttpRequest.h"
 #include "rtHttpResponse.h"
-
+#ifdef REMOTE_INSPECTOR_ENABLE
+#include "InspectorHTTPServer.h"
+#endif
 #include <glib.h>
 
 #include <uv.h>
@@ -868,7 +870,16 @@ static JSValueRef consoleCallbackImpl(JSContextRef ctx, size_t argumentCount,
             JSStringRelease(jsStr);
         }
     }
+#ifdef REMOTE_INSPECTOR_ENABLE
+    // Forward to inspector
+    const char* level = "log";
+    if (strstr(methodName, ".warn")) level = "warn";
+    else if (strstr(methodName, ".error")) level = "error";
+    else if (strstr(methodName, ".debug")) level = "debug";
+    else if (strstr(methodName, ".info")) level = "info";
 
+    InspectorHTTPServer::singleton().sendConsoleMessage(ctx, level, oss.str().c_str());
+#endif
     NativeJSLogger::log(INFO, "%s", oss.str().c_str());
     return JSValueMakeUndefined(ctx);
 }

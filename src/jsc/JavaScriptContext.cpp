@@ -27,7 +27,9 @@
 #include <utility>
 #include <iostream>
 #include <signal.h>
-
+#ifdef REMOTE_INSPECTOR_ENABLE
+#include <InspectorHTTPServer.h>
+#endif
 #include <fstream>
 #include <sstream>
 #include <JavaScriptCore/JavaScript.h>
@@ -77,7 +79,28 @@ JavaScriptContext::JavaScriptContext(JavaScriptContextFeatures& features, std::s
     mContext = JSGlobalContextCreateInGroup(mContextGroup, nullptr);
     mPriv = rtJSCContextPrivate::create(mContext);
     if (!gTopLevelContext)
+    {
       gTopLevelContext = mContext;
+
+#ifdef REMOTE_INSPECTOR_ENABLE
+      // Register this context with the web inspector server
+      InspectorHTTPServer::singleton().registerContext(gTopLevelContext,
+                                                       "RDK NativeScript",
+                                                       "rdknativescript://main");
+
+      // Register a reload callback so the inspector's Reload button re-executes
+      // the application entry script inside the existing JSC context.
+      InspectorHTTPServer::singleton().setReloadCallback([this]() {
+          if (!mApplicationUrl.empty()) {
+              rtLogInfo("Web Inspector: Reloading application: %s\n", mApplicationUrl.c_str());
+              runFile(mApplicationUrl.c_str(), nullptr, true);
+          } else {
+              rtLogInfo("Web Inspector: Reload requested but mApplicationUrl is empty\n");
+          }
+      });
+      rtLogInfo("Web Inspector: Context registered\n");
+#endif
+    }
     registerUtils();
     registerCommonUtils();
     mNetworkMetricsData = new rtMapObject();
@@ -116,6 +139,10 @@ if (mModuleSettings.enablePlayer)
         {
             JSSynchronousGarbageCollectForDebugging(gTopLevelContext);
         }
+#ifdef REMOTE_INSPECTOR_ENABLE
+        InspectorHTTPServer::singleton().setReloadCallback(nullptr);
+        InspectorHTTPServer::singleton().unregisterContext(gTopLevelContext);
+#endif
         gTopLevelContext = nullptr;
     }
     mPriv->releaseAllProtected();
