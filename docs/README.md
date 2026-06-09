@@ -286,7 +286,7 @@ sequenceDiagram
 | **Plugins**               |                                                                        |                                                                                           |
 | `Thunder`                 | Plugin activation, JSON-RPC method dispatch, plugin cloning            | `Controller.1.clone`, `Controller.1.activate`, `launchApplication`                        |
 | **Device Services / HAL** |                                                                        |                                                                                           |
-| Essos                     | Wayland display initialization and keyboard input routing              | `EssCtxCreate`, `EssCtxSetKeyboardListener`, `EssCtxStart`                                |
+| Essos                     | Wayland display initialization and keyboard input routing              | `EssContextCreate`, `EssContextSetKeyListener`, `EssContextStart`                                |
 | GStreamer                 | Media pipeline subsystem initialization required for AAMP playback     | `gst_init()`                                                                              |
 | AAMP JS Bindings          | Media playback control exposed as `AAMPMediaPlayer` in JavaScript      | `AAMPPlayer_LoadJS()`, `AAMPPlayer_UnloadJS()` (dynamic: `libaampjsbindings.so`)          |
 | libcurl                   | Remote script file download by URL before evaluation                   | `curl_easy_perform`, write callbacks                                                      |
@@ -328,10 +328,10 @@ sequenceDiagram
 
 | HAL / DS API                                | Purpose                                                                | Implementation File             |
 | ------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------- |
-| `EssCtxCreate()`                            | Creates an Essos compositor context                                    | `src/EssosInstance.cpp`         |
-| `EssCtxSetTerminateListener()`              | Registers a termination callback with the compositor                   | `src/EssosInstance.cpp`         |
-| `EssCtxSetKeyboardListener()`               | Registers a keyboard input callback for key press and release events   | `src/EssosInstance.cpp`         |
-| `EssCtxStart()`                             | Starts the Essos event loop, connecting to the Wayland display         | `src/EssosInstance.cpp`         |
+| `EssContextCreate()`                            | Creates an Essos compositor context                                    | `src/EssosInstance.cpp`         |
+| `EssContextSetTerminateListener()`              | Registers a termination callback with the compositor                   | `src/EssosInstance.cpp`         |
+| `EssContextSetKeyListener()`               | Registers a keyboard input callback for key press and release events   | `src/EssosInstance.cpp`         |
+| `EssContextStart()`                             | Starts the Essos event loop, connecting to the Wayland display         | `src/EssosInstance.cpp`         |
 | `gst_init()`                                | Initializes the GStreamer framework before any pipeline creation       | `src/jsc/JavaScriptEngine.cpp`  |
 | `AAMPPlayer_LoadJS()`                       | Loads AAMP JS bindings into a JSC global context (static mode)         | `src/jsc/JavaScriptContext.cpp` |
 | `AAMPPlayer_UnloadJS()`                     | Unloads AAMP JS bindings from a JSC global context (static mode)       | `src/jsc/JavaScriptContext.cpp` |
