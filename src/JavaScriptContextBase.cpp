@@ -19,6 +19,9 @@
 
 #include <JavaScriptContextBase.h>
 #include <NativeJSLogger.h>
+#ifdef REMOTE_INSPECTOR_ENABLE
+#include <InspectorHTTPServer.h>
+#endif
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -116,7 +119,12 @@ bool JavaScriptContextBase::runFile(const char *file, const char* args, bool isA
 	    fflush(stdout);
             return false;
     }
-    return evaluateScript(scriptToRun.c_str(), isApplication?file:nullptr, args, isApplication);
+    bool ret = evaluateScript(scriptToRun.c_str(), isApplication?file:nullptr, args, isApplication);
+#ifdef REMOTE_INSPECTOR_ENABLE
+    // Register every file-based script so it shows up in the Sources panel,
+    if (ret) InspectorHTTPServer::singleton().registerScript(file, scriptToRun.c_str());
+#endif
+    return ret;
 }
 
 bool JavaScriptContextBase::runScript(const char *script, bool isModule, std::string name, const char *args, bool isApplication)

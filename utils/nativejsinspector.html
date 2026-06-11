@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>RDK NativeScript Web Inspector</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f2f2f2; color: #1e1e1e; overflow: hidden; height: 100vh; }
+
+        /* Toolbar */
+        #toolbar { background: #e8e8e8; padding: 8px 16px; border-bottom: 1px solid #c8c8c8; display: flex; align-items: center; justify-content: space-between; }
+        #toolbar h1 { font-size: 14px; font-weight: 500; color: #1e1e1e; }
+        #toolbar-right { display: flex; align-items: center; gap: 8px; }
+        #status { font-size: 11px; padding: 3px 8px; border-radius: 3px; background: #d4af37; color: #000; }
+        #status.connected { background: #4caf50; color: #fff; }
+        #reload-btn { background: #d0d0d0; border: 1px solid #b0b0b0; color: #1e1e1e; padding: 3px 10px; border-radius: 3px; cursor: pointer; font-size: 11px; }
+        #reload-btn:hover { background: #b8b8b8; }
+        #reload-btn:disabled { opacity: 0.5; cursor: default; }
+
+        /* Tabs */
+        #tabs { background: #dcdcdc; display: flex; border-bottom: 1px solid #c8c8c8; }
+        .tab { padding: 8px 16px; cursor: pointer; border-bottom: 2px solid transparent; font-size: 12px; user-select: none; color: #444; }
+        .tab:hover { background: #d0d0d0; }
+        .tab.active { border-bottom-color: #0078d4; background: #f2f2f2; color: #0078d4; }
+
+        /* Panels */
+        #content { height: calc(100vh - 90px); overflow: hidden; }
+        .panel { display: none; height: 100%; }
+        .panel.active { display: flex; flex-direction: column; }
+
+        /* Console Panel */
+        #console-output { flex: 1; overflow-y: auto; padding: 8px; font-family: Menlo, Monaco, Consolas, monospace; font-size: 12px; background: #fafafa; }
+        .log-entry { padding: 3px 0; display: flex; align-items: baseline; gap: 6px; border-bottom: 1px solid #e8e8e8; }
+        .log-text { flex: 1; white-space: pre-wrap; word-break: break-all; color: #1e1e1e; }
+        .log-entry.result .log-text { white-space: pre; color: #1e1e1e; }
+        .log-entry.warn .log-text  { color: #b45309; }
+        .log-entry.error .log-text { color: #c0392b; }
+        .log-entry.info .log-text  { color: #0369a1; }
+        .log-entry.debug .log-text { color: #777; }
+        .log-entry.eval .log-text  { color: #7c3aed; }
+        .log-count { background: #888; color: #fff; font-size: 10px; padding: 0 5px; border-radius: 8px; min-width: 18px; text-align: center; flex-shrink: 0; }
+        /* Console filter toolbar */
+        #console-filters { background: #e8e8e8; padding: 4px 8px; border-bottom: 1px solid #c8c8c8; display: flex; gap: 4px; align-items: center; }
+        .filter-btn { background: none; border: 1px solid transparent; color: #666; padding: 2px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; user-select: none; }
+        .filter-btn:hover { color: #1e1e1e; }
+        .filter-btn.active { border-color: #b0b0b0; color: #1e1e1e; background: #d8d8d8; }
+        .filter-btn.active.f-warn  { border-color: #b45309; color: #b45309; }
+        .filter-btn.active.f-error { border-color: #c0392b; color: #c0392b; }
+        .filter-btn.active.f-info  { border-color: #0369a1; color: #0369a1; }
+        .filter-btn.active.f-debug { border-color: #888; color: #555; }
+        #console-input { background: #e8e8e8; padding: 8px; border-top: 1px solid #c8c8c8; display: flex; gap: 8px; }
+        #console-input input { flex: 1; background: #fff; border: 1px solid #c8c8c8; color: #1e1e1e; padding: 6px 8px; font-family: Menlo, Monaco, Consolas, monospace; font-size: 12px; }
+        #console-input input:focus { outline: none; border-color: #0078d4; }
+        #clear-btn { background: #d0d0d0; border: none; color: #1e1e1e; padding: 4px 12px; border-radius: 3px; cursor: pointer; font-size: 11px; }
+        #clear-btn:hover { background: #b8b8b8; }
+
+        /* Sources Panel */
+        #sources-panel { flex-direction: row !important; }
+        #sources-sidebar { width: 280px; background: #ebebeb; border-right: 1px solid #c8c8c8; overflow-y: auto; }
+        #sources-content { flex: 1; display: flex; flex-direction: column; }
+        #sources-toolbar { background: #e8e8e8; padding: 8px 12px; border-bottom: 1px solid #c8c8c8; font-size: 11px; display: flex; align-items: center; gap: 8px; }
+        #sources-toolbar .path { flex: 1; color: #666; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #source-view { flex: 1; overflow-y: auto; background: #fafafa; font-family: Menlo, Monaco, Consolas, monospace; font-size: 12px; line-height: 1.5; }
+        .source-code { display: table; width: 100%; }
+        .source-line { display: table-row; }
+        .line-number { display: table-cell; padding: 0 12px; text-align: right; color: #999; background: #f0f0f0; border-right: 1px solid #c8c8c8; user-select: none; width: 50px; }
+        .line-content { display: table-cell; padding: 0 12px; white-space: pre; color: #1e1e1e; }
+        .line-content .keyword { color: #1a6bcc; }
+        .line-content .string { color: #a31515; }
+        .line-content .comment { color: #008000; }
+        .line-content .function { color: #795e26; }
+        .file-tree { padding: 8px; }
+        .tree-section { margin-bottom: 12px; }
+        .tree-header { padding: 4px 8px; font-size: 11px; color: #666; text-transform: uppercase; font-weight: 600; }
+        .folder-item { padding: 4px 8px; font-size: 12px; color: #333; cursor: pointer; user-select: none; }
+        .folder-item:before { content: '\01F4C1\0020'; }
+        .folder-item.open:before { content: '\01F4C2\0020'; }
+        .folder-item:hover { background: #d8d8d8; }
+        .file-list { padding-left: 16px; }
+        .file-item { padding: 4px 8px; cursor: pointer; border-radius: 3px; font-size: 12px; color: #333; }
+        .file-item:hover { background: #d8d8d8; }
+        .file-item.active { background: #0078d4; color: #fff; }
+        .file-item.js:before { content: '\01F4C4\0020'; }
+        .file-item.json:before { content: '\01F4CB\0020'; }
+        .file-item.txt:before { content: '\01F4C3\0020'; }
+        .empty-state { padding: 40px 20px; text-align: center; color: #666; }
+        .sidebar-top { padding: 4px 8px; background: #e0e0e0; border-bottom: 1px solid #c8c8c8; display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: #555; flex-shrink: 0; }
+        .file-item.virtual:before { content: '\2728\0020'; }
+        .file-item.virtual { color: #0078d4; }
+        /* Button styles */
+        .btn { background: #d0d0d0; border: none; color: #1e1e1e; padding: 4px 12px; border-radius: 3px; cursor: pointer; font-size: 11px; }
+        .btn:hover { background: #b8b8b8; }
+    </style>
+</head>
+<body>
+    <div id="toolbar">
+        <h1>RDK NativeScript Inspector</h1>
+        <div id="toolbar-right">
+            <button id="reload-btn">&#8635; Reload</button>
+            <div id="status">Connecting...</div>
+        </div>
+    </div>
+
+    <div id="tabs">
+        <div class="tab active" data-panel="console">Console</div>
+        <div class="tab" data-panel="sources">Sources</div>
+    </div>
+
+    <div id="content">
+        <!-- Console Panel -->
+        <div id="console-panel" class="panel active">
+            <div id="console-filters">
+                <button class="filter-btn active" data-level="all">All</button>
+                <button class="filter-btn f-log" data-level="log">Log</button>
+                <button class="filter-btn f-info" data-level="info">Info</button>
+                <button class="filter-btn f-warn" data-level="warn">Warn</button>
+                <button class="filter-btn f-error" data-level="error">Error</button>
+                <button class="filter-btn f-debug" data-level="debug">Debug</button>
+            </div>
+            <div id="console-output"></div>
+            <div id="console-input">
+                <input type="text" id="input" placeholder="Evaluate JavaScript expression...">
+                <button id="clear-btn" class="btn">Clear</button>
+            </div>
+        </div>
+
+        <!-- Sources Panel -->
+        <div id="sources-panel" class="panel">
+            <div id="sources-sidebar">
+                <div class="sidebar-top">
+                    <span>Files</span>
+                </div>
+                <div class="file-tree" id="file-tree">
+                    <div class="tree-section">
+                        <div class="tree-header">File System</div>
+                        <div class="folder-item open" onclick="toggleFolder(this)">rdkNativeScript
+                            <div class="file-list" id="file-list-root"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="sources-content">
+                <div id="sources-toolbar">
+                    <span class="path" id="current-file-path">No file selected</span>
+                </div>
+                <div id="source-view">
+                    <div class="empty-state">
+                        <p style="font-size: 14px; margin-bottom: 8px;">No script selected</p>
+                        <p style="font-size: 11px; color: #666;">Scripts will appear automatically as they load.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // State management
+        const state = {
+            ws: null,
+            messageId: 1,
+            contextId: 1,
+            scripts: new Map(),
+            currentScript: null,
+            pendingCallbacks: new Map()
+        };
+
+        // DOM elements
+        const $ = id => document.getElementById(id);
+        const statusEl = $('status');
+        const consoleOutput = $('console-output');
+        const inputEl = $('input');
+        const fileTree = $('file-tree');
+        const sourceView = $('source-view');
+        const sourcesToolbar = $('sources-toolbar');
+
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+                tab.classList.add('active');
+                $(tab.dataset.panel + '-panel').classList.add('active');
+
+            });
+        });
+
+        // Console functions
+        $('clear-btn').addEventListener('click', () => {
+            consoleOutput.innerHTML = '';
+            lastLogText = null;
+            lastLogEntry = null;
+        });
+
+        // Filter logic
+        let activeFilter = 'all';
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                activeFilter = btn.dataset.level;
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                // Show/hide existing entries
+                consoleOutput.querySelectorAll('.log-entry').forEach(el => {
+                    el.style.display = (activeFilter === 'all' || el.dataset.level === activeFilter) ? '' : 'none';
+                });
+            });
+        });
+
+        // Track last message for accumulation
+        let lastLogText = null;
+        let lastLogEntry = null;
+
+        function log(message, level = 'log') {
+            const text = String(message);
+            const atBottom = consoleOutput.scrollHeight - consoleOutput.scrollTop <= consoleOutput.clientHeight + 2;
+
+            // Accumulate repeated messages (same text AND same level)
+            if (lastLogEntry && lastLogText === text + level) {
+                const countEl = lastLogEntry.querySelector('.log-count');
+                if (countEl) {
+                    countEl.textContent = parseInt(countEl.textContent) + 1;
+                } else {
+                    const badge = document.createElement('span');
+                    badge.className = 'log-count';
+                    badge.textContent = '2';
+                    lastLogEntry.appendChild(badge);
+                }
+                if (atBottom) consoleOutput.scrollTop = consoleOutput.scrollHeight;
+                return;
+            }
+
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${level}`;
+            entry.dataset.level = level;
+            entry.style.display = (activeFilter === 'all' || activeFilter === level) ? '' : 'none';
+            entry.innerHTML = `<span class="log-text">${escapeHtml(text)}</span>`;
+            consoleOutput.appendChild(entry);
+
+            lastLogText = text + level;
+            lastLogEntry = entry;
+
+            if (atBottom) consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // WebSocket connection
+        function connect() {
+            const wsUrl = `ws://${window.location.host}/devtools/page/${state.contextId}`;
+            log(`Connecting to ${wsUrl}...`, 'debug');
+            state.ws = new WebSocket(wsUrl);
+
+            state.ws.onopen = () => {
+                statusEl.textContent = 'Connected ✓';
+                statusEl.className = 'connected';
+                log('Inspector ready!', 'info');
+                send({ method: 'Runtime.enable' });
+                send({ method: 'Console.enable' });
+                send({ method: 'Debugger.enable' });
+                loadInitialScripts();
+            };
+
+            state.ws.onclose = () => {
+                statusEl.textContent = 'Disconnected';
+                statusEl.className = '';
+                log('Connection lost - Reconnecting in 2s...', 'warn');
+                setTimeout(connect, 2000);
+            };
+
+            state.ws.onerror = () => log('WebSocket error', 'error');
+            state.ws.onmessage = handleMessage;
+        }
+
+        function send(message) {
+            if (!message.id) message.id = state.messageId++;
+            if (message.callback) {
+                state.pendingCallbacks.set(message.id, message.callback);
+                delete message.callback;
+            }
+            state.ws.send(JSON.stringify(message));
+        }
+
+        function handleMessage(event) {
+            try {
+                const msg = JSON.parse(event.data);
+
+                // Check for pending callback
+                if (msg.id && state.pendingCallbacks.has(msg.id)) {
+                    const callback = state.pendingCallbacks.get(msg.id);
+                    state.pendingCallbacks.delete(msg.id);
+                    try {
+                        callback(msg);
+                    } catch (callbackError) {
+                        console.error('Callback error:', callbackError);
+                        log('Callback error: ' + callbackError.message, 'error');
+                    }
+                    return;
+                }
+
+                if (msg.method === 'Runtime.consoleAPICalled') {
+                    const type = msg.params.type || 'log';
+                    const args = msg.params.args || [];
+                    const text = args.map(arg => arg.value || '').join(' ');
+                    log(text, type);
+                }
+                else if (msg.method === 'Runtime.executionContextCreated') {
+                    log(`Context created (id: ${msg.params.context.id})`, 'debug');
+                }
+                else if (msg.method === 'Debugger.scriptParsed') {
+                    // WebKit way: script discovered, now get its source
+                    const params = msg.params;
+                    const scriptId = params.scriptId;
+                    const url = params.url || params.sourceURL || `<script-${scriptId}>`;
+
+                    log(`Script parsed: ${url}`, 'debug');
+
+                    // Request the source for this script
+                    send({
+                        method: 'Debugger.getScriptSource',
+                        params: { scriptId: scriptId },
+                        callback: (result) => {
+                            if (result && result.result && result.result.scriptSource) {
+                                addScript({
+                                    scriptId: scriptId,
+                                    url: url,
+                                    source: result.result.scriptSource
+                                });
+                            } else {
+                                // Fallback: script detected but no source available
+                                addScript({
+                                    scriptId: scriptId,
+                                    url: url,
+                                    source: '// Source not available'
+                                });
+                            }
+                        }
+                    });
+                }
+                else if (msg.result && msg.result.result) {
+                    const res = msg.result.result;
+                    const val = res.value !== undefined ? res.value : (res.description || res.type);
+                    log(val, 'result');
+                }
+                else if (msg.result && msg.result.exceptionDetails) {
+                    log('Exception: ' + msg.result.exceptionDetails.text, 'error');
+                }
+            } catch (e) {
+                console.error('Message parse error:', e, 'Raw data:', event.data);
+                log('Parse error: ' + e.message, 'error');
+            }
+        }
+
+        // Sources panel
+        function toggleFolder(element) {
+            element.classList.toggle('open');
+        }
+
+        function loadInitialScripts() {
+            // Debugger.enable was already sent in onopen — scripts will arrive
+            // as Debugger.scriptParsed events (replayed by the server for all
+            // scripts registered before this connection was established).
+            log('Waiting for scripts to load...', 'debug');
+        }
+
+        function addScript(scriptInfo) {
+            const scriptId = scriptInfo.scriptId || scriptInfo.url || `script-${state.scripts.size}`;
+            const url = scriptInfo.url || `<anonymous-${scriptId}>`;
+
+            state.scripts.set(scriptId, {
+                id: scriptId,
+                url: url,
+                source: scriptInfo.source || '// Source not available\n// Enable debugging to view script source'
+            });
+
+            renderFileTree();
+            log(`Script loaded: ${getFileName(url)}`, 'debug');
+
+            // Auto-select first script
+            if (state.scripts.size === 1) {
+                selectScript(scriptId);
+            }
+        }
+
+        function renderFileTree() {
+            const fileListRoot = document.getElementById('file-list-root');
+            if (!fileListRoot) return;
+
+            if (state.scripts.size === 0) {
+                fileListRoot.innerHTML = '<div class="empty-state" style="padding: 8px; font-size: 11px;">No scripts loaded</div>';
+                return;
+            }
+
+            // Group scripts by folder
+            const folders = new Map();
+            state.scripts.forEach((script, id) => {
+                const parts = script.url.split(/[/\\]/);
+                const fileName = parts.pop();
+                const folder = parts.length > 0 ? parts.join('/') : 'root';
+
+                if (!folders.has(folder)) {
+                    folders.set(folder, []);
+                }
+                folders.get(folder).push({ id, fileName, script });
+            });
+
+            // Render file tree
+            fileListRoot.innerHTML = '';
+            folders.forEach((files, folder) => {
+                if (folder !== 'root') {
+                    const folderDiv = document.createElement('div');
+                    folderDiv.className = 'folder-item open';
+                    folderDiv.innerHTML = folder;
+                    folderDiv.onclick = (e) => { e.stopPropagation(); toggleFolder(folderDiv); };
+
+                    const fileList = document.createElement('div');
+                    fileList.className = 'file-list';
+                    files.forEach(({ id, fileName, script }) => {
+                        fileList.appendChild(createFileItem(id, fileName, script));
+                    });
+                    folderDiv.appendChild(fileList);
+                    fileListRoot.appendChild(folderDiv);
+                } else {
+                    files.forEach(({ id, fileName, script }) => {
+                        fileListRoot.appendChild(createFileItem(id, fileName, script));
+                    });
+                }
+            });
+        }
+
+        function createFileItem(id, fileName, script) {
+            const item = document.createElement('div');
+            const ext = fileName.split('.').pop();
+            item.className = script.virtual ? 'file-item virtual' : `file-item ${ext}`;
+            if (state.currentScript === id) item.classList.add('active');
+            item.textContent = fileName;
+            item.onclick = (e) => { e.stopPropagation(); selectScript(id); };
+            return item;
+        }
+
+        function getFileName(url) {
+            const parts = url.split(/[/\\]/);
+            return parts[parts.length - 1] || url;
+        }
+
+        function selectScript(scriptId) {
+            state.currentScript = scriptId;
+            const script = state.scripts.get(scriptId);
+            if (!script) return;
+
+            renderFileTree();
+
+            const pathEl = document.getElementById('current-file-path');
+            if (pathEl) pathEl.textContent = script.url;
+
+            renderSourceCode(script.source);
+        }
+
+        function renderSourceCode(source) {
+            const lines = source.split('\n');
+            const codeTable = document.createElement('div');
+            codeTable.className = 'source-code';
+
+            lines.forEach((line, index) => {
+                const lineDiv = document.createElement('div');
+                lineDiv.className = 'source-line';
+
+                const lineNum = document.createElement('div');
+                lineNum.className = 'line-number';
+                lineNum.textContent = index + 1;
+
+                const lineContent = document.createElement('div');
+                lineContent.className = 'line-content';
+                lineContent.innerHTML = syntaxHighlight(line);
+
+                lineDiv.appendChild(lineNum);
+                lineDiv.appendChild(lineContent);
+                codeTable.appendChild(lineDiv);
+            });
+
+            sourceView.innerHTML = '';
+            sourceView.appendChild(codeTable);
+        }
+
+        function syntaxHighlight(code) {
+            const escaped = escapeHtml(code);
+            // Single-pass: comments beat strings beat keywords beat function names.
+            // Earlier alternative wins, so no regex ever scans already-inserted tags.
+            return escaped.replace(
+                /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*`)|\b(const|let|var|function|return|if|else|for|while|class|extends|import|export|from|default|async|await|try|catch|throw|new|this|typeof|instanceof)\b|\b([a-zA-Z_$][a-zA-Z0-9_$]*)(?=\s*\()/g,
+                (match, comment, str, keyword, func) => {
+                    if (comment  !== undefined) return '<span class="comment">'  + match + '</span>';
+                    if (str      !== undefined) return '<span class="string">'   + match + '</span>';
+                    if (keyword  !== undefined) return '<span class="keyword">'  + match + '</span>';
+                    if (func     !== undefined) return '<span class="function">' + match + '</span>';
+                    return match;
+                }
+            ) || '&nbsp;';
+        }
+
+        // Refresh source button
+        document.addEventListener('DOMContentLoaded', () => {
+            // No manual controls needed - scripts load automatically via Debugger.scriptParsed
+        });
+
+        // Console input — with command history (Up/Down arrows)
+        const cmdHistory = [];
+        let historyIdx = -1;
+        let draftInput = '';
+
+        inputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (cmdHistory.length === 0) return;
+                if (historyIdx === -1) draftInput = inputEl.value;
+                historyIdx = Math.min(historyIdx + 1, cmdHistory.length - 1);
+                inputEl.value = cmdHistory[historyIdx];
+                inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length);
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (historyIdx === -1) return;
+                historyIdx--;
+                inputEl.value = historyIdx === -1 ? draftInput : cmdHistory[historyIdx];
+                inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length);
+            } else if (e.key === 'Enter' && inputEl.value.trim()) {
+                const code = inputEl.value.trim();
+                // Add to history (skip duplicate of most recent)
+                if (cmdHistory[0] !== code) cmdHistory.unshift(code);
+                historyIdx = -1;
+                draftInput = '';
+                log('> ' + code, 'eval');
+                send({ method: 'Runtime.evaluate', params: { expression: code, generatePreview: true, returnByValue: true } });
+                inputEl.value = '';
+            }
+        });
+
+        // ── Reload Context ──────────────────────────────────────────────────────────────────
+        function reloadContext() {
+            const btn = $('reload-btn');
+            btn.disabled = true;
+            btn.textContent = 'Reloading…';
+            log('\u21BA Reloading context…', 'info');
+
+            // Clear local script cache and console
+            state.scripts.clear();
+            state.currentScript = null;
+            state.pendingCallbacks.clear();
+            consoleOutput.innerHTML = '';
+            lastLogText = null;
+            lastLogEntry = null;
+            renderFileTree();
+
+            // Ask the runtime to reload via Page.reload (CDP).
+            // The server re-executes the app and pushes fresh Debugger.scriptParsed
+            // events over the existing WebSocket — no reconnect needed.
+            send({ method: 'Page.reload', params: { ignoreCache: true } });
+
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.textContent = '\u21BA Reload';
+            }, 2500);
+        }
+
+        $('reload-btn').addEventListener('click', reloadContext);
+
+        // Initialize
+        connect();
+    </script>
+</body>
+</html>
+

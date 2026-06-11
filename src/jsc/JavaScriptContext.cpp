@@ -27,7 +27,9 @@
 #include <utility>
 #include <iostream>
 #include <signal.h>
-
+#ifdef REMOTE_INSPECTOR_ENABLE
+#include <InspectorHTTPServer.h>
+#endif
 #include <fstream>
 #include <sstream>
 #include <JavaScriptCore/JavaScript.h>
@@ -77,7 +79,28 @@ JavaScriptContext::JavaScriptContext(JavaScriptContextFeatures& features, std::s
     mContext = JSGlobalContextCreateInGroup(mContextGroup, nullptr);
     mPriv = rtJSCContextPrivate::create(mContext);
     if (!gTopLevelContext)
+    {
       gTopLevelContext = mContext;
+
+#ifdef REMOTE_INSPECTOR_ENABLE
+      // Register this context with the web inspector server
+      InspectorHTTPServer::singleton().registerContext(gTopLevelContext,
+                                                       "RDK NativeScript",
+                                                       "rdknativescript://main");
+
+      // Register a reload callback so the inspector's Reload button re-executes
+      // the application entry script inside the existing JSC context.
+      InspectorHTTPServer::singleton().setReloadCallback([this]() {
+          if (!mApplicationUrl.empty()) {
+              rtLogInfo("Web Inspector: Reloading application: %s\n", mApplicationUrl.c_str());
+              runFile(mApplicationUrl.c_str(), nullptr, true);
+          } else {
+              rtLogInfo("Web Inspector: Reload requested but mApplicationUrl is empty\n");
+          }
+      });
+      rtLogInfo("Web Inspector: Context registered\n");
+#endif
+    }
     registerUtils();
     registerCommonUtils();
     mNetworkMetricsData = new rtMapObject();
@@ -116,6 +139,10 @@ if (mModuleSettings.enablePlayer)
         {
             JSSynchronousGarbageCollectForDebugging(gTopLevelContext);
         }
+#ifdef REMOTE_INSPECTOR_ENABLE
+        InspectorHTTPServer::singleton().setReloadCallback(nullptr);
+        InspectorHTTPServer::singleton().unregisterContext(gTopLevelContext);
+#endif
         gTopLevelContext = nullptr;
     }
     mPriv->releaseAllProtected();
@@ -125,7 +152,7 @@ if (mModuleSettings.enablePlayer)
         delete mNetworkMetricsData;
         mNetworkMetricsData = nullptr;
     }
-    
+
     JSGlobalContextRelease(mContext);
     JSContextGroupRelease(mContextGroup);
     rtLogInfo("%s end", __FUNCTION__);
@@ -141,7 +168,7 @@ void JavaScriptContext::loadAAMPJSBindingsLib()
         static const char *aampJSBindingsLib = "libaampjsbindings.so";
 	if(!getenv("ETHAN_LOGGING_PIPE"))
 	{
-		// This is required for NativeJS Plugin 
+		// This is required for NativeJS Plugin
 		static const char *jscLib = "libJavaScriptCore.so";
 		jscLibHandle = dlopen(jscLib, RTLD_NOW | RTLD_GLOBAL);
 		if (!jscLibHandle)
@@ -422,6 +449,70 @@ if (mModuleSettings.enablePlayer)
           JSStringRelease(funcName);
       };
     injectFun(mContext, "require", requireCallback);
+
+#ifdef USE_ETHANLOG
+    if (getenv("ETHAN_LOGGING_PIPE") != nullptr) {
+
+        injectFun(mContext, "__ethanLog", consoleLogCallback);
+        injectFun(mContext, "__ethanWarn", consoleWarnCallback);
+        injectFun(mContext, "__ethanError", consoleErrorCallback);
+        injectFun(mContext, "__ethanDebug", consoleDebugCallback);
+        injectFun(mContext, "__ethanInfo", consoleInfoCallback);
+
+        const char* wrapper = R"JS(
+          (function() {
+              if (typeof console === "undefined") return;
+
+              var originalMethods = {
+                  log : console.log,
+                  warn : console.warn,
+                  error : console.error,
+                  debug : console.debug,
+                  info : console.info
+              };
+
+              function getCallerLocation() {
+                  const stack = new Error().stack;
+                  if (!stack) return null;
+                  const lines = stack.split("\n");
+                  const callerLine = lines[2] || "";
+                  const match = callerLine.match(/([^\s@]+\.js:\d+:\d+)/);
+                  return match ? match[1] : null;
+              }
+
+              function consoleMethod(methodName, original, ethanFn) {
+                  return function() {
+                      var caller = getCallerLocation();
+                      var args = Array.prototype.slice.call(arguments);
+                      if (caller) args.unshift('[' + caller + ']');
+                      if (original) original.apply(console, args);
+                      ethanFn.apply(null, args);
+                  };
+              }
+              console.log = consoleMethod('log', originalMethods.log, __ethanLog);
+              console.warn = consoleMethod('warn', originalMethods.warn, __ethanWarn);
+              console.error = consoleMethod('error', originalMethods.error, __ethanError);
+              console.debug = consoleMethod('debug', originalMethods.debug, __ethanDebug);
+              console.info = consoleMethod('info', originalMethods.info, __ethanInfo);
+          })();
+          )JS";
+
+        JSStringRef codeStr = JSStringCreateWithUTF8CString(wrapper);
+        JSValueRef exception = nullptr;
+        JSEvaluateScript(mContext, codeStr, nullptr, nullptr, 0, &exception);
+        JSStringRelease(codeStr);
+
+        if (exception) {
+            JSStringRef exceptStr = JSValueToStringCopy(mContext, exception, nullptr);
+            rtString errorStr = jsToRtString(exceptStr);
+            JSStringRelease(exceptStr);
+            rtLogError("Failed to inject console wrapper: %s", errorStr.cString());
+        } else {
+            NativeJSLogger::log(INFO, "Console extended - added ethanlog routing\n");
+        }
+      }
+#endif
+
     if(mModuleSettings.enablePlayer)
     {
        runFile("video.js", nullptr);
