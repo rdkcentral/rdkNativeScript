@@ -1,0 +1,83 @@
+/**
+* If not stated otherwise in this file or this component's LICENSE
+* file the following copyright and licenses apply:
+*
+* Copyright 2024 RDK Management
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+* http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+**/
+
+diff --git a/Source/JavaScriptCore/API/JSAPIGlobalObject.cpp b/Source/JavaScriptCore/API/JSAPIGlobalObject.cpp
+index 125bc99a1d52..dfa63586231a 100644
+--- a/Source/JavaScriptCore/API/JSAPIGlobalObject.cpp
++++ b/Source/JavaScriptCore/API/JSAPIGlobalObject.cpp
+@@ -32,6 +32,11 @@
+ 
+ namespace JSC {
+ 
++extern JSInternalPromise* moduleLoaderImportModule(JSGlobalObject*, JSModuleLoader*, JSString* moduleNameValue, JSValue parameters, const SourceOrigin&);
++extern Identifier moduleLoaderResolve(JSGlobalObject*, JSModuleLoader*, JSValue keyValue, JSValue referrerValue, JSValue);
++extern JSInternalPromise* moduleLoaderFetch(JSGlobalObject*, JSModuleLoader*, JSValue, JSValue, JSValue);
++extern JSObject* moduleLoaderCreateImportMetaProperties(JSGlobalObject*, JSModuleLoader*, JSValue, JSModuleRecord*, JSValue);
++
+ const ClassInfo JSAPIGlobalObject::s_info = { "GlobalObject"_s, &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSAPIGlobalObject) };
+ 
+ const GlobalObjectMethodTable JSAPIGlobalObject::s_globalObjectMethodTable = {
+@@ -44,6 +49,10 @@ const GlobalObjectMethodTable JSAPIGlobalObject::s_globalObjectMethodTable = {
+     nullptr, // moduleLoaderResolve
+     nullptr, // moduleLoaderFetch
+     nullptr, // moduleLoaderCreateImportMetaProperties
++    &JSC::moduleLoaderImportModule,
++    &JSC::moduleLoaderResolve,
++    &JSC::moduleLoaderFetch,
++    &JSC::moduleLoaderCreateImportMetaProperties,
+     nullptr, // moduleLoaderEvaluate
+     nullptr, // promiseRejectionTracker
+     &reportUncaughtExceptionAtEventLoop,
+diff --git a/Source/JavaScriptCore/jsc.cpp b/Source/JavaScriptCore/jsc.cpp
+index 516d8e5b7915..a5a1c3a6f160 100644
+--- a/Source/JavaScriptCore/jsc.cpp
++++ b/Source/JavaScriptCore/jsc.cpp
+@@ -172,6 +172,14 @@ struct MemoryFootprint {
+ 
+ using namespace JSC;
+ 
++namespace JSC
++{
++    JSInternalPromise* moduleLoaderImportModule(JSGlobalObject*, JSModuleLoader*, JSString*, JSValue, const SourceOrigin&) { return nullptr; }
++    Identifier moduleLoaderResolve(JSGlobalObject*, JSModuleLoader*, JSValue, JSValue, JSValue) { return { }; }
++    JSInternalPromise* moduleLoaderFetch(JSGlobalObject*, JSModuleLoader*, JSValue, JSValue, JSValue) { return nullptr; }
++    JSObject* moduleLoaderCreateImportMetaProperties(JSGlobalObject*, JSModuleLoader*, JSValue, JSModuleRecord*, JSValue) { return nullptr; }
++}
++
+ namespace {
+ 
+ #define EXIT_EXCEPTION 3
+diff --git a/Source/cmake/WebKitCompilerFlags.cmake b/Source/cmake/WebKitCompilerFlags.cmake
+index 62f69a9c4cd1..e847453e2232 100644
+--- a/Source/cmake/WebKitCompilerFlags.cmake
++++ b/Source/cmake/WebKitCompilerFlags.cmake
+@@ -258,9 +258,9 @@ if (NOT MSVC)
+     string(REGEX MATCHALL "-fsanitize=[^ ]*" ENABLED_COMPILER_SANITIZERS ${CMAKE_CXX_FLAGS})
+ endif ()
+ 
+-if (UNIX AND NOT APPLE AND NOT ENABLED_COMPILER_SANITIZERS)
+-    set(CMAKE_SHARED_LINKER_FLAGS "-Wl,--no-undefined ${CMAKE_SHARED_LINKER_FLAGS}")
+-endif ()
++#if (UNIX AND NOT APPLE AND NOT ENABLED_COMPILER_SANITIZERS)
++#    set(CMAKE_SHARED_LINKER_FLAGS "-Wl,--no-undefined ${CMAKE_SHARED_LINKER_FLAGS}")
++#endif ()
+ 
+ 
+ if (MSVC)
+
