@@ -36,7 +36,7 @@ JavaScriptEngine::~JavaScriptEngine()
 bool JavaScriptEngine::initialize()
 {
 #ifdef ENABLE_JSRUNTIME_PLAYER
-    gst_init(0, NULL);
+    //gst_init(0, NULL);
 #endif
     mRuntime = JS_NewRuntime();
     if (!gMainLoop && g_main_depth() == 0)
