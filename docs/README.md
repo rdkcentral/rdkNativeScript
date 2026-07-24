@@ -350,7 +350,7 @@ sequenceDiagram
 
 - **Error Handling Strategy**: Logger calls at WARN and ERROR levels mark failure points. When a script file cannot be loaded, the failure is logged and the operation returns. When the AAMP dynamic library is unavailable, the failure is logged and context creation proceeds with the remaining enabled bindings. libcurl download failures are logged and result in an empty script evaluation. WebSocket send failures in `JSRuntimeServer` are caught and logged, preserving the active connection.
 
-- **Logging & Diagnostics**: The logger prefix is `JSRuntime [Thread-<tid>]` on all log lines. The log level is controlled by the `NATIVEJS_LOG_LEVEL` environment variable (DEBUG, INFO, WARN, ERROR, FATAL); the default level is INFO. When `ETHAN_LOGGING_PIPE` is set, output is redirected to the EthanLog daemon using mapped severity levels. Key log points include engine initialization, GC timer installation, remote inspector startup, Essos context creation, application creation and termination, script download status, and WebSocket server events.
+- **Logging & Diagnostics**: Console logs are emitted as `[LEVEL] JsRuntime Thread-<tid>: <message>`; when `ETHAN_LOGGING_PIPE` is set (EthanLog enabled), the message is prefixed with `JSRuntime [Thread-<tid>]`. The log level is controlled by the `NATIVEJS_LOG_LEVEL` environment variable (DEBUG, INFO, WARN, ERROR, FATAL); the default level is INFO. When `ETHAN_LOGGING_PIPE` is set, output is redirected to the EthanLog daemon using mapped severity levels. Key log points include engine initialization, GC timer installation, remote inspector startup, Essos context creation, application creation and termination, script download status, and WebSocket server events.
 
 ---
 
