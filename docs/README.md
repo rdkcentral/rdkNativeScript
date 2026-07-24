@@ -1,4 +1,4 @@
-# RdkNativeScript
+# rdkNativeScript
 
 rdkNativeScript is a JavaScript runtime component in the RDK middleware that enables native execution of JavaScript applications directly on RDKE/RDKV devices, outside of a full browser environment. It provides a lightweight, embeddable runtime that exposes device capabilities — such as media playback, networking, and display — to JavaScript applications through a set of controlled API bindings. The component is deployed as a Thunder plugin with the callsign `org.rdk.jsruntime` and can be cloned to create multiple independent runtime instances.
 
@@ -358,16 +358,18 @@ sequenceDiagram
 
 ### Key Configuration Parameters
 
-| Parameter                     | Type         | Default     | Description                                                                                                    |
-| ----------------------------- | ------------ | ----------- | -------------------------------------------------------------------------------------------------------------- |
-| `NATIVEJS_LOG_LEVEL`          | string (env) | `INFO`      | Sets the logging verbosity. Accepted values: `debug`, `info`, `warn`, `error`, `fatal`.                        |
-| `NATIVEJS_GC_INTERVAL`        | float (env)  | `60000`     | Garbage collection timer interval in milliseconds. Controls how frequently the JSC GC runs.                    |
-| `NATIVEJS_INSPECTOR_SERVER`   | string (env) | _(not set)_ | Activates the remote JavaScript inspector. Format: `host:port` (e.g., `0.0.0.0:9226`).                         |
-| `NATIVEJS_GST_START_DISABLE`  | string (env) | _(not set)_ | When set to any value, suppresses `gst_init()` during engine initialization.                                   |
-| `NATIVEJS_EMBED_THUNDERJS`    | string (env) | _(not set)_ | When set, enables ThunderJS injection into all contexts. Equivalent to creating the `/tmp` sentinel file.      |
-| `WAYLAND_DISPLAY`             | string (env) | _(not set)_ | Set automatically from the `--display` argument to direct the runtime to a specific Wayland compositor socket. |
-| `WS_SERVER_PORT`              | int (build)  | `5000`      | WebSocket server listen port. Defined at build time via `-DWS_SERVER_PORT=5000`.                               |
-| `NATIVEJS_DUMP_NETWORKMETRIC` | string (env) | _(not set)_ | When set, collects network metrics and stores the output to a file in `/tmp`.                                  |
+| Parameter                     | Type           | Default         | Description                                                                                                    |
+| ----------------------------- | -------------- | --------------- | -------------------------------------------------------------------------------------------------------------- |
+| `NATIVEJS_LOG_LEVEL`          | string (env)   | `INFO`          | Sets the logging verbosity. Accepted values: `debug`, `info`, `warn`, `error`, `fatal`.                        |
+| `NATIVEJS_GC_INTERVAL`        | float (env)    | `60000`         | Garbage collection timer interval in milliseconds. Controls how frequently the JSC GC runs.                    |
+| `NATIVEJS_INSPECTOR_SERVER`   | string (env)   | _(not set)_     | Activates the remote JavaScript inspector. Format: `host:port` (e.g., `0.0.0.0:9226`).                        |
+| `NATIVEJS_GST_START_DISABLE`  | string (env)   | _(not set)_     | When set to any value, suppresses `gst_init()` during engine initialization.                                   |
+| `NATIVEJS_EMBED_THUNDERJS`    | string (env)   | _(not set)_     | When set, enables ThunderJS injection into all contexts. Equivalent to creating the `/tmp/nativejsEmbedThunder` sentinel file. |
+| `NATIVEJS_ENABLE_WEBSOCKET_SERVER` | string (env) | _(not set)_   | When set, enables the WebSocket server. Equivalent to creating the `/tmp/nativejsEnableWebSocketServer` sentinel file. |
+| `/tmp/nativejsRdkWebBridge`   | file (sentinel)| _(not present)_ | When present, enables rdk WebBridge injection into all contexts.                                               |
+| `WAYLAND_DISPLAY`             | string (env)   | _(not set)_     | Set automatically from the `--display` argument to direct the runtime to a specific Wayland compositor socket. |
+| `WS_SERVER_PORT`              | int (build)    | `5000`          | WebSocket server listen port. Defined at build time via `-DWS_SERVER_PORT=5000`.                               |
+| `NATIVEJS_DUMP_NETWORKMETRIC` | string (env)   | _(not set)_     | When set, collects network metrics and stores the output to a file in `/tmp`.                                  |
 
 ### Runtime Configuration
 
