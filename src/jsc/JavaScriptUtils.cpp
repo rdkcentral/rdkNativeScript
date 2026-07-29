@@ -880,7 +880,21 @@ static JSValueRef consoleCallbackImpl(JSContextRef ctx, size_t argumentCount,
 
     InspectorHTTPServer::singleton().sendConsoleMessage(ctx, level, oss.str().c_str());
 #endif
-    NativeJSLogger::log(INFO, "%s", oss.str().c_str());
+    const std::string fullMsg = oss.str();
+    constexpr size_t kMaxLogChunk = 2000;
+    if (fullMsg.size() <= kMaxLogChunk) {
+        NativeJSLogger::log(INFO, "%s", fullMsg.c_str());
+    } else {
+        for (size_t start = 0; start < fullMsg.size(); start += kMaxLogChunk) {
+            const size_t len = std::min(kMaxLogChunk, fullMsg.size() - start);
+            std::string chunk(fullMsg.substr(start, len));
+            if (start + len < fullMsg.size()) {
+                chunk += " ↵";
+            }
+            NativeJSLogger::log(INFO, "%s", chunk.c_str());
+        }
+    }
+
     return JSValueMakeUndefined(ctx);
 }
 

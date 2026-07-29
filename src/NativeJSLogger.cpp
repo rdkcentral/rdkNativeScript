@@ -91,7 +91,7 @@ void NativeJSLogger::log(LogLevel level, const char* format, ...)
 #endif //USE_ETHANLOG
     {
         const char* levelStr = logLevelNames[level];
-        char buffer[512];
+        char buffer[2048];
         vsnprintf(buffer, sizeof(buffer), format, args);
         printf("\n[%s] JsRuntime Thread-%d: %s\n", levelStr, threadId, buffer);
     }
