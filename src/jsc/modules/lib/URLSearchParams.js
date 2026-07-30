@@ -3,8 +3,21 @@ const urlencoded = require("./urlencoded");
 
 exports.implementation = class URLSearchParamsImpl {
   constructor(globalObject, constructorArgs = [""], options = {}) {
-    const { doNotStripQMark = false } = options || {};
-    let init = constructorArgs[0];
+    let doNotStripQMark = false;
+    let init = "";
+
+    if (arguments.length === 1) {
+      init = globalObject;
+    } else {
+      const resolvedOptions = options || {};
+      doNotStripQMark = !!resolvedOptions.doNotStripQMark;
+      if (Array.isArray(constructorArgs)) {
+        init = constructorArgs[0];
+      } else {
+        init = constructorArgs;
+      }
+    }
+
     this._list = [];
     this._url = null;
 
@@ -20,10 +33,26 @@ exports.implementation = class URLSearchParamsImpl {
         }
         this._list.push([pair[0], pair[1]]);
       }
-    } else if (typeof init === "object" && Object.getPrototypeOf(init) === null) {
-      for (const name of Object.keys(init)) {
-        const value = init[name];
-        this._list.push([name, value]);
+    } else if (typeof init === "object" && init !== null && !Array.isArray(init)) {
+      // Handle URLSearchParams-like objects that expose an internal _list.
+      if (Array.isArray(init._list)) {
+        for (const pair of init._list) {
+          if (Array.isArray(pair) && pair.length >= 2) {
+            this._list.push([pair[0], pair[1]]);
+          }
+        }
+      } else if (typeof init.entries === "function") {
+        // Handle iterable URLSearchParams-compatible objects.
+        for (const pair of init.entries()) {
+          if (Array.isArray(pair) && pair.length >= 2) {
+            this._list.push([pair[0], pair[1]]);
+          }
+        }
+      } else {
+        for (const name of Object.keys(init)) {
+          const value = init[name];
+          this._list.push([name, value]);
+        }
       }
     } else {
       this._list = urlencoded.parseUrlencodedString(init);
@@ -42,6 +71,7 @@ exports.implementation = class URLSearchParamsImpl {
       if (serializedQuery === null) {
         this._url._potentiallyStripTrailingSpacesFromAnOpaquePath();
       }
+
     }
   }
 
@@ -124,6 +154,56 @@ exports.implementation = class URLSearchParamsImpl {
     });
 
     this._updateSteps();
+  }
+
+  forEach(callback, thisArg) {
+    if (typeof callback !== "function") {
+      throw new TypeError("Failed to execute 'forEach' on 'URLSearchParams': parameter 1 is not a function.");
+    }
+
+    for (const tuple of this._list) {
+      callback.call(thisArg, tuple[1], tuple[0], this);
+    }
+  }
+
+  entries() {
+    return this._list[Symbol.iterator]();
+  }
+
+  keys() {
+    const list = this._list;
+    let index = 0;
+    return {
+      next() {
+        if (index >= list.length) {
+          return { value: undefined, done: true };
+        }
+        const value = list[index][0];
+        index++;
+        return { value: value, done: false };
+      },
+      [Symbol.iterator]() {
+        return this;
+      }
+    };
+  }
+
+  values() {
+    const list = this._list;
+    let index = 0;
+    return {
+      next() {
+        if (index >= list.length) {
+          return { value: undefined, done: true };
+        }
+        const value = list[index][1];
+        index++;
+        return { value: value, done: false };
+      },
+      [Symbol.iterator]() {
+        return this;
+      }
+    };
   }
 
   [Symbol.iterator]() {
