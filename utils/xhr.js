@@ -5,10 +5,9 @@
  * allow the use of existing libraries.
  *
  * Usage: include("XMLHttpRequest.js") and use XMLHttpRequest per W3C specs.
+ * Original code by DeFelippi.
+ * Some modifications by Comcast.
  *
- * @author Dan DeFelippi <dan@driverdan.com>
- * @contributor David Ellis <d.f.ellis@ieee.org>
- * @license MIT
  */
 
 
@@ -28,9 +27,6 @@ XMLHttpRequest = function() {
   // Disable header blacklist.
   // Not part of XHR specs.
   var disableHeaderCheck = false;
-
-  // Set some default headers
-  var defaultHeaders = {};
 
   var defaultHeaders = {
     "User-Agent": "Mozilla/5.0 (Linux; x86_64 GNU/Linux) AppleWebKit/601.1 (KHTML, like Gecko) Version/8.0 Safari/601.1 WPE",
@@ -148,8 +144,22 @@ XMLHttpRequest = function() {
    * @param string password Password for basic authentication (optional)
    */
   this.open = function(method, url, async, user, password) {
-    this.abort();
+    // Reset internal request state without dispatching an abort event.
+    // RxJS treats abort as a hard request failure if emitted during open().
+    if (request) {
+      request.abort();
+      request = null;
+    }
+    response = null;
+    headers = {};
+    headersCase = {};
+    sendFlag = false;
     errorFlag = false;
+    this.status = 0;
+    this.statusText = null;
+    this.responseText = "";
+    this.responseXML = "";
+    this.readyState = this.UNSENT;
 
     // Check for valid request method
     if (!isAllowedHttpMethod(method)) {
@@ -267,73 +277,35 @@ XMLHttpRequest = function() {
       throw new Error("INVALID_STATE_ERR: send has already been called");
     }
 
-    //JSRUNTIME PREVENT URL LIBRARY USE
+    var urlToUse = settings.url;
+
+    // Parse URL using the URL API available in this JSRuntime
     var ssl = false;
-    /*
-    var local = false;
-    var url = new Url(settings.url);
     var host;
-    // Determine the server
-    switch (url.protocol) {
-      case "https:":
-        ssl = true;
-        // SSL & non-SSL both need host, no break here.
-      case "http:":
-        host = url.protocol + "//" + url.hostname;
-        break;
+    var port;
+    var uri;
 
-      case "file:":
-        local = true;
-        break;
-
-      case undefined:
-      case null:
-      case "":
-        host = "localhost";
-        break;
-
-      default:
-        throw new Error("Protocol not supported.");
-    }
-    if (local) {
-      // JSC TODO implement local file access
-      if (settings.method !== "GET") {
-        throw new Error("XMLHttpRequest: Only GET method is supported");
+    try {
+      var parsedUrl = new URL(urlToUse);
+      switch (parsedUrl.protocol) {
+        case "https:":
+          ssl = true;
+          host = parsedUrl.hostname;
+          port = parseInt(parsedUrl.port, 10) || 443;
+          break;
+        case "http:":
+          ssl = false;
+          host = parsedUrl.hostname;
+          port = parseInt(parsedUrl.port, 10) || 80;
+          break;
+        default:
+          throw new Error("Protocol not supported: " + parsedUrl.protocol);
       }
-
-      if (settings.async) {
-        fs.readFile(url.pathname, "utf8", function(error, data) {
-          if (error) {
-            self.handleError(error);
-          } else {
-            self.status = 200;
-            self.responseText = data;
-            setState(self.DONE);
-          }
-        });
-      } else {
-        try {
-          this.responseText = fs.readFileSync(url.pathname, "utf8");
-          this.status = 200;
-          setState(self.DONE);
-        } catch(e) {
-          this.handleError(e);
-        }
-      }
-      console.log("local file access not yet implemented ");
+      uri = parsedUrl.pathname + (parsedUrl.search || "");
+    } catch (urlParseErr) {
+      self.handleError(new Error("XMLHttpRequest: Failed to parse URL '" + urlToUse + "': " + urlParseErr.message));
       return;
     }
-    // Default to port 80. If accessing localhost on another port be sure
-    // to use http://localhost:port/path
-    var port = url.port || (ssl ? 443 : 80);
-    // Add query string if one is used
-    var index = settings.url.indexOf("/", 9);
-    var search = settings.url.substr(index);
-    //var uri = url.pathname + (url.search ? url.search : "");
-    //var uri = settings.url;
-    var uri = search;
-*/
-    var uri = settings.url;
     // Set the defaults if they haven't been set
     for (var name in defaultHeaders) {
       if (!headersCase[name.toLowerCase()]) {
@@ -349,7 +321,7 @@ XMLHttpRequest = function() {
       if (typeof settings.password === "undefined") {
         settings.password = "";
       }
-      var authBuf = new Buffer(settings.user + ":" + settings.password);
+      var authBuf = Buffer.from(settings.user + ":" + settings.password);
       headers.Authorization = "Basic " + authBuf.toString("base64");
     }
 
@@ -369,9 +341,12 @@ XMLHttpRequest = function() {
     }
 
     var options = {
-      /*host: host,
-      port: port,*/
+      hostname: host,
+      host: host,
+      port: port,
       path: uri,
+      protocol: ssl ? "https:" : "http:",
+      ssl: ssl,
       method: settings.method,
       headers: headers,
       agent: false,
@@ -384,7 +359,12 @@ XMLHttpRequest = function() {
     // Handle async requests
     if (settings.async) {
       // Use the proper protocol
-      var doRequest = ssl ? https.request : http.request;
+      var transport = ssl ? https : http;
+      if (!transport || typeof transport.request !== "function") {
+        self.handleError(new Error("XMLHttpRequest: transport.request is unavailable for protocol " + (ssl ? "https" : "http")));
+        return;
+      }
+      var doRequest = transport.request;
 
       // Request is being sent, set send flag
       sendFlag = true;
@@ -400,32 +380,32 @@ XMLHttpRequest = function() {
         // Check for redirect
         // @TODO Prevent looped redirects
         if (response.statusCode === 301 || response.statusCode === 302 || response.statusCode === 303 || response.statusCode === 307) {
-          // Change URL to the redirect location
-          settings.url = response.headers.location;
-          //var url = Url.parse(settings.url);
-          var url = settings.url;
-          /*
-          // Set host var in case it's used later
-          host = url.hostname;
-          // Options for the new request
-          var newOptions = {
-            hostname: url.hostname,
-            port: url.port,
-            path: url.path,
-            method: response.statusCode === 303 ? "GET" : settings.method,
-            headers: headers,
-            withCredentials: self.withCredentials
-          };
-          */
-          var newOptions = {
-            path: url,
-            method: response.statusCode === 303 ? "GET" : settings.method,
-            headers: headers,
-            withCredentials: self.withCredentials
-          };
-          // Issue the new request
-          request = doRequest(newOptions, responseHandler).on("error", errorHandler);
-          request.end();
+          try {
+            var redirectLocation = response.headers.location;
+            var redirectUrl = new URL(redirectLocation, settings.url);
+            settings.url = redirectUrl.toString();
+            var redirectSsl = redirectUrl.protocol === "https:";
+            var redirectPort = parseInt(redirectUrl.port, 10) || (redirectSsl ? 443 : 80);
+            var redirectOptions = {
+              hostname: redirectUrl.hostname,
+              host: redirectUrl.hostname,
+              port: redirectPort,
+              path: redirectUrl.pathname + (redirectUrl.search || ""),
+              protocol: redirectSsl ? "https:" : "http:",
+              ssl: redirectSsl,
+              method: response.statusCode === 303 ? "GET" : settings.method,
+              headers: headers,
+              withCredentials: self.withCredentials
+            };
+            var redirectTransport = redirectSsl ? https : http;
+            if (!redirectTransport || typeof redirectTransport.request !== "function") {
+              throw new Error("Redirect transport.request is unavailable for protocol " + (redirectSsl ? "https" : "http"));
+            }
+            request = redirectTransport.request(redirectOptions, responseHandler).on("error", errorHandler);
+            request.end();
+          } catch (redirectErr) {
+            self.handleError(redirectErr);
+          }
           // @TODO Check if an XHR event needs to be fired here
           return;
         }
@@ -465,8 +445,18 @@ XMLHttpRequest = function() {
       };
 
       // Create the request
-      request = doRequest(options, responseHandler);
+      try {
+        request = doRequest(options, responseHandler);
+      } catch (requestCreateErr) {
+        self.handleError(requestCreateErr);
+        return;
+      }
       request.on("error", errorHandler);
+      if (typeof request.on === "function") {
+        request.on("abort", function() {
+          self.handleError(new Error("XMLHttpRequest: request aborted by transport"));
+        });
+      }
 
       // Node 0.4 and later won't accept empty data. Make sure it's needed.
       if (data) {
@@ -499,6 +489,8 @@ XMLHttpRequest = function() {
    * Aborts a request.
    */
   this.abort = function() {
+    var hadActiveRequest = !!request || sendFlag || (this.readyState !== this.UNSENT && this.readyState !== this.DONE);
+
     if (request) {
       request.abort();
       request = null;
@@ -518,7 +510,9 @@ XMLHttpRequest = function() {
       setState(this.DONE);
     }
     this.readyState = this.UNSENT;
-    this.dispatchEvent('abort');
+    if (hadActiveRequest) {
+      this.dispatchEvent('abort');
+    }
   };
 
   /**
@@ -549,12 +543,18 @@ XMLHttpRequest = function() {
    * Dispatch any events, including both "on" methods and events attached using addEventListener.
    */
   this.dispatchEvent = function(event) {
+    var evt = {
+      type: event,
+      target: self,
+      currentTarget: self
+    };
+
     if (typeof self["on" + event] === "function") {
-      self["on" + event]();
+      self["on" + event](evt);
     }
     if (event in listeners) {
       for (var i = 0, len = listeners[event].length; i < len; i++) {
-        listeners[event][i].call(self);
+        listeners[event][i].call(self, evt);
       }
     }
   };
