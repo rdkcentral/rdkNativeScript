@@ -5,9 +5,10 @@
  * allow the use of existing libraries.
  *
  * Usage: include("XMLHttpRequest.js") and use XMLHttpRequest per W3C specs.
- * Some modifications by Comcast.
+ * @author Dan DeFelippi <dan@driverdan.com>
  * @contributor David Ellis <d.f.ellis@ieee.org>
  * @license MIT
+ * Some modifications by Comcast.
  *
  */
 
