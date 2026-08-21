@@ -10,6 +10,10 @@
  * @license MIT
  * Some modifications by Comcast.
  *
+ * Modified for RDK NativeScript FreeWheel compatibility:
+ * - W3C-compliant response handling
+ * - Timeout support with proper event semantics
+ * - Diagnostic logging for debugging
  */
 
 
@@ -75,8 +79,60 @@ XMLHttpRequest = function() {
   // Error flag, used when errors occur or abort is called
   var errorFlag = false;
 
+  // Timeout handle for request timeout
+  var timeoutHandle = null;
+
   // Event listeners
   var listeners = {};
+
+  // Diagnostic request ID
+  var xhrRequestId = Math.random().toString(36).substr(2, 9);
+  var xhrStartTime = null;
+
+  /**
+   * Helper to get HTTP status text from status code
+   */
+  var getStatusText = function(code) {
+    var statusMessages = {
+      200: 'OK',
+      201: 'Created',
+      202: 'Accepted',
+      204: 'No Content',
+      206: 'Partial Content',
+      300: 'Multiple Choices',
+      301: 'Moved Permanently',
+      302: 'Found',
+      304: 'Not Modified',
+      307: 'Temporary Redirect',
+      308: 'Permanent Redirect',
+      400: 'Bad Request',
+      401: 'Unauthorized',
+      403: 'Forbidden',
+      404: 'Not Found',
+      405: 'Method Not Allowed',
+      408: 'Request Timeout',
+      409: 'Conflict',
+      410: 'Gone',
+      413: 'Payload Too Large',
+      414: 'URI Too Long',
+      429: 'Too Many Requests',
+      500: 'Internal Server Error',
+      501: 'Not Implemented',
+      502: 'Bad Gateway',
+      503: 'Service Unavailable',
+      504: 'Gateway Timeout'
+    };
+    return statusMessages[code] || 'Unknown';
+  };
+
+  /**
+   * Diagnostic logging helper
+   */
+  var logDiag = function(message) {
+    if (typeof XHRDiagnostics !== 'undefined' && XHRDiagnostics.enabled) {
+      XHRDiagnostics.log(xhrRequestId, message);
+    }
+  };
 
   /**
    * Constants
@@ -101,8 +157,13 @@ XMLHttpRequest = function() {
   // Result & response
   this.responseText = "";
   this.responseXML = "";
+  this.response = "";        // W3C standard response property
+  this.responseURL = "";     // W3C standard responseURL property
   this.status = null;
   this.statusText = null;
+
+  // Request timeout in milliseconds (0 = no timeout)
+  this.timeout = 0;
 
   // Whether cross-site Access-Control requests should be made using
   // credentials such as cookies or authorization headers
@@ -161,7 +222,13 @@ XMLHttpRequest = function() {
     this.statusText = null;
     this.responseText = "";
     this.responseXML = "";
+    this.response = "";
+    this.responseURL = "";
     this.readyState = this.UNSENT;
+
+    // Generate new request ID for diagnostics
+    xhrRequestId = Math.random().toString(36).substr(2, 9);
+    xhrStartTime = Date.now();
 
     // Check for valid request method
     if (!isAllowedHttpMethod(method)) {
@@ -175,6 +242,8 @@ XMLHttpRequest = function() {
       "user": user || null,
       "password": password || null
     };
+
+    logDiag('open method=' + method + ' url=' + url.toString());
 
     setState(this.OPENED);
   };
@@ -263,6 +332,17 @@ XMLHttpRequest = function() {
     }
 
     return "";
+  };
+
+  /**
+   * Sets the timeout for the request.
+   * Per W3C spec, timeout is in milliseconds.
+   * 0 means no timeout.
+   *
+   * @param number timeout Timeout in milliseconds
+   */
+  this.setTimeout = function(timeout) {
+    this.timeout = timeout;
   };
 
   /**
@@ -371,14 +451,23 @@ XMLHttpRequest = function() {
       // Request is being sent, set send flag
       sendFlag = true;
 
+      logDiag('send started, timeout=' + self.timeout + 'ms');
+
       // As per spec, this is called here for historical reasons.
       self.dispatchEvent("readystatechange");
 
       // Handler for the response
       var responseHandler = function responseHandler(resp) {
+        // Clear timeout since we got a response
+        if (timeoutHandle) {
+          clearTimeout(timeoutHandle);
+          timeoutHandle = null;
+        }
+
         // Set response var to the response we got back
         // This is so it remains accessable outside this scope
         response = resp;
+
         // Check for redirect
         // @TODO Prevent looped redirects
         if (response.statusCode === 301 || response.statusCode === 302 || response.statusCode === 303 || response.statusCode === 307) {
@@ -414,13 +503,21 @@ XMLHttpRequest = function() {
 
         //response.setEncoding("utf8");
 
-        setState(self.HEADERS_RECEIVED);
+        // Set status and statusText BEFORE transitioning to HEADERS_RECEIVED
+        // FreeWheel needs these available before callbacks fire
         self.status = response.statusCode;
+        self.statusText = getStatusText(response.statusCode);
+        self.responseURL = settings.url;
+
+        logDiag('response headers status=' + self.status + ' statusText=' + self.statusText);
+
+        setState(self.HEADERS_RECEIVED);
 
         response.on("data", function(chunk) {
           // Make sure there's some data
           if (chunk) {
             self.responseText += chunk;
+            self.response = self.responseText;
           }
           // Don't emit state changes if the connection has been aborted.
           if (sendFlag) {
@@ -430,6 +527,11 @@ XMLHttpRequest = function() {
 
         response.on("end", function() {
           if (sendFlag) {
+            // Finalize response data
+            self.response = self.responseText;
+
+            logDiag('response complete bytes=' + self.responseText.length);
+
             // Discard the end event if the connection has been aborted
             setState(self.DONE);
             sendFlag = false;
@@ -443,6 +545,10 @@ XMLHttpRequest = function() {
 
       // Error handler for the request
       var errorHandler = function errorHandler(error) {
+        if (timeoutHandle) {
+          clearTimeout(timeoutHandle);
+          timeoutHandle = null;
+        }
         self.handleError(error);
       };
 
@@ -456,8 +562,40 @@ XMLHttpRequest = function() {
       request.on("error", errorHandler);
       if (typeof request.on === "function") {
         request.on("abort", function() {
+          if (timeoutHandle) {
+            clearTimeout(timeoutHandle);
+            timeoutHandle = null;
+          }
           self.handleError(new Error("XMLHttpRequest: request aborted by transport"));
         });
+      }
+
+      // Set up request timeout handler if timeout is configured
+      // Per W3C spec, if timeout is non-zero and response doesn't complete within timeout ms,
+      // abort the request and dispatch timeout event
+      if (self.timeout > 0) {
+        timeoutHandle = setTimeout(function() {
+          if (sendFlag && request) {
+            logDiag('timeout fired after ' + self.timeout + 'ms, aborting request');
+            
+            request.abort();
+            request = null;
+            sendFlag = false;
+            
+            self.status = 0;
+            self.statusText = 'Timeout';
+            self.responseText = '';
+            self.response = '';
+            errorFlag = true;
+
+            setState(self.DONE);
+            
+            // Per W3C spec, dispatch timeout event
+            self.dispatchEvent('timeout');
+            // After timeout, must dispatch loadend
+            self.dispatchEvent('loadend');
+          }
+        }, self.timeout);
       }
 
       // Node 0.4 and later won't accept empty data. Make sure it's needed.
@@ -477,20 +615,48 @@ XMLHttpRequest = function() {
 
   /**
    * Called when an error is encountered to deal with it.
+   * 
+   * Per W3C spec:
+   * - Do NOT dispatch load on error
+   * - DO dispatch error
+   * - DO dispatch loadend
    */
   this.handleError = function(error) {
+    // Clear timeout if set
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
+      timeoutHandle = null;
+    }
+
+    var errorMsg = error.message || String(error);
+    var errorStack = error.stack || '';
+
+    logDiag('error: ' + errorMsg);
+
     this.status = 0;
-    this.statusText = error;
-    this.responseText = error.stack;
+    this.statusText = errorMsg;
+    this.responseText = errorStack;
+    this.response = errorStack;
     errorFlag = true;
+
     setState(this.DONE);
+    
+    // Dispatch error event, NOT load
     this.dispatchEvent('error');
+    // After error, must dispatch loadend
+    this.dispatchEvent('loadend');
   };
 
   /**
    * Aborts a request.
    */
   this.abort = function() {
+    // Clear timeout if set
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
+      timeoutHandle = null;
+    }
+
     var hadActiveRequest = !!request || sendFlag || (this.readyState !== this.UNSENT && this.readyState !== this.DONE);
 
     if (request) {
@@ -500,8 +666,10 @@ XMLHttpRequest = function() {
 
     headers = defaultHeaders;
     this.status = 0;
+    this.statusText = null;
     this.responseText = "";
     this.responseXML = "";
+    this.response = "";
 
     errorFlag = true;
 
@@ -513,7 +681,10 @@ XMLHttpRequest = function() {
     }
     this.readyState = this.UNSENT;
     if (hadActiveRequest) {
+      logDiag('abort dispatched');
       this.dispatchEvent('abort');
+      // Per W3C spec, loadend must fire after abort
+      this.dispatchEvent('loadend');
     }
   };
 
@@ -551,6 +722,8 @@ XMLHttpRequest = function() {
       currentTarget: self
     };
 
+    logDiag('dispatch event=' + event);
+
     if (typeof self["on" + event] === "function") {
       self["on" + event](evt);
     }
@@ -564,19 +737,33 @@ XMLHttpRequest = function() {
   /**
    * Changes readyState and calls onreadystatechange.
    *
+   * Per W3C spec:
+   * - readystatechange fires on every state change
+   * - load fires only on successful completion (2xx/3xx HTTP status or 0 for file://)
+   * - error fires on network failure or timeout
+   * - timeout fires on timeout (must be before DONE transition)
+   * - abort fires on abort
+   * - loadend fires after every terminal event (load, error, timeout, abort)
+   *
    * @param int state New state
    */
   var setState = function(state) {
     if (state == self.LOADING || self.readyState !== state) {
       self.readyState = state;
 
+      logDiag('readyState=' + state + ' status=' + self.status + ' statusText=' + self.statusText);
+
       if (settings.async || self.readyState < self.OPENED || self.readyState === self.DONE) {
         self.dispatchEvent("readystatechange");
       }
 
+      // CRITICAL FIX: Only dispatch load on successful completion, NOT on error/abort/timeout
+      // Error, timeout, and abort are handled separately in their specific handlers
       if (self.readyState === self.DONE && !errorFlag) {
+        var elapsedMs = Date.now() - xhrStartTime;
+        logDiag('load completed successfully in ' + elapsedMs + 'ms');
         self.dispatchEvent("load");
-        // @TODO figure out InspectorInstrumentation::didLoadXHR(cookie)
+        // After successful load, must dispatch loadend
         self.dispatchEvent("loadend");
       }
     }
