@@ -22,7 +22,25 @@ try
     if (undefined != jsdom)
     {
         window = jsdom.window;
-        window.location = {"href":"", "host":"127.0.0.1", "protocol":"http"}
+        
+        // FreeWheel compatibility fix: location object must have all standard properties
+        // with correct protocol format (colon required) and consistent origin
+        // This is used by FreeWheel to build: window.location.protocol + "//" + window.location.host
+        window.location = {
+          "href": "file:///index.html",
+          "host": "",
+          "hostname": "",
+          "port": "",
+          "protocol": "file:",
+          "origin": "null",
+          "pathname": "/index.html",
+          "search": "",
+          "hash": "",
+          "toString": function() { return this.href; }
+        };
+        
+        // Ensure globalThis.location is consistent with window.location
+        globalThis.location = window.location;
 	
         window.frames = []
         window.screen = {
@@ -204,4 +222,3 @@ class LocalStorage {
 }
 
 const localStorage = new LocalStorage();
-
