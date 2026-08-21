@@ -37,12 +37,29 @@ self.location = {"href":"mainapp"}
 window.setTimeout = setTimeout;
 window.clearTimeout = clearTimeout;
 global = {};
-window.location = {"href":"", "host":"192.168.0.102", "protocol":"http"}
+
+// FreeWheel compatibility fix: location object must have all standard properties
+// with correct protocol format (colon required) and consistent origin
+// This is used by FreeWheel to build: window.location.protocol + "//" + window.location.host
+window.location = {
+  "href": "file:///index.html",
+  "host": "",
+  "hostname": "",
+  "port": "",
+  "protocol": "file:",
+  "origin": "null",
+  "pathname": "/index.html",
+  "search": "",
+  "hash": "",
+  "toString": function() { return this.href; }
+};
+
 window.thunder = new ThunderUtility();
 top = window.top = self;
 jsruntime = {}
 var self=window;
 globalThis=global
+globalThis.location = window.location;
 globalThis.performance = undefined
 Reflect = global.Reflect = {}
 class Div
@@ -160,69 +177,69 @@ class Document
 document = new Document();
 class Performance
 {
-  constructor()
-  {
-      this.entries = {}
-  }	  
-  mark(name, options) 
-  {
-      console.log("KRISHNA MARKING " + name);
-      var entries = this.entries;	  
-      var hasName = (name in entries);
-      if (false == hasName)
-      {
-          entries[name] = {}
-      }
-      if (options != undefined && options['startTime'] != undefined)
-      {
-          entries[name]['startTime'] = options['startTime'];
-          console.log("KRISHNA MARKING1 " + name);
-      }
-      else
-      {     
-          //entries[name]['startTime'] = (new Date()).getMilliseconds();
-          entries[name]['startTime'] = Date.now();
-      console.log("KRISHNA MARKING2 " + name);
-      }
-      if (options != undefined && option['detail'] != undefined)
-      {
-          entries[name]['detail'] = options['detail'];
-      }
-      return entries[name];
-  }
+   constructor()
+   {
+       this.entries = {}
+   }	  
+   mark(name, options) 
+   {
+       console.log("KRISHNA MARKING " + name);
+       var entries = this.entries;	  
+       var hasName = (name in entries);
+       if (false == hasName)
+       {
+           entries[name] = {}
+       }
+       if (options != undefined && options['startTime'] != undefined)
+       {
+           entries[name]['startTime'] = options['startTime'];
+           console.log("KRISHNA MARKING1 " + name);
+       }
+       else
+       {     
+           //entries[name]['startTime'] = (new Date()).getMilliseconds();
+           entries[name]['startTime'] = Date.now();
+       console.log("KRISHNA MARKING2 " + name);
+       }
+       if (options != undefined && option['detail'] != undefined)
+       {
+           entries[name]['detail'] = options['detail'];
+       }
+       return entries[name];
+   }
 
-  clearMarks()
-  {
-    for (var key in entries)
-    {
-        entries[key] = null;
+   clearMarks()
+   {
+     for (var key in entries)
+     {
+         entries[key] = null;
 	delete entries[key];    
-    }
-    entries = {}
-  }	  
+     }
+     entries = {}
+   }	  
 
-  getEntriesByName(name)
-  { 
-      return []
-  }
-  getEntriesByType(type)
-  { 
-      return []
-  }
-  measure(name, startMark, endMark)
-  {
-      console.log("KRISHNA " + name);
-      var hasStart = (startMark in this.entries);
-      var hasEnd = (endMark in this.entries);
-      var ret = {};
-      if (hasStart && hasEnd)
-      {
-          ret["name"] = name;
+   getEntriesByName(name)
+   { 
+       return []
+   }
+   getEntriesByType(type)
+   { 
+       return []
+   }
+   measure(name, startMark, endMark)
+   {
+       console.log("KRISHNA " + name);
+       var hasStart = (startMark in this.entries);
+       var hasEnd = (endMark in this.entries);
+       var ret = {};
+       if (hasStart && hasEnd)
+       {
+           ret["name"] = name;
 	  ret["duration"] = this.entries[endMark].startTime - this.entries[startMark].startTime;
 	  ret["startTime"] = this.entries[startMark].startTime;
-      }
-      return ret;
-  }
+       }
+       return ret;
+   }
 }
 performance = new Performance();
 global.AAMPMediaPlayer = AAMPMediaPlayer;
@@ -230,37 +247,37 @@ global.AAMPMediaPlayer = AAMPMediaPlayer;
 //Error shown but execution not stopped
 class DOMParser
 {
-  parseFromString()
-  {
-      return document;
-  }	  
+   parseFromString()
+   {
+       return document;
+   }	  
 }
 class Event
 {
-   constructor() 
-   {
-   }
+    constructor() 
+    {
+    }
 }
 
 class Navigator
 {
-   constructor()
-   {
-       this.appCodeName = "";
-       this.appName = "jsruntime";
-       this.appVersion = "1";
-       this.cookieEnabled = false;
-       this.geolocation = undefined;
-       this.language = "eng";
-       this.onLine = true;
-       this.platform = "linux";
-       this.product = undefined;
-       this.userAgent = "jsruntime";
-   }	   
-   javaEnabled()
-   {
-       return false;	   
-   }
+    constructor()
+    {
+        this.appCodeName = "";
+        this.appName = "jsruntime";
+        this.appVersion = "1";
+        this.cookieEnabled = false;
+        this.geolocation = undefined;
+        this.language = "eng";
+        this.onLine = true;
+        this.platform = "linux";
+        this.product = undefined;
+        this.userAgent = "jsruntime";
+    }	   
+    javaEnabled()
+    {
+        return false;	   
+    }
 }
 navigator = window.navigator = new Navigator();
 tv = window.tv = {}
