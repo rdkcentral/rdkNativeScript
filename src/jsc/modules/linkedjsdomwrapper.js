@@ -27,9 +27,11 @@ var jsdom = new JSDOM('<html></html>');
 document = jsdom.document;
 global.document = document;
 window = jsdom.window;
+global.window = window;
 Event = window.Event;
 DOMParser = window.DOMParser;
 navigator = window.navigator;
+global.navigator = navigator;
 tv = window.tv = {}
 //fetch = FetchLib;
 try
@@ -83,4 +85,81 @@ crypto.getRandomValues = getRandom;
     };
 
     setInterval(checkUrlChange, 500);
+})();
+
+(function() {
+
+    function run(code, url) {
+        try {
+            (0, eval)(code + "\n//# sourceURL=" + url);
+            return null;
+        } catch (e) {
+            return e;
+        }
+    }
+
+    function load(url, ok, fail) {
+        var x = new XMLHttpRequest();
+        x.open("GET", url, true);
+
+        x.onreadystatechange = function() {
+            if (x.readyState !== 4) return;
+
+            if (x.status >= 200 && x.status < 300)
+                ok(x.responseText || "");
+            else
+                fail(new Error("HTTP " + x.status));
+        };
+
+        x.onerror = fail;
+        x.send();
+    }
+
+    var orig = HTMLElement.prototype.appendChild;
+
+    HTMLElement.prototype.appendChild = function(node) {
+
+        var ret = orig.call(this, node);
+
+        if (
+            node &&
+            node.tagName &&
+            node.tagName.toLowerCase() === "script" &&
+            node.src
+        ) {
+            load(
+                node.src,
+                function(code) {
+
+                    var err = run(code, node.src);
+
+                    if (err)
+                        return node.onerror && node.onerror(err);
+
+                    node.readyState = "complete";
+
+                    if (typeof node.onreadystatechange === "function")
+                        node.onreadystatechange.call(node);
+
+                    if (typeof node.dispatchEvent === "function" && typeof Event === "function") {
+                        node.dispatchEvent(new Event("load"));
+                    } else if (
+                        typeof node.onload === "function" &&
+                        node.onload !== node.onreadystatechange
+                    ) {
+                        node.onload.call(node);
+                    }
+                },
+                function(err) {
+                    if (typeof node.dispatchEvent === "function" && typeof Event === "function") {
+                        node.dispatchEvent(new Event("error"));
+                    } else if (typeof node.onerror === "function") {
+                        node.onerror(err);
+                    }
+                }
+            );
+        }
+
+        return ret;
+    };
 })();

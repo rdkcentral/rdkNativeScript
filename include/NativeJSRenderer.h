@@ -137,6 +137,7 @@ namespace JsRuntime {
                 std::list<ApplicationDetails> getApplications();
 		void setExternalApplicationHandler(std::shared_ptr<IExternalApplicationHandler> handler);
                 std::string getBaseUserAgent();
+		void setLocation(std::stringstream& window, const std::string& url);
 	    private:
 		bool downloadFile(std::string& url, MemoryStruct& chunk);
 		void processDevConsoleRequests();
