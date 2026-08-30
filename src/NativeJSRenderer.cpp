@@ -362,8 +362,8 @@ void NativeJSRenderer::runApplicationInternal(ApplicationRequest& appRequest)
 			if(context->getModuleSettings().enableMiniJSDOM || context->getModuleSettings().enableJSDOM)
 			{
 				std::stringstream window;
-            	    		window<<"window.location = {\"href\":\"" << url << "\"};";
-           			NativeJSLogger::log(INFO, "Adding the window location: %s to js file\n", window.str().c_str());
+				setLocation(window, url);
+				NativeJSLogger::log(INFO, "Adding the window location: %s to js file\n", window.str().c_str());
             			context->runScript(window.str().c_str(),true, url, nullptr, true);
 			}
 			NativeJSLogger::log(INFO, "nativeJS application thunder execution url: %s\n", url.c_str());
@@ -377,12 +377,13 @@ void NativeJSRenderer::runApplicationInternal(ApplicationRequest& appRequest)
 		{
 			NativeJSLogger::log(INFO, "About to launch local app\n");
 			JavaScriptContext* context = (JavaScriptContext*)mContextMap[id].context;
-                       context->setUrl(mContextMap[id].url);
+			context->setUrl(mContextMap[id].url);
 			if(context->getModuleSettings().enableMiniJSDOM || context->getModuleSettings().enableJSDOM)
             		{
 			    std::stringstream window;
-                	    window<<"window.location = {\"href\":\"file:/" << url << "\"};";
-                	    NativeJSLogger::log(INFO, "Adding the window location: %s to js file\n", window.str().c_str());
+			    std::string localUrl = "file://" + url;
+			    setLocation(window, localUrl);
+			    NativeJSLogger::log(INFO, "Adding the window location: %s to js file\n", window.str().c_str());
                 	    context->runScript(window.str().c_str(),true, url, nullptr, true);
 			}
 			NativeJSLogger::log(INFO, "Running test application: %s\n", url.c_str());
@@ -689,4 +690,66 @@ std::string NativeJSRenderer::getBaseUserAgent()
 {
         return mBaseUserAgent;
 }
+void NativeJSRenderer::setLocation(std::stringstream& window, const std::string& url)
+{
+    auto schemePos = url.find("://");
 
+    std::string protocol, host, hostname, port, pathname, search, hash, origin = "null";
+
+    if (schemePos != std::string::npos)
+    {
+        protocol = url.substr(0, schemePos) + ":";
+
+        auto authorityStart = schemePos + 3;
+        auto pathStart = url.find_first_of("/?#", authorityStart);
+
+        host = (pathStart == std::string::npos)
+             ? url.substr(authorityStart)
+             : url.substr(authorityStart, pathStart - authorityStart);
+
+        auto portPos = host.find(':');
+        if (portPos != std::string::npos)
+        {
+            hostname = host.substr(0, portPos);
+            port = host.substr(portPos + 1);
+        }
+        else
+        {
+            hostname = host;
+        }
+
+        if (pathStart != std::string::npos)
+        {
+            auto queryPos = url.find('?', pathStart);
+            auto hashPos = url.find('#', pathStart);
+
+            auto pathEnd = std::min(
+                queryPos == std::string::npos ? url.size() : queryPos,
+                hashPos  == std::string::npos ? url.size() : hashPos);
+
+            pathname = url.substr(pathStart, pathEnd - pathStart);
+
+            if (queryPos != std::string::npos)
+                search = url.substr(queryPos,
+                          (hashPos == std::string::npos ? url.size() : hashPos) - queryPos);
+
+            if (hashPos != std::string::npos)
+                hash = url.substr(hashPos);
+        }
+
+        if (protocol != "file:")
+            origin = protocol + "//" + host;
+    }
+
+    window << "window.location={"
+           << "\"href\":\""      << url       << "\","
+           << "\"protocol\":\""  << protocol  << "\","
+           << "\"host\":\""      << host      << "\","
+           << "\"hostname\":\""  << hostname  << "\","
+           << "\"port\":\""      << port      << "\","
+           << "\"pathname\":\""  << pathname  << "\","
+           << "\"search\":\""    << search    << "\","
+           << "\"hash\":\""      << hash      << "\","
+           << "\"origin\":\""    << origin    << "\""
+           << "};";
+}
