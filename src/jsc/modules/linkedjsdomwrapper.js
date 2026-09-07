@@ -163,3 +163,93 @@ crypto.getRandomValues = getRandom;
         return ret;
     };
 })();
+
+setTimeout.apply = function(thisArg, args) {
+    if (!args || args.length === 0) return setTimeout(function() {}, 0);
+    var callback = args[0];
+    var delay = args[1];
+    var callbackArgs = args.slice(2);
+    return setTimeout(function() {
+        callback.apply(null, callbackArgs);
+    }, delay);
+};
+setTimeout.call = function(thisArg, callback, delay) {
+    var args = Array.prototype.slice.call(arguments, 3);
+    return setTimeout(function() {
+        callback.apply(null, args);
+    }, delay);
+};
+setTimeout.bind = function(thisArg) {
+    var boundArgs = Array.prototype.slice.call(arguments, 1);
+    return function() {
+        var args = boundArgs.concat(Array.prototype.slice.call(arguments));
+        return setTimeout.apply(null, args);
+    };
+};
+
+clearTimeout = (function(originalClearTimeout) {
+    return function(id) {
+        if (id === null || typeof id === "undefined") {
+            return undefined;
+        }
+        return originalClearTimeout(id);
+    };
+})(clearTimeout);
+
+clearTimeout.apply = function(thisArg, args) {
+    return clearTimeout(args && args[0]);
+};
+clearTimeout.call = function(thisArg, id) {
+    return clearTimeout(id);
+};
+clearTimeout.bind = function(thisArg) {
+    return function(id) { return clearTimeout(id); };
+};
+
+setInterval.apply = function(thisArg, args) {
+    if (!args || args.length === 0) return setInterval(function() {}, 0);
+    var callback = args[0];
+    var delay = args[1];
+    var callbackArgs = args.slice(2);
+    return setInterval(function() {
+        callback.apply(null, callbackArgs);
+    }, delay);
+};
+setInterval.call = function(thisArg, callback, delay) {
+    var args = Array.prototype.slice.call(arguments, 3);
+    return setInterval(function() {
+        callback.apply(null, args);
+    }, delay);
+};
+setInterval.bind = function(thisArg) {
+    var boundArgs = Array.prototype.slice.call(arguments, 1);
+    return function() {
+        var args = boundArgs.concat(Array.prototype.slice.call(arguments));
+        return setInterval.apply(null, args);
+    };
+};
+
+clearInterval = (function(originalClearInterval) {
+    return function(id) {
+        if (id === null || typeof id === "undefined") {
+            return undefined;
+        }
+        return originalClearInterval(id);
+    };
+})(clearInterval);
+
+clearInterval.apply = function(thisArg, args) {
+    return clearInterval(args && args[0]);
+};
+clearInterval.call = function(thisArg, id) {
+    return clearInterval(id);
+};
+clearInterval.bind = function(thisArg) {
+    return function(id) { return clearInterval(id); };
+};
+
+window.setInterval = setInterval;
+window.clearTimeout = clearTimeout;
+window.setTimeout = setTimeout;
+window.clearInterval = clearInterval;
+
