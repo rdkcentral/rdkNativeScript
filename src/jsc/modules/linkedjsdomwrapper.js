@@ -17,6 +17,56 @@
 * limitations under the License.
 **/
 
+
+if (typeof Error.captureStackTrace !== 'function') {
+    Error.captureStackTrace = function(targetObject, constructorOpt) {
+        try {
+            var stack = new Error().stack;
+            if (stack && targetObject) {
+                var lines = stack.split('\n');
+                targetObject.stack = lines.slice(1).join('\n');
+            }
+            if (typeof console !== 'undefined' && typeof console.log === 'function') {
+                var ctorName = (constructorOpt && constructorOpt.name) ? constructorOpt.name : 'unknown';
+                console.log('Error.captureStackTrace called for ' + ctorName + ' (polyfilled no-op, previously would have thrown and hung the fetch promise)');
+
+                if (targetObject && targetObject.message) {
+                    console.log('message: ' + targetObject.message);
+                }
+                if (targetObject && targetObject.type) {
+                    console.log('type: ' + targetObject.type);
+                }
+                console.log('stack:\n' + (targetObject && targetObject.stack ? targetObject.stack : stack));
+            }
+        } catch (e) {
+        }
+    };
+}
+
+(function ppGuardGetOwnPropertySymbols() {
+    if (typeof Object.getOwnPropertySymbols !== 'function') {
+        return;
+    }
+    var originalGetOwnPropertySymbols = Object.getOwnPropertySymbols;
+    if (originalGetOwnPropertySymbols.__ppGuarded) {
+        return;
+    }
+    var guarded = function(obj) {
+        if (obj === undefined || obj === null) {
+            try {
+                if (typeof console !== 'undefined' && typeof console.log === 'function') {
+                    console.log('Object.getOwnPropertySymbols called with ' + obj + ', returning [] instead of throwing');
+                }
+            } catch (e) {
+            }
+            return [];
+        }
+        return originalGetOwnPropertySymbols(obj);
+    };
+    guarded.__ppGuarded = true;
+    Object.getOwnPropertySymbols = guarded;
+})();
+
 LinkedJSDOM = LinkedJSDOMLib;
 function JSDOM(html)
 {
@@ -46,6 +96,8 @@ catch(e)
 XMLHttpRequest = window.XMLHttpRequest;
 HTMLElement = window.HTMLElement;
 window.location = {"href":"", "host":"127.0.0.1", "protocol":"http"}
+Image = window.Image;
+
 
 //below all are undefined
 /*

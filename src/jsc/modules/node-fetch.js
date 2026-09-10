@@ -1188,6 +1188,44 @@ const INTERNALS = Symbol('Body internals');
 // fix an issue where "PassThrough" isn't a named export for node <10
 const PassThrough = Stream.PassThrough;
 
+function isStreamLike(body) {
+  return !!body
+    && typeof body.on === 'function'
+    && (typeof body.pipe === 'function' || typeof body.once === 'function');
+}
+
+function getErrorReason(err) {
+  if (!err) {
+    return 'unknown error';
+  }
+
+  if (typeof err === 'string') {
+    return err;
+  }
+
+  if (err.message) {
+    return err.message;
+  }
+
+  if (err.description) {
+    return err.description;
+  }
+
+  if (err.reason) {
+    return err.reason;
+  }
+
+  if (err.code !== undefined) {
+    return 'code: ' + err.code;
+  }
+
+  try {
+    return JSON.stringify(err);
+  } catch (e) {
+    return String(err);
+  }
+}
+
 /**
  * Body mixin
  *
@@ -1219,7 +1257,7 @@ function Body(body) {
 	} else if (ArrayBuffer.isView(body)) {
 		// body is ArrayBufferView
 		body = Buffer.from(body.buffer, body.byteOffset, body.byteLength);
-	} else if (body instanceof Stream) ; else {
+  } else if (body instanceof Stream || isStreamLike(body)) ; else {
 		// none of the above
 		// coerce to string then buffer
 		//body = Buffer.from(String(body));
@@ -1234,7 +1272,7 @@ function Body(body) {
 	this.size = size;
 	this.timeout = timeout;
 
-	if (body instanceof Stream) {
+  if (body instanceof Stream || isStreamLike(body)) {
 		body.on('error', function (err) {
 			const error = err.name === 'AbortError' ? err : new FetchError(`Invalid response body while trying to fetch ${_this.url}: ${err.message}`, 'system', err);
 			_this[INTERNALS].error = error;
@@ -1289,8 +1327,12 @@ Body.prototype = {
 		var _this2 = this;
 
 		return consumeBody.call(this).then(function (buffer) {
+			var text = buffer.toString();
+			if (text.trim() === '') {
+				return {};
+			}
 			try {
-				return JSON.parse(buffer.toString());
+				return JSON.parse(text);
 			} catch (err) {
 				return Body.Promise.reject(new FetchError(`invalid json response body at ${_this2.url} reason: ${err.message}`, 'invalid-json'));
 			}
@@ -1390,7 +1432,7 @@ function consumeBody() {
 	}
 
 	// istanbul ignore if: should never happen
-	if (!(body instanceof Stream)) {
+  if (!(body instanceof Stream) && !isStreamLike(body)) {
 		return Body.Promise.resolve(Buffer.alloc(0));
 	}
 
@@ -1419,7 +1461,7 @@ function consumeBody() {
 				reject(err);
 			} else {
 				// other errors, such as incorrect content-encoding
-				reject(new FetchError(`Invalid response body while trying to fetch ${_this4.url}: ${err.message}`, 'system', err));
+        reject(new FetchError(`Invalid response body while trying to fetch ${_this4.url}: ${getErrorReason(err)}`, 'system', err));
 			}
 		});
 
@@ -1427,6 +1469,10 @@ function consumeBody() {
 			if (abort || chunk === null) {
 				return;
 			}
+
+      if (!Buffer.isBuffer(chunk)) {
+        chunk = Buffer.from(chunk);
+      }
 
 			if (_this4.size && accumBytes + chunk.length > _this4.size) {
 				abort = true;
@@ -1564,6 +1610,9 @@ function clone(instance) {
 	// check that body is a stream and not form-data object
 	// note: we can't clone the form-data object without having it as a dependency
 	if (body instanceof Stream && typeof body.getBoundary !== 'function') {
+    if (typeof PassThrough !== 'function') {
+      throw new Error('cannot clone body stream: PassThrough is not available in this runtime');
+    }
 		// tee instance body
 		p1 = new PassThrough();
 		p2 = new PassThrough();
@@ -2444,6 +2493,7 @@ const URL$1 = Url.URL || whatwgUrl.URL;
 
 // fix an issue where "PassThrough", "resolve" aren't a named export for node <10
 const PassThrough$1 = Stream.PassThrough;
+const hasPassThrough$1 = typeof PassThrough$1 === 'function';
 
 const isDomainOrSubdomain = function isDomainOrSubdomain(destination, original) {
 	const orig = new URL$1(original).hostname;
@@ -2527,17 +2577,15 @@ function fetch(url, opts) {
 			clearTimeout(reqTimeout);
 		}
 
-		if (request.timeout) {
-			req.once('socket', function (socket) {
-				reqTimeout = setTimeout(function () {
-					reject(new FetchError(`network timeout at: ${request.url}`, 'request-timeout'));
-					finalize();
-				}, request.timeout);
-			});
-		}
+    if (request.timeout) {
+      reqTimeout = setTimeout(function () {
+        reject(new FetchError(`network timeout at: ${request.url}`, 'request-timeout'));
+        finalize();
+      }, request.timeout);
+    }
 
 		req.on('error', function (err) {
-			reject(new FetchError(`request to ${request.url} failed, reason: ${err.message}`, 'system', err));
+      reject(new FetchError(`request to ${request.url} failed, reason: ${getErrorReason(err)}`, 'system', err));
 
 			if (response && response.body) {
 				destroyStream(response.body, err);
@@ -2678,15 +2726,8 @@ function fetch(url, opts) {
 				}
 			}
 
-			//MADANA HACK
-                        let body = undefined;
-			// prepare response
-			res.once('data', function (data) {
-                            body = data;
-			});	
-			res.once('end', function () {
-				if (signal) signal.removeEventListener('abort', abortAndFinalize);
-			//let body = res.pipe(new PassThrough$1());
+      if (signal) signal.removeEventListener('abort', abortAndFinalize);
+      let body = hasPassThrough$1 ? res.pipe(new PassThrough$1()) : res;
 
 			const response_options = {
 				url: request.url,
@@ -2709,7 +2750,7 @@ function fetch(url, opts) {
 			// 3. no Content-Encoding header
 			// 4. no content response (204)
 			// 5. content not modified response (304)
-			if (!request.compress || request.method === 'HEAD' || codings === null || res.statusCode === 204 || res.statusCode === 304) {
+      if (!request.compress || request.method === 'HEAD' || codings === null || res.statusCode === 204 || res.statusCode === 304) {
 				response = new Response(body, response_options);
 				resolve(response);
 				return;
@@ -2740,6 +2781,12 @@ function fetch(url, opts) {
 
 				// for deflate
 				if (codings == 'deflate' || codings == 'x-deflate') {
+          if (!hasPassThrough$1) {
+            body = body.pipe(zlib.createInflate());
+            response = new Response(body, response_options);
+            resolve(response);
+            return;
+          }
 					// handle the infamous raw deflate response from old servers
 					// a hack for old IIS and Apache servers
 					const raw = res.pipe(new PassThrough$1());
@@ -2776,11 +2823,9 @@ function fetch(url, opts) {
 					console.warn(`[DEBUG] Content-Encoding '${codings}' detected but zlib not available for decompression`);
 				}
 			}
-			// otherwise, use response as-is
-			response = new Response(body, response_options);
-                        console.log(response);
-			resolve(response);
-			});
+      // otherwise, use response as-is
+      response = new Response(body, response_options);
+      resolve(response);
 		});
 
 		writeToStream(req, request);
