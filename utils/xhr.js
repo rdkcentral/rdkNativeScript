@@ -22,6 +22,8 @@ XMLHttpRequest = function() {
   // Holds http.js objects
   var request;
   var response;
+  var requestTimeoutId = null;
+  var didTimeout = false;
 
   // Request settings
   var settings = {};
@@ -103,6 +105,8 @@ XMLHttpRequest = function() {
   this.responseXML = "";
   this.status = null;
   this.statusText = null;
+  this.timeout = 0;
+  this.ontimeout = null;
 
   // Whether cross-site Access-Control requests should be made using
   // credentials such as cookies or authorization headers
@@ -153,6 +157,11 @@ XMLHttpRequest = function() {
       request = null;
     }
     response = null;
+    if (requestTimeoutId) {
+      clearTimeout(requestTimeoutId);
+      requestTimeoutId = null;
+    }
+    didTimeout = false;
     headers = {};
     headersCase = {};
     sendFlag = false;
@@ -367,6 +376,15 @@ XMLHttpRequest = function() {
         return;
       }
       var doRequest = transport.request;
+      var redirectCount = 0;
+      var maxRedirects = 10;
+
+      var clearRequestTimeout = function() {
+        if (requestTimeoutId) {
+          clearTimeout(requestTimeoutId);
+          requestTimeoutId = null;
+        }
+      };
 
       // Request is being sent, set send flag
       sendFlag = true;
@@ -376,6 +394,7 @@ XMLHttpRequest = function() {
 
       // Handler for the response
       var responseHandler = function responseHandler(resp) {
+        clearRequestTimeout();
         // Set response var to the response we got back
         // This is so it remains accessable outside this scope
         response = resp;
@@ -383,6 +402,10 @@ XMLHttpRequest = function() {
         // @TODO Prevent looped redirects
         if (response.statusCode === 301 || response.statusCode === 302 || response.statusCode === 303 || response.statusCode === 307) {
           try {
+            redirectCount += 1;
+            if (redirectCount > maxRedirects) {
+              throw new Error("XMLHttpRequest: maximum redirects exceeded (" + maxRedirects + ")");
+            }
             var redirectLocation = response.headers.location;
             var redirectUrl = new URL(redirectLocation, settings.url);
             settings.url = redirectUrl.toString();
@@ -429,6 +452,7 @@ XMLHttpRequest = function() {
         });
 
         response.on("end", function() {
+          clearRequestTimeout();
           if (sendFlag) {
             // Discard the end event if the connection has been aborted
             setState(self.DONE);
@@ -437,12 +461,14 @@ XMLHttpRequest = function() {
         });
 
         response.on("error", function(error) {
+          clearRequestTimeout();
           self.handleError(error);
         });
       };
 
       // Error handler for the request
       var errorHandler = function errorHandler(error) {
+        clearRequestTimeout();
         self.handleError(error);
       };
 
@@ -456,8 +482,33 @@ XMLHttpRequest = function() {
       request.on("error", errorHandler);
       if (typeof request.on === "function") {
         request.on("abort", function() {
+          if (didTimeout) {
+            return;
+          }
+          clearRequestTimeout();
           self.handleError(new Error("XMLHttpRequest: request aborted by transport"));
         });
+      }
+
+      if (this.timeout > 0) {
+        requestTimeoutId = setTimeout(function() {
+          if (!sendFlag) {
+            return;
+          }
+          didTimeout = true;
+          if (request) {
+            request.abort();
+            request = null;
+          }
+          self.status = 0;
+          self.statusText = "timeout";
+          self.responseText = "";
+          errorFlag = true;
+          sendFlag = false;
+          setState(self.DONE);
+          self.dispatchEvent("timeout");
+          self.dispatchEvent("loadend");
+        }, this.timeout);
       }
 
       // Node 0.4 and later won't accept empty data. Make sure it's needed.
@@ -479,12 +530,17 @@ XMLHttpRequest = function() {
    * Called when an error is encountered to deal with it.
    */
   this.handleError = function(error) {
+    if (requestTimeoutId) {
+      clearTimeout(requestTimeoutId);
+      requestTimeoutId = null;
+    }
     this.status = 0;
-    this.statusText = error;
-    this.responseText = error.stack;
+    this.statusText = error && error.message ? error.message : String(error);
+    this.responseText = error && error.stack ? error.stack : this.statusText;
     errorFlag = true;
     setState(this.DONE);
     this.dispatchEvent('error');
+    this.dispatchEvent('loadend');
   };
 
   /**
@@ -498,8 +554,16 @@ XMLHttpRequest = function() {
       request = null;
     }
 
-    headers = defaultHeaders;
+    if (requestTimeoutId) {
+      clearTimeout(requestTimeoutId);
+      requestTimeoutId = null;
+    }
+    didTimeout = false;
+
+    headers = {};
+    headersCase = {};
     this.status = 0;
+    this.statusText = null;
     this.responseText = "";
     this.responseXML = "";
 
@@ -582,3 +646,4 @@ XMLHttpRequest = function() {
     }
   };
 };
+
