@@ -46,7 +46,7 @@ classDef VL stroke:#808080,fill:#F2F2F2,stroke-width:2px;
 
 **Key Features & Responsibilities:**
 
-- **Multi-context JavaScript Execution**: Hosts multiple independent JavaScript application contexts within a single process. Each application receives its own JSC global context with its own module bindings, allowing widgets and lightweight apps to run concurrently without interference.
+- **Multi-context JavaScript Execution**: Hosts multiple JavaScript application contexts within a single process, each with its own JSC global context and module bindings. Application requests are evaluated serially by the renderer loop, and shared process resources are not isolated per context.
 
 - **Engine Abstraction**: Decouples the application runtime from the underlying JavaScript engine through the `IJavaScriptEngine` and `IJavaScriptContext` interfaces. The primary engine is JavaScriptCore (JSC); the build system also supports QuickJS as an alternate engine.
 
@@ -54,7 +54,7 @@ classDef VL stroke:#808080,fill:#F2F2F2,stroke-width:2px;
 
 - **AAMP Media Player Integration**: Exposes `AAMPMediaPlayer` as a JavaScript global when the player module is enabled. AAMP bindings are deployed as a DAC (Downloadable Application Container) module, decoupling the player library from the runtime binary.
 
-- **WebSocket Server and Client IPC**: Provides an optional WebSocket server (on the port defined by `WS_SERVER_PORT`) that accepts JSON-encoded commands to launch, run, and terminate applications remotely. A corresponding client is also provided for applications that need to connect to the server.
+- **WebSocket Server and Client IPC**: Provides an optional WebSocket server (on the port defined by `WS_SERVER_PORT`) that accepts unauthenticated JSON-encoded commands to launch, run, execute JavaScript in, and terminate applications remotely. A corresponding client is also provided; the endpoint must be restricted to a trusted network.
 
 - **Wayland Display and Input Handling**: Integrates with the Essos compositor abstraction layer to set up a Wayland display surface and route keyboard input events from the compositor into the active JavaScript context.
 
@@ -155,7 +155,7 @@ graph TD
 **Population Mechanisms:**
 
 - **Via Thunder JSON-RPC or WebSocket command**: Thunder JSON-RPC uses the `options` parameter, while the WebSocket `launchApplication` command uses `moduleSettings`; both carry a comma-separated string of token names (e.g., `"player,xhr,ws"`). `ModuleSettings::fromString()` parses the string and sets the corresponding boolean flags.
-- **Via standalone launcher (jsruntime-launcher)**: The launcher reads an `app.config` JSON file at `/package/app.config` and maps `features` array entries (e.g., `{"name": "player", "enable": true}`) to command-line flags (`--enablePlayer`, `--enableXHR`, etc.), which are then parsed into `ModuleSettings` fields before the application context is created.
+- **Via the container launcher (`JSRuntimeContainer`)**: The launcher reads each app’s `app.config`, converts enabled `features` entries directly to a comma-separated module-settings string, and sends a WebSocket `launchApplication` command. The standalone `jsruntime_app` uses `--enable...` command-line flags instead.
 
 All flags default to `false`; only tokens present in the options string activate the corresponding module. `minijsdom` and `jsdom` are mutually exclusive — `minijsdom` takes precedence when both tokens appear.
 
@@ -247,7 +247,7 @@ sequenceDiagram
     NR->>CTX: new JavaScriptContext(moduleSettings, url, engine)
     Note over CTX: Register bindings for enabled modules\n(XHR, WebSocket, Player, Fetch, JSDOM…)
     alt Player module enabled
-        CTX->>AAMP: loadAAMPJSBindingsLib() / AAMPPlayer_LoadJS(context)
+        CTX->>AAMP: Static AAMPPlayer_LoadJS(context), or dynamic dlopen(libaampjsbindings.so) / aamp_LoadJSController(context)
     end
     NR->>CURL: downloadFile(url) [if remote URL]
     CURL-->>NR: Script content
