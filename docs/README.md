@@ -60,7 +60,7 @@ classDef VL stroke:#808080,fill:#F2F2F2,stroke-width:2px;
 
 - **Remote JavaScript Inspector**: Optionally starts a JSC remote inspector server to enable JavaScript debugging over a network connection, controlled via the `NATIVEJS_INSPECTOR_SERVER` environment variable.
 
-- **Container Namespace Entry**: Supports running applications inside Linux containers by entering network, mount, IPC, and PID namespaces of a running container process, enabling script delivery over WebSocket to containerized runtime instances.
+- **Container Namespace Entry**: Supports running applications inside Linux containers by entering network, mount, and IPC namespaces of a running container process, enabling script delivery over WebSocket to containerized runtime instances.
 
 ---
 
@@ -117,15 +117,15 @@ graph TD
 
 ### Threading Model
 
-- **Threading Architecture**: Multi-threaded with a main GLib event loop thread plus per-application worker threads and an optional WebSocket server thread.
-- **Main Thread**: Runs the GLib main loop, which processes JSC internal callbacks, timer events (including the periodic GC timer), and uv event loop ticks. All JSC context creation and evaluation calls issued from the application threads re-enter the engine via the shared context group, with main-thread callbacks posted through `rtThreadQueue`.
+- **Threading Architecture**: Multi-threaded with a renderer loop thread, request-caller threads, and an optional detached WebSocket server thread.
+- **Renderer Loop**: Runs the GLib/uv processing and drains `gPendingRequests`; it creates contexts and evaluates application scripts on this thread.
+- **Request Callers**: Standalone application threads (or IPC handlers) call `createApplication()` / `runApplication()` only to enqueue requests; they do not evaluate scripts.
 - **Worker Threads**:
-  - _Application thread_: One thread per launched application calls `renderer->createApplication()` and `renderer->runApplication()`. Evaluation of the script occurs on this thread; the result is surfaced when the script returns or the context is terminated.
   - _Console thread_: When developer console mode is enabled, a dedicated thread processes queued JavaScript snippets submitted interactively.
   - _WebSocket server thread_: When the server is enabled, a detached thread runs `WsServer::run()` to handle incoming WebSocket connections.
   - _Container namespace thread_: A temporary thread is spawned per `nsEnter` call to execute `setns` and perform the namespace-bound operation, then joins immediately.
 - **Synchronization**: `NativeJSRenderer` protects the context map with `mUserMutex`. The console state uses `isProcessing_cv` (condition variable + mutex) for producer/consumer coordination of queued scripts. `JSRuntimeServer` protects the connection set with `mDataMutex`. `JSRuntimeClient` uses `mResponseMutex` and `mResponseCondition` with a 5-second wait-for-response timeout.
-- **Async / Event Dispatch**: Key events from Essos are dispatched synchronously into the registered `JavaScriptKeyListener` (the active context). Timer callbacks and deferred JS execution are scheduled through the GLib main loop rather than blocking caller threads.
+- **Async / Event Dispatch**: Essos key events are dispatched synchronously to the single listener stored by `EssosInstance` (constructing another context replaces that listener). Timer callbacks and deferred JS execution are scheduled through the GLib main loop rather than blocking caller threads.
 
 ### RDKE/RDKV Platform and Integration Requirements
 
@@ -154,7 +154,7 @@ graph TD
 
 **Population Mechanisms:**
 
-- **Via Thunder JSON-RPC or WebSocket command**: The `options` parameter of `launchApplication` is a comma-separated string of token names (e.g., `"player,xhr,ws"`). `ModuleSettings::fromString()` parses this string and sets the corresponding boolean flags.
+- **Via Thunder JSON-RPC or WebSocket command**: Thunder JSON-RPC uses the `options` parameter, while the WebSocket `launchApplication` command uses `moduleSettings`; both carry a comma-separated string of token names (e.g., `"player,xhr,ws"`). `ModuleSettings::fromString()` parses the string and sets the corresponding boolean flags.
 - **Via standalone launcher (jsruntime-launcher)**: The launcher reads an `app.config` JSON file at `/package/app.config` and maps `features` array entries (e.g., `{"name": "player", "enable": true}`) to command-line flags (`--enablePlayer`, `--enableXHR`, etc.), which are then parsed into `ModuleSettings` fields before the application context is created.
 
 All flags default to `false`; only tokens present in the options string activate the corresponding module. `minijsdom` and `jsdom` are mutually exclusive — `minijsdom` takes precedence when both tokens appear.
@@ -181,7 +181,7 @@ sequenceDiagram
     NR->>Essos: EssosInstance.initialize useWayland
     Essos-->>NR: Essos context ready
     NR->>JSE: new JavaScriptEngine and initialize
-    JSE->>GST: gst_init if player enabled
+    JSE->>GST: gst_init when player support is compiled and NATIVEJS_GST_START_DISABLE is unset
     JSE->>JSE: WTF.initializeMainThread
     JSE->>JSE: g_main_loop_new and install GC timer
     Note over JSE: Remote inspector started if NATIVEJS_INSPECTOR_SERVER set
@@ -267,9 +267,9 @@ sequenceDiagram
 | `JavaScriptEngine`      | Concrete JSC engine implementation. Initializes the WTF main thread, GLib event loop, GStreamer pipeline subsystem, remote inspector server, and the periodic garbage collection timer. Implements `IJavaScriptEngine`.                                                                                                | `src/jsc/JavaScriptEngine.cpp`, `include/jsc/JavaScriptEngine.h`   |
 | `JavaScriptContext`     | Per-application JSC global context. Registers all enabled module bindings (setTimeout, XHR, WebSocket, HTTP, Fetch, JSDOM, crypto, player). Tracks performance metrics (context creation time, execution time, playback start time) and network metrics via `NetworkMetricsListener`. Implements `IJavaScriptContext`. | `src/jsc/JavaScriptContext.cpp`, `include/jsc/JavaScriptContext.h` |
 | `JavaScriptContextBase` | Engine-agnostic base class for JavaScript contexts. Implements file loading, `runScript`, `runFile`, key event routing to the active context, ThunderJS and RDK WebBridge code injection, and module path resolution.                                                                                                  | `src/JavaScriptContextBase.cpp`, `include/JavaScriptContextBase.h` |
-| `JSRuntimeServer`       | WebSocket server (singleton) that listens on a configurable port and dispatches JSON-encoded `launchApplication`, `createApplication`, `runApplication`, `runJavaScript`, and `terminateApplication` commands to `NativeJSRenderer`. Uses websocketpp with Asio transport.                                             | `src/JSRuntimeServer.cpp`, `include/JSRuntimeServer.h`             |
+| `JSRuntimeServer`       | WebSocket server (singleton) that listens on a configurable port and dispatches JSON-encoded `launchApplication`, `createApplication`, `runApplication`, `runJavaScript`, and `destroyApplication` commands to `NativeJSRenderer`. Uses websocketpp with Asio transport.                                               | `src/JSRuntimeServer.cpp`, `include/JSRuntimeServer.h`             |
 | `JSRuntimeClient`       | WebSocket client (singleton) that connects to a `JSRuntimeServer` instance and provides a synchronous `sendCommand` interface with a 5-second response timeout. Used by `JSRuntimeContainer` to relay launch commands into a container.                                                                                | `src/JSRuntimeClient.cpp`, `include/JSRuntimeClient.h`             |
-| `JSRuntimeContainer`    | Provides utilities for entering Linux namespaces (network, mount, IPC, PID) of a containerized process by resolving the container PID from the cgroup filesystem and calling `setns` on a temporary thread. Also builds and dispatches WebSocket launch messages to the in-container server.                           | `src/JSRuntimeContainer.cpp`, `include/JSRuntimeContainer.h`       |
+| `JSRuntimeContainer`    | Provides utilities for entering Linux namespaces (network, mount, IPC) of a containerized process by resolving the container PID from the cgroup filesystem and calling `setns` on a temporary thread. Also builds and dispatches WebSocket launch messages to the in-container server.                                | `src/JSRuntimeContainer.cpp`, `include/JSRuntimeContainer.h`       |
 | `EssosInstance`         | Singleton wrapper around the Essos compositor abstraction API. Initializes an Essos context against the active Wayland display and translates raw Wayland key events into `JavaScriptKeyDetails` structures that are forwarded to the registered `JavaScriptKeyListener`.                                              | `src/EssosInstance.cpp`, `include/EssosInstance.h`                 |
 | `ModuleSettings`        | Plain data structure holding boolean flags for each optional JavaScript module. Populated either from command-line flags in standalone mode or by parsing a comma-separated options string passed to `launchApplication`.                                                                                              | `src/ModuleSettings.cpp`, `include/ModuleSettings.h`               |
 | `NativeJSLogger`        | Component-level logger with five severity levels (DEBUG, INFO, WARN, ERROR, FATAL). Level is set via the `NATIVEJS_LOG_LEVEL` environment variable at startup. Supports output to either stdout or EthanLog when the `ETHAN_LOGGING_PIPE` environment variable is present.                                             | `src/NativeJSLogger.cpp`, `include/NativeJSLogger.h`               |
@@ -281,24 +281,24 @@ sequenceDiagram
 
 ### Interaction Matrix
 
-| Target Component / Layer | Interaction Purpose                                                    | Key APIs / Topics                                                                         |
-| ------------------------ | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| **Plugins**              |                                                                        |                                                                                           |
-| `Thunder`                | Plugin activation, JSON-RPC method dispatch, plugin cloning            | `Controller.1.clone`, `Controller.1.activate`, `launchApplication`                        |
-| **HAL**                  |                                                                        |                                                                                           |
-| Essos                    | Wayland display initialization and keyboard input routing              | `EssCtxCreate`, `EssCtxSetKeyboardListener`, `EssCtxStart`                                |
-| GStreamer                | Media pipeline subsystem initialization required for AAMP playback     | `gst_init()`                                                                              |
-| AAMP JS Bindings         | Media playback control exposed as `AAMPMediaPlayer` in JavaScript      | `AAMPPlayer_LoadJS()`, `AAMPPlayer_UnloadJS()` (dynamic: `libaampjsbindings.so`)          |
-| libcurl                  | Remote script file download by URL before evaluation                   | `curl_easy_perform`, write callbacks                                                      |
-| **External Systems**     |                                                                        |                                                                                           |
-| WebSocket Server (self)  | External tools and container clients send application control commands | WebSocket JSON messages: `launchApplication`, `createApplication`, `terminateApplication` |
-| Remote Inspector         | JavaScript debugger connection over network                            | `JSRemoteInspectorStart()`, env `NATIVEJS_INSPECTOR_SERVER`                               |
+| Target Component / Layer | Interaction Purpose                                                    | Key APIs / Topics                                                                       |
+| ------------------------ | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| **Plugins**              |                                                                        |                                                                                         |
+| `Thunder`                | Plugin activation, JSON-RPC method dispatch, plugin cloning            | `Controller.1.clone`, `Controller.1.activate`, `launchApplication`                      |
+| **HAL**                  |                                                                        |                                                                                         |
+| Essos                    | Wayland display initialization and keyboard input routing              | `EssContextCreate`, `EssContextSetKeyListener`, `EssContextStart`                       |
+| GStreamer                | Media pipeline subsystem initialization required for AAMP playback     | `gst_init()`                                                                            |
+| AAMP JS Bindings         | Media playback control exposed as `AAMPMediaPlayer` in JavaScript      | `AAMPPlayer_LoadJS()`, `AAMPPlayer_UnloadJS()` (dynamic: `libaampjsbindings.so`)        |
+| libcurl                  | Remote script file download by URL before evaluation                   | `curl_easy_perform`, write callbacks                                                    |
+| **External Systems**     |                                                                        |                                                                                         |
+| WebSocket Server (self)  | External tools and container clients send application control commands | WebSocket JSON messages: `launchApplication`, `createApplication`, `destroyApplication` |
+| Remote Inspector         | JavaScript debugger connection over network                            | `JSRemoteInspectorStart()`, env `NATIVEJS_INSPECTOR_SERVER`                             |
 
 ### Events Published
 
-| Event Name          | Topic                                     | Trigger Condition                           | Subscriber Components                                             |
-| ------------------- | ----------------------------------------- | ------------------------------------------- | ----------------------------------------------------------------- |
-| Key press / release | Internal `JavaScriptKeyListener` callback | Wayland key event received by EssosInstance | Active `JavaScriptContextBase` (processes key event in JS engine) |
+| Event Name          | Topic                                     | Trigger Condition                           | Subscriber Components                                                                             |
+| ------------------- | ----------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Key press / release | Internal `JavaScriptKeyListener` callback | Wayland key event received by EssosInstance | `JavaScriptContextBase` registered as the current key listener (processes key event in JS engine) |
 
 ### IPC Flow Patterns
 
@@ -312,12 +312,12 @@ sequenceDiagram
     participant CTX as JavaScriptContext
 
     ExtTool->>SRV: WebSocket connect (WS_SERVER_PORT)
-    ExtTool->>SRV: JSON: {"method": "launchApplication", "params": {"url": "...", "options": "player,xhr"}}
+    ExtTool->>SRV: JSON: {"method": "launchApplication", "params": {"url": "...", "moduleSettings": "player,xhr"}}
     SRV->>NR: createApplication(moduleSettings)
     SRV->>NR: runApplication(id, url)
     NR->>CTX: Script execution
     CTX-->>NR: Done
-    SRV-->>ExtTool: JSON response {success, id}
+    SRV-->>ExtTool: JSON response {"result":"ID : <id>"}
 ```
 
 ---
@@ -328,10 +328,10 @@ sequenceDiagram
 
 | API                                         | Purpose                                                                | Implementation File             |
 | ------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------- |
-| `EssCtxCreate()`                            | Creates an Essos compositor context                                    | `src/EssosInstance.cpp`         |
-| `EssCtxSetTerminateListener()`              | Registers a termination callback with the compositor                   | `src/EssosInstance.cpp`         |
-| `EssCtxSetKeyboardListener()`               | Registers a keyboard input callback for key press and release events   | `src/EssosInstance.cpp`         |
-| `EssCtxStart()`                             | Starts the Essos event loop, connecting to the Wayland display         | `src/EssosInstance.cpp`         |
+| `EssContextCreate()`                        | Creates an Essos compositor context                                    | `src/EssosInstance.cpp`         |
+| `EssContextSetTerminateListener()`          | Registers a termination callback with the compositor                   | `src/EssosInstance.cpp`         |
+| `EssContextSetKeyListener()`                | Registers a keyboard input callback for key press and release events   | `src/EssosInstance.cpp`         |
+| `EssContextStart()`                         | Starts the Essos event loop, connecting to the Wayland display         | `src/EssosInstance.cpp`         |
 | `gst_init()`                                | Initializes the GStreamer framework before any pipeline creation       | `src/jsc/JavaScriptEngine.cpp`  |
 | `AAMPPlayer_LoadJS()`                       | Loads AAMP JS bindings into a JSC global context (static mode)         | `src/jsc/JavaScriptContext.cpp` |
 | `AAMPPlayer_UnloadJS()`                     | Unloads AAMP JS bindings from a JSC global context (static mode)       | `src/jsc/JavaScriptContext.cpp` |
@@ -348,7 +348,7 @@ sequenceDiagram
 
 - **Event Processing**: Keyboard events from Essos flow through `EssosInstance` static callbacks, which call `onKeyPress` / `onKeyRelease` on the registered `JavaScriptKeyListener`. `JavaScriptContextBase` implements that listener and forwards events to the engine-specific `processKeyEvent()` implementation. JSC contexts then inject a synthetic DOM key event object into the executing script context.
 
-- **Error Handling Strategy**: Logger calls at WARN and ERROR levels mark failure points. When a script file cannot be loaded, the failure is logged and the operation returns. When the AAMP dynamic library is unavailable, the failure is logged and context creation proceeds with the remaining enabled bindings. libcurl download failures are logged and result in an empty script evaluation. WebSocket send failures in `JSRuntimeServer` are caught and logged, preserving the active connection.
+- **Error Handling Strategy**: Logger calls at WARN and ERROR levels mark failure points. When a script file cannot be loaded, the failure is logged and the operation returns. When the AAMP dynamic library is unavailable, the failure is logged and context creation proceeds with the remaining enabled bindings. libcurl download failures are logged and abort the application run. WebSocket send failures in `JSRuntimeServer` are caught and logged, preserving the active connection.
 
 - **Logging & Diagnostics**: Console logs are emitted as `[LEVEL] JsRuntime Thread-<tid>: <message>`; when `ETHAN_LOGGING_PIPE` is set (EthanLog enabled), the message is prefixed with `JSRuntime [Thread-<tid>]`. The log level is controlled by the `NATIVEJS_LOG_LEVEL` environment variable (DEBUG, INFO, WARN, ERROR, FATAL); the default level is INFO. When `ETHAN_LOGGING_PIPE` is set, output is redirected to the EthanLog daemon using mapped severity levels. Key log points include engine initialization, GC timer installation, remote inspector startup, Essos context creation, application creation and termination, script download status, and WebSocket server events.
 
@@ -358,18 +358,18 @@ sequenceDiagram
 
 ### Key Configuration Parameters
 
-| Parameter                     | Type           | Default         | Description                                                                                                    |
-| ----------------------------- | -------------- | --------------- | -------------------------------------------------------------------------------------------------------------- |
-| `NATIVEJS_LOG_LEVEL`          | string (env)   | `INFO`          | Sets the logging verbosity. Accepted values: `debug`, `info`, `warn`, `error`, `fatal`.                        |
-| `NATIVEJS_GC_INTERVAL`        | float (env)    | `60000`         | Garbage collection timer interval in milliseconds. Controls how frequently the JSC GC runs.                    |
-| `NATIVEJS_INSPECTOR_SERVER`   | string (env)   | _(not set)_     | Activates the remote JavaScript inspector. Format: `host:port` (e.g., `0.0.0.0:9226`).                        |
-| `NATIVEJS_GST_START_DISABLE`  | string (env)   | _(not set)_     | When set to any value, suppresses `gst_init()` during engine initialization.                                   |
-| `NATIVEJS_EMBED_THUNDERJS`    | string (env)   | _(not set)_     | When set, enables ThunderJS injection into all contexts. Equivalent to creating the `/tmp/nativejsEmbedThunder` sentinel file. |
-| `NATIVEJS_ENABLE_WEBSOCKET_SERVER` | string (env) | _(not set)_   | When set, enables the WebSocket server. Equivalent to creating the `/tmp/nativejsEnableWebSocketServer` sentinel file. |
-| `/tmp/nativejsRdkWebBridge`   | file (sentinel)| _(not present)_ | When present, enables rdk WebBridge injection into all contexts.                                               |
-| `WAYLAND_DISPLAY`             | string (env)   | _(not set)_     | Set automatically from the `--display` argument to direct the runtime to a specific Wayland compositor socket. |
-| `WS_SERVER_PORT`              | int (build)    | `5000`          | WebSocket server listen port. Defined at build time via `-DWS_SERVER_PORT=5000`.                               |
-| `NATIVEJS_DUMP_NETWORKMETRIC` | string (env)   | _(not set)_     | When set, collects network metrics and stores the output to a file in `/tmp`.                                  |
+| Parameter                          | Type            | Default         | Description                                                                                                                                                                                                                                                                                     |
+| ---------------------------------- | --------------- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NATIVEJS_LOG_LEVEL`               | string (env)    | `INFO`          | Sets the logging verbosity. Accepted values: `debug`, `info`, `warn`, `error`, `fatal`.                                                                                                                                                                                                         |
+| `NATIVEJS_GC_INTERVAL`             | float (env)     | `60000`         | Garbage collection timer interval in milliseconds. Controls how frequently the JSC GC runs.                                                                                                                                                                                                     |
+| `NATIVEJS_INSPECTOR_SERVER`        | string (env)    | _(not set)_     | Activates the remote JavaScript inspector. Format: `host:port` (e.g., `0.0.0.0:9226`).                                                                                                                                                                                                          |
+| `NATIVEJS_GST_START_DISABLE`       | string (env)    | _(not set)_     | When set to any value, suppresses `gst_init()` during engine initialization.                                                                                                                                                                                                                    |
+| `NATIVEJS_EMBED_THUNDERJS`         | string (env)    | _(not set)_     | When set, enables ThunderJS injection into all contexts. Equivalent to creating the `/tmp/nativejsEmbedThunder` sentinel file.                                                                                                                                                                  |
+| `NATIVEJS_ENABLE_WEBSOCKET_SERVER` | string (env)    | _(not set)_     | When set, or when the `/tmp/nativejsEnableWebSocketServer` sentinel exists, enables the JavaScript `webSocketServer` binding in contexts (when built with `ENABLE_WEBSOCKET_SERVER`). It does not start the external `JSRuntimeServer`, which is started with the standalone `--server` option. |
+| `/tmp/nativejsRdkWebBridge`        | file (sentinel) | _(not present)_ | When present, enables RDK WebBridge injection into all contexts.                                                                                                                                                                                                                                |
+| `WAYLAND_DISPLAY`                  | string (env)    | _(not set)_     | Set automatically from the `--display` argument to direct the runtime to a specific Wayland compositor socket.                                                                                                                                                                                  |
+| `WS_SERVER_PORT`                   | int (build)     | `5000`          | WebSocket server listen port. Defined at build time via `-DWS_SERVER_PORT=5000`.                                                                                                                                                                                                                |
+| `NATIVEJS_DUMP_NETWORKMETRIC`      | string (env)    | _(not set)_     | When set, collects network metrics and stores the output to a file in `/tmp`.                                                                                                                                                                                                                   |
 
 ### Runtime Configuration
 
