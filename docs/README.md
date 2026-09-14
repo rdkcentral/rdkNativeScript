@@ -1,0 +1,390 @@
+# rdkNativeScript
+
+rdkNativeScript is a JavaScript runtime component in the RDK middleware that enables native execution of JavaScript applications directly on RDKE/RDKV devices, outside of a full browser environment. It provides a lightweight, embeddable runtime that exposes device capabilities — such as media playback, networking, and display — to JavaScript applications through a set of controlled API bindings. The component is deployed as a Thunder plugin with the callsign `org.rdk.jsruntime` and can be cloned to create multiple independent runtime instances.
+
+At the device level, rdkNativeScript allows non-browser JavaScript applications such as lightweight widgets and streaming clients to run with native-level access to media pipelines, WebSocket communication, and the Wayland display stack. It bridges the gap between JavaScript application logic and low-level device capabilities without requiring a full web engine.
+
+At the module level, rdkNativeScript manages the complete lifecycle of JavaScript execution contexts: it initializes the JavaScript engine, creates per-application contexts, loads and evaluates scripts (from local paths or remote URLs), manages optional module bindings per context, and provides a WebSocket-based IPC channel for external control.
+
+```mermaid
+flowchart LR
+
+%% Styles
+classDef Apps stroke:#00B9F1,fill:#E6F7FD,stroke-width:2px;
+classDef RDKMW stroke:#75D701,fill:#F1FFE6,stroke-width:2px;
+classDef VL stroke:#808080,fill:#F2F2F2,stroke-width:2px;
+
+%% Apps Layer
+    subgraph Apps["Apps & Runtimes"]
+        WPE_RT["WPEFramework / Thunder"]
+    end
+
+%% Middleware
+    subgraph RDKMW["RDK Core Middleware"]
+        JSRuntime["rdkNativeScript\n(org.rdk.jsruntime)"]
+        AAMP["AAMP Media Player"]
+        Westeros["Westeros / Wayland"]
+        Thunder["Thunder Core"]
+    end
+
+%% Vendor Layer
+    subgraph VL["Vendor Layer"]
+        Essos["Essos (Wayland Compositor Abstraction)"]
+        GST["GStreamer Pipeline"]
+        EGL["EGL / GPU"]
+    end
+
+    %% Connections
+    WPE_RT -->|JSON-RPC: launchApplication| Thunder
+    Thunder -->|Dispatch| JSRuntime
+    JSRuntime -->|Media playback bindings| AAMP
+    JSRuntime -->|Wayland display + key input| Westeros
+    AAMP -->|Pipeline control| GST
+    Westeros -->|Compositor abstraction| Essos
+    Essos -->|EGL rendering| EGL
+```
+
+**Key Features & Responsibilities:**
+
+- **Multi-context JavaScript Execution**: Hosts multiple JavaScript application contexts within a single process, each with its own JSC global context and module bindings. Application requests are evaluated serially by the renderer loop, and shared process resources are not isolated per context.
+
+- **Engine Abstraction**: Decouples the application runtime from the underlying JavaScript engine through the `IJavaScriptEngine` and `IJavaScriptContext` interfaces. The primary engine is JavaScriptCore (JSC); the build system also supports QuickJS as an alternate engine.
+
+- **Per-Application Module Configuration**: Each application context is configured at creation time with a set of optional module bindings. Supported modules include HTTP, XHR, WebSocket, WebSocketEnhanced, Fetch, JSDOM, MiniJSDOM, Window, and media Player. Modules are activated by passing an options string to `launchApplication`.
+
+- **AAMP Media Player Integration**: Exposes `AAMPMediaPlayer` as a JavaScript global when the player module is enabled. AAMP bindings are deployed as a DAC (Downloadable Application Container) module, decoupling the player library from the runtime binary.
+
+- **WebSocket Server and Client IPC**: Provides an optional WebSocket server (on the port defined by `WS_SERVER_PORT`) that accepts unauthenticated JSON-encoded commands to launch, run, execute JavaScript in, and terminate applications remotely. A corresponding client is also provided; the endpoint must be restricted to a trusted network.
+
+- **Wayland Display and Input Handling**: Integrates with the Essos compositor abstraction layer to set up a Wayland display surface and route keyboard input events from the compositor into the active JavaScript context.
+
+- **Remote JavaScript Inspector**: Optionally starts a JSC remote inspector server to enable JavaScript debugging over a network connection, controlled via the `NATIVEJS_INSPECTOR_SERVER` environment variable. The endpoint is unauthenticated and should be restricted to a trusted network.
+
+- **Container Namespace Entry**: Supports running applications inside Linux containers by entering network, mount, and IPC namespaces of a running container process, enabling script delivery over WebSocket to containerized runtime instances.
+
+---
+
+## Design
+
+rdkNativeScript is structured around a layered separation between engine management, context lifecycle, and application dispatch. The runtime is initialized once per process through `NativeJSRenderer`, which owns the `IJavaScriptEngine` instance and manages the map of active application contexts. Each application is represented by a numeric identifier mapped to a `JavaScriptContext` instance. The `JavaScriptContextBase` class provides engine-agnostic operations — file loading, script evaluation delegation, key event routing, and ThunderJS / RDK WebBridge code injection — while engine-specific implementations extend it for JSC or QuickJS.
+
+Northbound, the component exposes its API through the Thunder plugin mechanism: clients issue a JSON-RPC `launchApplication` call to a cloned plugin instance. The server path, when enabled, accepts a similar command set over a WebSocket connection on the port defined by `WS_SERVER_PORT` using messages of the form `{ "method": "…", "params": { … } }` (module tokens are passed as `moduleSettings`). The `JSRuntimeServer` dispatches incoming messages to the same `NativeJSRenderer` methods used by the Thunder plugin path. Southbound, the component consumes the JavaScriptCore C API for script evaluation, GStreamer for media pipeline initialization, libcurl for script download from remote URLs, and the Essos API for Wayland compositor setup and keyboard event delivery.
+
+The design isolates per-application state (URL, JS context, module flags, performance metrics) inside `JavaScriptContext` and uses a shared `JSContextGroupRef` across all contexts in the process. This allows garbage collection to be coordinated globally through a periodic GLib timer while individual contexts can be released independently. The main GLib event loop processes both JSC internal events and timer callbacks on the main thread; applications are created and run from separate per-application threads that call into the renderer.
+
+IPC is handled through two mechanisms. Within the device, Thunder JSON-RPC is the primary channel for application control. The WebSocket server and client provide an alternative channel used for remote control and container-bridged delivery. Container-side delivery is implemented in `JSRuntimeContainer`, which reads the container process PID from the cgroup filesystem, enters the container's network namespace using `setns`, and connects a WebSocket client to the in-container server endpoint.
+
+Module settings, application URLs, and runtime flags are held in memory for the lifetime of the process. Runtime configuration is managed through environment variables or sentinel files in `/tmp`.
+
+```mermaid
+graph TD
+
+    subgraph JSRuntime ["rdkNativeScript Process"]
+
+        subgraph RendererLayer ["NativeJSRenderer (Application Manager)"]
+            NR["NativeJSRenderer\nManages context map, pending requests,\napplication lifecycle (create/run/terminate)"]
+        end
+
+        subgraph EngineLayer ["JavaScript Engine"]
+            JSE["JavaScriptEngine (JSC)\nGLib main loop, GStreamer init,\nperiodic GC, remote inspector setup"]
+        end
+
+        subgraph ContextLayer ["Per-Application Contexts"]
+            CTX1["JavaScriptContext (App 1)\nJSC global context, module bindings,\nAAMP player, network metrics"]
+            CTX2["JavaScriptContext (App N)\nJSC global context, module bindings"]
+        end
+
+        subgraph BaseLayer ["JavaScriptContextBase"]
+            BASE["Engine-agnostic ops:\nfile load, runScript, runFile,\nThunderJS injection, key routing"]
+        end
+
+        subgraph SupportLayer ["Support Modules"]
+            ES["EssosInstance\nWayland display init,\nkeyboard event callbacks"]
+            MS["ModuleSettings\nPer-app feature flags parsed\nfrom options string"]
+            LOG["NativeJSLogger\nLevel-filtered logging,\noptional EthanLog output"]
+        end
+
+    end
+
+    NR --> JSE
+    NR --> CTX1
+    NR --> CTX2
+    CTX1 --> BASE
+    CTX2 --> BASE
+    NR --> ES
+    NR --> MS
+```
+
+### Threading Model
+
+- **Threading Architecture**: Multi-threaded with a renderer loop thread, request-caller threads, and an optional detached WebSocket server thread.
+- **Renderer Loop**: Runs the GLib/uv processing and drains `gPendingRequests`; it creates contexts and evaluates application scripts on this thread.
+- **Request Callers**: Standalone application threads (or IPC handlers) call `createApplication()` / `runApplication()` only to enqueue requests; they do not evaluate scripts.
+- **Worker Threads**:
+  - _Console thread_: When developer console mode is enabled, a dedicated thread processes queued JavaScript snippets submitted interactively.
+  - _WebSocket server thread_: When the server is enabled, a detached thread runs `WsServer::run()` to handle incoming WebSocket connections.
+  - _Container namespace thread_: A temporary thread is spawned per `nsEnter` call to execute `setns` and perform the namespace-bound operation, then joins immediately.
+- **Synchronization**: `NativeJSRenderer` protects the context map with `mUserMutex`. The console state uses `isProcessing_cv` (condition variable + mutex) for producer/consumer coordination of queued scripts. `JSRuntimeServer` protects the connection set with `mDataMutex`. `JSRuntimeClient` uses `mResponseMutex` and `mResponseCondition` with a 5-second wait-for-response timeout.
+- **Async / Event Dispatch**: Essos key events are dispatched synchronously to the single listener stored by `EssosInstance` (constructing another context replaces that listener). Timer callbacks and deferred JS execution are scheduled through the GLib main loop rather than blocking caller threads.
+
+### RDKE/RDKV Platform and Integration Requirements
+
+- **Build Dependencies**: westeros, essos, rapidjson, rtcore, libuv, gstreamer1.0, uwebsockets, JavaScriptCore, websocketpp, cjson, boost, virtual/egl. When container widget support is enabled, dobby is additionally required.
+- **Plugin Dependencies**: The AAMP media player library (`libaampjsbindings.so`) must be present at the target library path when dynamic AAMP bindings are enabled.
+- **HAL**: Essos HAL for Wayland compositor abstraction and keyboard input; GStreamer 1.0 for media pipeline initialization.
+- **Systemd Services**: A running Wayland compositor (Westeros) must be available when Essos integration is enabled and a display is requested.
+
+### Module Settings
+
+`ModuleSettings` is a plain data structure that controls which JavaScript binding modules are registered for a given application context. Each application receives its own `ModuleSettings` instance populated at launch time; the settings are fixed for the lifetime of that context.
+
+**Available Modules:**
+
+| Option Token | Field                     | What It Enables                                                                        |
+| ------------ | ------------------------- | -------------------------------------------------------------------------------------- |
+| `http`       | `enableHttp`              | HTTP client bindings in the JavaScript context                                         |
+| `xhr`        | `enableXHR`               | XMLHttpRequest (XHR) bindings                                                          |
+| `ws`         | `enableWebSocket`         | WebSocket client bindings                                                              |
+| `wsenhanced` | `enableWebSocketEnhanced` | Enhanced WebSocket bindings with additional event support                              |
+| `fetch`      | `enableFetch`             | Fetch API bindings                                                                     |
+| `jsdom`      | `enableJSDOM`             | Full JSDOM bindings for DOM API emulation                                              |
+| `minijsdom`  | `enableMiniJSDOM`         | Lightweight JSDOM subset; takes precedence over `jsdom` when both tokens are specified |
+| `window`     | `enableWindow`            | Window object bindings                                                                 |
+| `player`     | `enablePlayer`            | AAMP media player bindings; exposes `AAMPMediaPlayer` as a JavaScript global           |
+
+**Population Mechanisms:**
+
+- **Via Thunder JSON-RPC or WebSocket command**: Thunder JSON-RPC uses the `options` parameter, while the WebSocket `launchApplication` command uses `moduleSettings`; both carry a comma-separated string of token names (e.g., `"player,xhr,ws"`). `ModuleSettings::fromString()` parses the string and sets the corresponding boolean flags.
+- **Via the container launcher (`JSRuntimeContainer`)**: The launcher reads each app’s `app.config`, converts enabled `features` entries directly to a comma-separated module-settings string, and sends a WebSocket `launchApplication` command. The standalone `jsruntime_app` uses `--enable...` command-line flags instead.
+
+All flags default to `false`; only tokens present in the options string activate the corresponding module. `minijsdom` and `jsdom` are mutually exclusive — `minijsdom` takes precedence when both tokens appear.
+
+---
+
+### Component State Flow
+
+#### Initialization to Active State
+
+```mermaid
+sequenceDiagram
+    participant System as System / PluginActivator
+    participant Thunder as Thunder
+    participant NR as NativeJSRenderer
+    participant JSE as JavaScriptEngine-JSC
+    participant Essos as EssosInstance
+    participant GST as GStreamer
+
+    System->>Thunder: Controller.1.clone org.rdk.jsruntime to jsruntime1
+    System->>Thunder: Controller.1.activate jsruntime1
+    Thunder->>NR: Construct NativeJSRenderer with waylandDisplay
+    Note over NR: Read NATIVEJS_LOG_LEVEL env var
+    NR->>Essos: EssosInstance.initialize useWayland
+    Essos-->>NR: Essos context ready
+    NR->>JSE: new JavaScriptEngine and initialize
+    JSE->>GST: gst_init when player support is compiled and NATIVEJS_GST_START_DISABLE is unset
+    JSE->>JSE: WTF.initializeMainThread
+    JSE->>JSE: g_main_loop_new and install GC timer
+    Note over JSE: Remote inspector started if NATIVEJS_INSPECTOR_SERVER set
+    JSE-->>NR: Engine initialized
+    Note over NR: Check /tmp sentinel files for ThunderJS, WebBridge, WS server
+    NR-->>Thunder: Ready
+
+    loop Runtime
+        Note over NR: State: Active - awaiting launchApplication calls
+    end
+```
+
+#### Runtime State Changes
+
+**State Change Triggers:**
+
+- A `launchApplication` JSON-RPC call (or equivalent WebSocket command) causes `NativeJSRenderer` to allocate a new application ID, create a `JavaScriptContext` with the specified module settings, download the script via libcurl if it is a remote URL, and evaluate it in the context.
+- A `terminateApplication` call releases the `JavaScriptContext` for the given ID, runs synchronous garbage collection on the global context if it was the top-level context, and removes the entry from the context map.
+- When the Wayland display becomes unavailable while Essos is active, key events from Essos stop being delivered to registered contexts.
+
+**Context Switching Scenarios:**
+
+- When multiple applications are active simultaneously, each holds an independent `JSGlobalContextRef` within the shared `JSContextGroupRef`. Module settings are fixed at context creation time for the lifetime of the application.
+- In developer console mode, the console thread continuously reads from a deque of queued scripts and evaluates them in a dedicated console context, separate from launched application contexts.
+
+---
+
+### Call Flows
+
+#### Initialization Call Flow
+
+```mermaid
+sequenceDiagram
+    participant Client as ThunderJS / curl
+    participant Thunder as Thunder
+    participant NR as NativeJSRenderer
+    participant JSE as JavaScriptEngine
+
+    Client->>Thunder: Controller.1.clone {callsign: "org.rdk.jsruntime", newcallsign: "jsruntime1"}
+    Thunder-->>Client: Clone acknowledged
+    Client->>Thunder: Controller.1.activate {callsign: "jsruntime1"}
+    Thunder->>NR: Construct and initialize
+    NR->>JSE: initialize()
+    JSE-->>NR: Engine ready
+    NR-->>Thunder: Plugin active
+    Thunder-->>Client: Activation success
+```
+
+#### Request Processing Call Flow
+
+```mermaid
+sequenceDiagram
+    participant Client as ThunderJS / curl
+    participant Thunder as Thunder
+    participant NR as NativeJSRenderer
+    participant CTX as JavaScriptContext
+    participant CURL as libcurl
+    participant AAMP as AAMP JS Bindings
+
+    Client->>Thunder: JSON-RPC: jsruntime1.1.launchApplication {url, options}
+    Thunder->>NR: Dispatch launchApplication
+    NR->>NR: createApplicationIdentifier()
+    NR->>CTX: new JavaScriptContext(moduleSettings, url, engine)
+    Note over CTX: Register bindings for enabled modules\n(XHR, WebSocket, Player, Fetch, JSDOM…)
+    alt Player module enabled
+        CTX->>AAMP: Static AAMPPlayer_LoadJS(context), or dynamic dlopen(libaampjsbindings.so) / aamp_LoadJSController(context)
+    end
+    NR->>CURL: downloadFile(url) [if remote URL]
+    CURL-->>NR: Script content
+    NR->>CTX: runFile(scriptPath, args, isApplication=true)
+    CTX-->>NR: Execution complete
+    NR-->>Thunder: JSON-RPC response {success: true}
+    Thunder-->>Client: Response
+```
+
+---
+
+## Internal Modules
+
+| Module / Class          | Description                                                                                                                                                                                                                                                                                                            | Key Files                                                          |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `NativeJSRenderer`      | Central application manager. Owns the JavaScript engine instance and the map of active contexts. Exposes `createApplication`, `runApplication`, `runJavaScript`, and `terminateApplication`. Manages pending request queues, Essos initialization, and developer console thread.                                       | `NativeJSRenderer.cpp`, `NativeJSRenderer.h`                       |
+| `JavaScriptEngine`      | Concrete JSC engine implementation. Initializes the WTF main thread, GLib event loop, GStreamer pipeline subsystem, remote inspector server, and the periodic garbage collection timer. Implements `IJavaScriptEngine`.                                                                                                | `src/jsc/JavaScriptEngine.cpp`, `include/jsc/JavaScriptEngine.h`   |
+| `JavaScriptContext`     | Per-application JSC global context. Registers all enabled module bindings (setTimeout, XHR, WebSocket, HTTP, Fetch, JSDOM, crypto, player). Tracks performance metrics (context creation time, execution time, playback start time) and network metrics via `NetworkMetricsListener`. Implements `IJavaScriptContext`. | `src/jsc/JavaScriptContext.cpp`, `include/jsc/JavaScriptContext.h` |
+| `JavaScriptContextBase` | Engine-agnostic base class for JavaScript contexts. Implements file loading, `runScript`, `runFile`, key event routing to the active context, ThunderJS and RDK WebBridge code injection, and module path resolution.                                                                                                  | `src/JavaScriptContextBase.cpp`, `include/JavaScriptContextBase.h` |
+| `JSRuntimeServer`       | WebSocket server (singleton) that listens on a configurable port and dispatches JSON-encoded `launchApplication`, `createApplication`, `runApplication`, `runJavaScript`, and `destroyApplication` commands to `NativeJSRenderer`. Uses websocketpp with Asio transport.                                               | `src/JSRuntimeServer.cpp`, `include/JSRuntimeServer.h`             |
+| `JSRuntimeClient`       | WebSocket client (singleton) that connects to a `JSRuntimeServer` instance and provides a synchronous `sendCommand` interface with a 5-second response timeout. Used by the standalone client executable to send commands to a runtime server.                                                                                                                                                | `src/JSRuntimeClient.cpp`, `include/JSRuntimeClient.h`       |
+| `JSRuntimeContainer`    | Provides utilities for entering Linux namespaces (network, mount, IPC) of a containerized process by resolving the container PID from the cgroup filesystem and calling `setns` on a temporary thread. Also builds and dispatches WebSocket launch messages to the in-container server.                                | `src/JSRuntimeContainer.cpp`, `include/JSRuntimeContainer.h`       |
+| `EssosInstance`         | Singleton wrapper around the Essos compositor abstraction API. Initializes an Essos context against the active Wayland display and translates raw Wayland key events into `JavaScriptKeyDetails` structures that are forwarded to the registered `JavaScriptKeyListener`.                                              | `src/EssosInstance.cpp`, `include/EssosInstance.h`                 |
+| `ModuleSettings`        | Plain data structure holding boolean flags for each optional JavaScript module. Populated either from command-line flags in standalone mode or by parsing a comma-separated options string passed to `launchApplication`.                                                                                              | `src/ModuleSettings.cpp`, `include/ModuleSettings.h`               |
+| `NativeJSLogger`        | Component-level logger with five severity levels (DEBUG, INFO, WARN, ERROR, FATAL). Level is set via the `NATIVEJS_LOG_LEVEL` environment variable at startup. Supports output to either stdout or EthanLog when the `ETHAN_LOGGING_PIPE` environment variable is present.                                             | `src/NativeJSLogger.cpp`, `include/NativeJSLogger.h`               |
+| `PlayerWrapper`         | Manages a `PlayerInstanceAAMP` player object within a JSC context. Initializes AAMP, registers JavaScript-callable player functions (`load`, `play`, `pause`, `stop`, `seek`, audio/text track selection, etc.), and routes player events back into the JS context via `PlayerEventHandler`.                           | `src/jsc/PlayerWrapper.cpp`, `include/jsc/PlayerWrapper.h`         |
+
+---
+
+## Component Interactions
+
+### Interaction Matrix
+
+| Target Component / Layer | Interaction Purpose                                                    | Key APIs / Topics                                                                       |
+| ------------------------ | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| **Plugins**              |                                                                        |                                                                                         |
+| `Thunder`                | Plugin activation, JSON-RPC method dispatch, plugin cloning            | `Controller.1.clone`, `Controller.1.activate`, `launchApplication`                      |
+| **HAL**                  |                                                                        |                                                                                         |
+| Essos                    | Wayland display initialization and keyboard input routing              | `EssContextCreate`, `EssContextSetKeyListener`, `EssContextStart`                       |
+| GStreamer                | Media pipeline subsystem initialization required for AAMP playback     | `gst_init()`                                                                            |
+| AAMP JS Bindings         | Media playback control exposed as `AAMPMediaPlayer` in JavaScript      | `AAMPPlayer_LoadJS()`, `AAMPPlayer_UnloadJS()` (dynamic: `libaampjsbindings.so`)        |
+| libcurl                  | Remote script file download by URL before evaluation                   | `curl_easy_perform`, write callbacks                                                    |
+| **External Systems**     |                                                                        |                                                                                         |
+| WebSocket Server (self)  | External tools and container clients send application control commands | WebSocket JSON messages: `launchApplication`, `createApplication`, `destroyApplication` |
+| Remote Inspector         | JavaScript debugger connection over network                            | `JSRemoteInspectorStart()`, env `NATIVEJS_INSPECTOR_SERVER`                             |
+
+### Events Published
+
+| Event Name          | Topic                                     | Trigger Condition                           | Subscriber Components                                                                             |
+| ------------------- | ----------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Key press / release | Internal `JavaScriptKeyListener` callback | Wayland key event received by EssosInstance | `JavaScriptContextBase` registered as the current key listener (processes key event in JS engine) |
+
+### IPC Flow Patterns
+
+**WebSocket Server Command Flow:**
+
+```mermaid
+sequenceDiagram
+    participant ExtTool as External Tool / Container Client
+    participant SRV as JSRuntimeServer
+    participant NR as NativeJSRenderer
+    participant CTX as JavaScriptContext
+
+    ExtTool->>SRV: WebSocket connect (WS_SERVER_PORT)
+    ExtTool->>SRV: JSON: {"method": "launchApplication", "params": {"url": "...", "moduleSettings": "player,xhr"}}
+    SRV->>NR: createApplication(moduleSettings)
+    SRV->>NR: runApplication(id, url)
+    NR->>CTX: Script execution
+    CTX-->>NR: Done
+    SRV-->>ExtTool: JSON response {"result":"ID : <id>"}
+```
+
+---
+
+## Implementation Details
+
+### Key External API Integrations
+
+| API                                         | Purpose                                                                | Implementation File             |
+| ------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------- |
+| `EssContextCreate()`                        | Creates an Essos compositor context                                    | `src/EssosInstance.cpp`         |
+| `EssContextSetTerminateListener()`          | Registers a termination callback with the compositor                   | `src/EssosInstance.cpp`         |
+| `EssContextSetKeyListener()`                | Registers a keyboard input callback for key press and release events   | `src/EssosInstance.cpp`         |
+| `EssContextStart()`                         | Starts the Essos event loop, connecting to the Wayland display         | `src/EssosInstance.cpp`         |
+| `gst_init()`                                | Initializes the GStreamer framework before any pipeline creation       | `src/jsc/JavaScriptEngine.cpp`  |
+| `AAMPPlayer_LoadJS()`                       | Loads AAMP JS bindings into a JSC global context (static mode)         | `src/jsc/JavaScriptContext.cpp` |
+| `AAMPPlayer_UnloadJS()`                     | Unloads AAMP JS bindings from a JSC global context (static mode)       | `src/jsc/JavaScriptContext.cpp` |
+| `dlopen("libaampjsbindings.so")`            | Dynamically loads the AAMP JS bindings library at application creation | `src/jsc/JavaScriptContext.cpp` |
+| `JSGlobalContextCreateInGroup()`            | Creates a new JSC global context within the shared context group       | `src/jsc/JavaScriptContext.cpp` |
+| `JSContextGroupCreate()`                    | Creates the shared JSC context group for the process                   | `src/jsc/JavaScriptContext.cpp` |
+| `JSSynchronousGarbageCollectForDebugging()` | Forces synchronous GC on context release                               | `src/jsc/JavaScriptContext.cpp` |
+| `curl_easy_perform()`                       | Downloads remote script content before evaluation                      | `src/NativeJSRenderer.cpp`      |
+
+### Key Implementation Logic
+
+- **State / Lifecycle Management**: `NativeJSRenderer` maintains a `std::map<uint32_t, ApplicationData>` (`mContextMap`) mapping application IDs to their `IJavaScriptContext` instances. IDs are allocated by `createApplicationIdentifier()` which increments a counter. Application creation, execution, and termination operations arrive as `ApplicationRequest` structs queued in `gPendingRequests` and processed by internal handlers. On termination, the context pointer is deleted and the map entry is removed.
+  - Core lifecycle: `src/NativeJSRenderer.cpp`
+
+- **Event Processing**: Keyboard events from Essos flow through `EssosInstance` static callbacks, which call `onKeyPress` / `onKeyRelease` on the registered `JavaScriptKeyListener`. `JavaScriptContextBase` implements that listener and forwards events to the engine-specific `processKeyEvent()` implementation. JSC contexts then inject a synthetic DOM key event object into the executing script context.
+
+- **Error Handling Strategy**: Logger calls at WARN and ERROR levels mark failure points. When a script file cannot be loaded, the failure is logged and the operation returns. When the AAMP dynamic library is unavailable, the failure is logged and context creation proceeds with the remaining enabled bindings. libcurl download failures are logged and abort the application run. WebSocket send failures in `JSRuntimeServer` are caught and logged, preserving the active connection.
+
+- **Logging & Diagnostics**: Console logs are emitted as `[LEVEL] JsRuntime Thread-<tid>: <message>`; when `ETHAN_LOGGING_PIPE` is set (EthanLog enabled), the message is prefixed with `JSRuntime [Thread-<tid>]`. The log level is controlled by the `NATIVEJS_LOG_LEVEL` environment variable (DEBUG, INFO, WARN, ERROR, FATAL); the default level is INFO. When `ETHAN_LOGGING_PIPE` is set, output is redirected to the EthanLog daemon using mapped severity levels. Key log points include engine initialization, GC timer installation, remote inspector startup, Essos context creation, application creation and termination, script download status, and WebSocket server events.
+
+---
+
+## Configuration
+
+### Key Configuration Parameters
+
+| Parameter                          | Type            | Default         | Description                                                                                                                                                                                                                                                                                     |
+| ---------------------------------- | --------------- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NATIVEJS_LOG_LEVEL`               | string (env)    | `INFO`          | Sets the logging verbosity. Accepted values: `debug`, `info`, `warn`, `error`, `fatal`.                                                                                                                                                                                                         |
+| `NATIVEJS_GC_INTERVAL`             | float (env)     | `60000`         | Garbage collection timer interval in milliseconds. Controls how frequently the JSC GC runs.                                                                                                                                                                                                     |
+| `NATIVEJS_INSPECTOR_SERVER`        | string (env)    | _(not set)_     | Activates the custom remote JavaScript inspector only when built with `REMOTE_INSPECTOR_ENABLE`. The value supplies a port in `host:port` form, but the server listens on all interfaces; restrict access to a trusted network. |
+| `NATIVEJS_GST_START_DISABLE`       | string (env)    | _(not set)_     | When set to any value, suppresses `gst_init()` during engine initialization.                                                                                                                                                                                                                    |
+| `NATIVEJS_EMBED_THUNDERJS`         | string (env)    | _(not set)_     | When set, enables ThunderJS injection into all contexts. Equivalent to creating the `/tmp/nativejsEmbedThunder` sentinel file.                                                                                                                                                                  |
+| `NATIVEJS_ENABLE_WEBSOCKET_SERVER` | string (env)    | _(not set)_     | When set, or when the `/tmp/nativejsEnableWebSocketServer` sentinel exists, enables the JavaScript `webSocketServer` binding in contexts (when built with `ENABLE_WEBSOCKET_SERVER`). It does not start the external `JSRuntimeServer`, which is started with the standalone `--server` option. |
+| `/tmp/nativejsRdkWebBridge`        | file (sentinel) | _(not present)_ | When present, enables RDK WebBridge injection into all contexts.                                                                                                                                                                                                                                |
+| `WAYLAND_DISPLAY`                  | string (env)    | _(not set)_     | Set automatically from the `--display` argument to direct the runtime to a specific Wayland compositor socket.                                                                                                                                                                                  |
+| `WS_SERVER_PORT`                   | int (build)     | `5000`          | WebSocket server listen port. Defined at build time via `-DWS_SERVER_PORT=5000`.                                                                                                                                                                                                                |
+| `NATIVEJS_DUMP_NETWORKMETRIC`      | string (env)    | _(not set)_     | When set, collects network metrics and stores the output to a file in `/tmp`.                                                                                                                                                                                                                   |
+
+### Runtime Configuration
+
+The options string passed to `launchApplication` configures the module bindings for the created JavaScript context:
+
+```bash
+# Launch with player and XHR modules enabled
+curl -H "Content-Type: application/json" \
+  --request POST \
+  --data '{"jsonrpc":"2.0","id":"1","method":"jsruntime1.1.launchApplication","params":{"url":"http://host/app.js","options":"player,xhr"}}' \
+  http://127.0.0.1:9998/jsonrpc
+```
+
+Accepted option tokens: `http`, `xhr`, `ws`, `wsenhanced`, `fetch`, `jsdom`, `minijsdom`, `window`, `player`.
+
+### Configuration Persistence
+
+Configuration changes are not persisted across reboots.
