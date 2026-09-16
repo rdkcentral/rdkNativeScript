@@ -216,92 +216,168 @@ crypto.getRandomValues = getRandom;
     };
 })();
 
-setTimeout.apply = function(thisArg, args) {
-    if (!args || args.length === 0) return setTimeout(function() {}, 0);
-    var callback = args[0];
-    var delay = args[1];
-    var callbackArgs = args.slice(2);
-    return setTimeout(function() {
-        callback.apply(null, callbackArgs);
-    }, delay);
-};
-setTimeout.call = function(thisArg, callback, delay) {
-    var args = Array.prototype.slice.call(arguments, 3);
-    return setTimeout(function() {
-        callback.apply(null, args);
-    }, delay);
-};
-setTimeout.bind = function(thisArg) {
-    var boundArgs = Array.prototype.slice.call(arguments, 1);
-    return function() {
-        var args = boundArgs.concat(Array.prototype.slice.call(arguments));
-        return setTimeout.apply(null, args);
-    };
-};
+	(function (global) {
+		'use strict';
 
-clearTimeout = (function(originalClearTimeout) {
-    return function(id) {
-        if (id === null || typeof id === "undefined") {
-            return undefined;
-        }
-        return originalClearTimeout(id);
-    };
-})(clearTimeout);
+		var nativeSetTimeout = global.setTimeout;
+		var nativeClearTimeout = global.clearTimeout;
+		var nativeSetInterval = global.setInterval;
+		var nativeClearInterval = global.clearInterval;
 
-clearTimeout.apply = function(thisArg, args) {
-    return clearTimeout(args && args[0]);
-};
-clearTimeout.call = function(thisArg, id) {
-    return clearTimeout(id);
-};
-clearTimeout.bind = function(thisArg) {
-    return function(id) { return clearTimeout(id); };
-};
+		function invokeCallback(callback, args) {
 
-setInterval.apply = function(thisArg, args) {
-    if (!args || args.length === 0) return setInterval(function() {}, 0);
-    var callback = args[0];
-    var delay = args[1];
-    var callbackArgs = args.slice(2);
-    return setInterval(function() {
-        callback.apply(null, callbackArgs);
-    }, delay);
-};
-setInterval.call = function(thisArg, callback, delay) {
-    var args = Array.prototype.slice.call(arguments, 3);
-    return setInterval(function() {
-        callback.apply(null, args);
-    }, delay);
-};
-setInterval.bind = function(thisArg) {
-    var boundArgs = Array.prototype.slice.call(arguments, 1);
-    return function() {
-        var args = boundArgs.concat(Array.prototype.slice.call(arguments));
-        return setInterval.apply(null, args);
-    };
-};
+			if (typeof callback !== "function") {
+				return;
+			}
 
-clearInterval = (function(originalClearInterval) {
-    return function(id) {
-        if (id === null || typeof id === "undefined") {
-            return undefined;
-        }
-        return originalClearInterval(id);
-    };
-})(clearInterval);
+			switch (args.length) {
+				case 0:
+					if (callback.call) {
+						callback.call(global);
+					} else {
+						callback();
+					}
+					break;
 
-clearInterval.apply = function(thisArg, args) {
-    return clearInterval(args && args[0]);
-};
-clearInterval.call = function(thisArg, id) {
-    return clearInterval(id);
-};
-clearInterval.bind = function(thisArg) {
-    return function(id) { return clearInterval(id); };
-};
+				case 1:
+					if (callback.call) {
+						callback.call(global, args[0]);
+					} else {
+						callback(args[0]);
+					}
+					break;
 
-window.setInterval = setInterval;
-window.clearTimeout = clearTimeout;
-window.setTimeout = setTimeout;
-window.clearInterval = clearInterval;
+				case 2:
+					if (callback.call) {
+						callback.call(global, args[0], args[1]);
+					} else {
+						callback(args[0], args[1]);
+					}
+					break;
 
+				case 3:
+					if (callback.call) {
+						callback.call(global, args[0], args[1], args[2]);
+					} else {
+						callback(args[0], args[1], args[2]);
+					}
+					break;
+
+				default:
+					if (callback.apply) {
+						callback.apply(global, args);
+					} else {
+						callback();
+					}
+			}
+		}
+
+		function createTimerWrapper(nativeFn) {
+
+			var wrapper = function (callback, delay) {
+
+				var args =
+					Array.prototype.slice.call(arguments, 2);
+
+				return nativeFn(function () {
+
+					try {
+
+						invokeCallback(callback, args);
+
+					} catch (e) {
+
+						console.error(
+							"Timer callback error:",
+							e
+						);
+
+						if (e && e.stack) {
+							console.error(e.stack);
+						}
+					}
+
+				}, delay);
+			};
+
+			wrapper.apply = function (thisArg, args) {
+
+				args = args || [];
+
+				switch (args.length) {
+					case 0: return wrapper();
+					case 1: return wrapper(args[0]);
+					case 2: return wrapper(args[0], args[1]);
+					case 3: return wrapper(args[0], args[1], args[2]);
+					case 4: return wrapper(args[0], args[1], args[2], args[3]);
+					case 5: return wrapper(args[0], args[1], args[2], args[3], args[4]);
+					default:
+						throw new Error(
+							"setTimeout/setInterval.apply: too many arguments"
+						);
+				}
+			};
+
+			wrapper.call = function (thisArg) {
+
+				var args =
+					Array.prototype.slice.call(arguments, 1);
+
+				return wrapper.apply(null, args);
+			};
+
+			wrapper.bind = function (thisArg) {
+
+				var boundArgs =
+					Array.prototype.slice.call(arguments, 1);
+
+				return function () {
+
+					return wrapper.apply(
+						null,
+						boundArgs.concat(
+							Array.prototype.slice.call(arguments)
+						)
+					);
+				};
+			};
+
+			return wrapper;
+		}
+
+		function createClearWrapper(nativeFn) {
+
+			var wrapper = function (id) {
+				return nativeFn(id);
+			};
+
+			wrapper.apply = function (thisArg, args) {
+				return nativeFn(args && args[0]);
+			};
+
+			wrapper.call = function (thisArg, id) {
+				return nativeFn(id);
+			};
+
+			wrapper.bind = function () {
+				return function (id) {
+					return nativeFn(id);
+				};
+			};
+
+			return wrapper;
+		}
+
+		global.setTimeout =
+			createTimerWrapper(nativeSetTimeout);
+
+		global.setInterval =
+			createTimerWrapper(nativeSetInterval);
+
+		global.clearTimeout =
+			createClearWrapper(nativeClearTimeout);
+
+		global.clearInterval =
+			createClearWrapper(nativeClearInterval);
+
+	})(window);
