@@ -248,15 +248,14 @@ crypto.getRandomValues = getRandom;
                     invokeCallback(callback, args);
 
                 } catch (e) {
-
                     console.error(
                         "Timer callback error:",
                         e
                     );
-
                     if (e && e.stack) {
                         console.error(e.stack);
                     }
+                    throw e;
                 }
 
             }, delay);
