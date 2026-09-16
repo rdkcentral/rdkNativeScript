@@ -219,10 +219,10 @@ crypto.getRandomValues = getRandom;
 	(function (global) {
 		'use strict';
 
-		var nativeSetTimeout = global.setTimeout;
-		var nativeClearTimeout = global.clearTimeout;
-		var nativeSetInterval = global.setInterval;
-		var nativeClearInterval = global.clearInterval;
+		var nativeSetTimeout = setTimeout;
+		var nativeClearTimeout = clearTimeout;
+		var nativeSetInterval = setInterval;
+		var nativeClearInterval = clearInterval
 
 		function invokeCallback(callback, args) {
 
