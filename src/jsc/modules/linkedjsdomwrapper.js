@@ -324,7 +324,7 @@ crypto.getRandomValues = getRandom;
 
                 return nativeFn.apply(
                     null,
-                    args
+                    args.length ? args : [undefined]
                 );
             };
         };
