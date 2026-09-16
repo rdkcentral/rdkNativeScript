@@ -262,21 +262,19 @@ crypto.getRandomValues = getRandom;
         };
 
         wrapper.apply = function (thisArg, args) {
-
-            args = args || [];
-
-            return wrapper.call.apply(
+            return Function.prototype.apply.call(
                 wrapper,
-                [null].concat(args)
+                thisArg,
+                args || []
             );
         };
 
         wrapper.call = function (thisArg) {
-
-            var args =
-                Array.prototype.slice.call(arguments, 1);
-
-            return wrapper.apply(null, args);
+            return Function.prototype.apply.call(
+                wrapper,
+                thisArg,
+                Array.prototype.slice.call(arguments, 1)
+            );
         };
 
         wrapper.bind = function (thisArg) {
