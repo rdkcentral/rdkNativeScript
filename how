@@ -1,0 +1,1863 @@
+[33mcommit 91d468bf6ce6364e5cfc473c43aa2988cee4398d[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mtest/timer[m[33m)[m
+Author: gsarng517_comcast <gurpreet_sarngal2@comcast.com>
+Date:   Wed Sep 16 10:19:46 2026 +0000
+
+    testing
+
+[33mcommit 25854bf28dbf84d3f39698bc4daf5ce23224981f[m[33m ([m[1;31morigin/develop[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mdevelop[m[33m)[m
+Merge: 58832bf 9957600
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Fri Sep 11 00:21:59 2026 -0500
+
+    Merge tag '2.0.9' into develop
+    
+    Release 2.0.9
+
+[33mcommit 99576000499c2fbddf70fd0fcc6f5fa7fb4619eb[m[33m ([m[1;33mtag: [m[1;33m2.0.9[m[33m, [m[1;31morigin/main[m[33m)[m
+Merge: 13753ca e637c8c
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Fri Sep 11 00:21:47 2026 -0500
+
+    Merge branch 'release/2.0.9'
+
+[33mcommit e637c8c1b528e111433c3759b0a50cf73ed0d3a2[m
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Fri Sep 11 00:20:05 2026 -0500
+
+    2.0.9 release changelog updates
+
+[33mcommit 58832bf6b68a258a24cc9e18cbdcbce71e873625[m
+Merge: da81b87 4e649fd
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Fri Sep 11 00:12:39 2026 -0500
+
+    Merge pull request #144 from rdkcentral/topic/RDKEMW-24812
+    
+    RDKEMW-24812: DefaultMessageDispatcher stops after 5-10 minutes of pl…
+
+[33mcommit 4e649fd606b9fa278ca864b3cc6104d7dc3efe88[m[33m ([m[1;31morigin/topic/RDKEMW-24812[m[33m)[m
+Merge: 8243a56 da81b87
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Fri Sep 11 00:03:48 2026 -0500
+
+    Merge branch 'develop' into topic/RDKEMW-24812
+
+[33mcommit da81b87f8a93a669be7677e95642e2bc4022c84a[m
+Merge: 437fa89 1623a7f
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Fri Sep 11 00:03:30 2026 -0500
+
+    Merge pull request #143 from rdkcentral/topic/RDKEMW-24305
+    
+    RDKEMW-24305: [nativescript]xuaHeartbeat Analytics Event Is Not Trigg…
+
+[33mcommit 8243a5686bbec18fe2cec3578da8e80132fd201b[m[33m ([m[1;32mtopic/RDKEMW-24812[m[33m)[m
+Author: gurpreet319 <gurpreetsarngal@gmail.com>
+Date:   Thu Sep 10 07:40:34 2026 +0000
+
+    RDKEMW-24812: DefaultMessageDispatcher stops after 5-10 minutes of playback
+    
+    Reason for change: Updated polyfills for fetch and xhr
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+
+[33mcommit 1623a7fffb1442a8c4234d25a8d9e012f68eef30[m[33m ([m[1;31morigin/topic/RDKEMW-24305[m[33m, [m[1;32mtopic/RDKEMW-24305[m[33m)[m
+Author: gurpreet319 <gurpreetsarngal@gmail.com>
+Date:   Mon Sep 7 08:41:54 2026 +0000
+
+    RDKEMW-24305: [nativescript]xuaHeartbeat Analytics Event Is Not Triggered During Playback
+    
+    Reason for change: Added polyfills for timeout, setinterval
+    Test Procedure: Playback should be pass
+    Risks: low
+    Priority: P2
+
+[33mcommit 437fa8930da6bf34ddba93d41fee9822970bb731[m
+Merge: 3324c68 cb8aef3
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Sun Aug 30 09:10:02 2026 -0500
+
+    Merge pull request #142 from rdkcentral/topic/RDKEMW-23773
+    
+    RDKEMW-23773 : Ad Request Failure on Linear CDAI and CDVR TS CDAI
+
+[33mcommit cb8aef3f2fe93408e2f49c1fe77356c2130e37c8[m[33m ([m[1;31morigin/topic/RDKEMW-23773[m[33m, [m[1;32mtopic/RDKEMW-23773[m[33m)[m
+Author: gurpreet319 <gurpreetsarngal@gmail.com>
+Date:   Mon Aug 24 14:13:38 2026 +0000
+
+    RDKEMW-23773 : Ad Request Failure on Linear CDAI and CDVR TS CDAI
+    
+    Reason for change: Added support for JSONP and window.location
+    Test Procedure: Ads should play during Linear Channel
+    Risk: low
+    Priority: P2
+
+[33mcommit 3324c68fa1639ec3d4d4462147af40d8416b4da1[m
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Fri Aug 21 18:13:26 2026 -0500
+
+    Add comprehensive build diagnostics and deployment verification guide
+
+[33mcommit 5ea7171be53060a2309f7e52dac67c244a95d270[m
+Merge: 2b4a443 13753ca
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Mon Aug 10 07:44:33 2026 -0500
+
+    Merge tag '2.0.8' into develop
+    
+    Release 2.0.8
+
+[33mcommit 13753ca4ece16d2225d44be52c64109d7ce2d307[m[33m ([m[1;33mtag: [m[1;33m2.0.8[m[33m)[m
+Merge: 5005767 88c46b7
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Mon Aug 10 07:44:20 2026 -0500
+
+    Merge branch 'release/2.0.8'
+
+[33mcommit 88c46b7635cf3d9a05903cf4b29293aa5f6fd2bc[m
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Mon Aug 10 07:41:06 2026 -0500
+
+    2.0.8 release changelog updates
+
+[33mcommit 2b4a443dfe4ee5354aa9d6816cfd12c6768e950a[m
+Merge: bb5eef1 ac789be
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Mon Aug 10 06:56:49 2026 -0500
+
+    Merge pull request #138 from rdkcentral/topic/RDKEMW-22317
+    
+    RDKEMW-22317 : Integrate VIPA widget 1.4.4.5 with nativescript
+
+[33mcommit ac789be2957fdf2218397dc39c193d479eab5610[m[33m ([m[1;31morigin/topic/RDKEMW-22317[m[33m)[m
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Sun Aug 9 12:04:16 2026 -0500
+
+    Update author and contributor information in xhr.js
+
+[33mcommit 6ec28366bc681c34b5868d5354920dc8afaaa2c3[m
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Sun Aug 9 02:07:48 2026 -0500
+
+    Update xhr.js with contributor and license details
+    
+    Added contributor and license information.
+
+[33mcommit 9956d5d483ee86aa40215406522f2fd6f309d43d[m
+Merge: 2cec2d1 bb5eef1
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Fri Aug 7 07:47:58 2026 -0500
+
+    Merge branch 'develop' into topic/RDKEMW-22317
+
+[33mcommit bb5eef19d93948e5a93d13c35fd1e96957734afd[m
+Merge: 252618a fdff6e5
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Fri Aug 7 07:23:50 2026 -0500
+
+    Merge pull request #137 from rdkcentral/topic/RDKEMW-22637
+    
+    RDKEMW-22637 : [VIPA][NativeScript][Rogers] FW request is getting tru…
+
+[33mcommit 2cec2d125509bed57a781702e60b6263ecfc7f79[m[33m ([m[1;32mtopic/RDKEMW-22317[m[33m)[m
+Author: gurpreet319 <gurpreetsarngal@gmail.com>
+Date:   Thu Jul 30 11:48:17 2026 +0000
+
+    RDKEMW-22317 : Integrate VIPA widget 1.4.4.5 with nativescript
+    
+    Reason for change: Integrate VIPA 1.4.4.5 with nativescript, updated the xhr and URLSearchParams.
+    Test Procedure: build should be successful
+    Risk: low
+    Priority: P2
+
+[33mcommit fdff6e551d5502c97c8c6089a4a8958cddec5c0b[m[33m ([m[1;31morigin/topic/RDKEMW-22637[m[33m, [m[1;32mtopic/RDKEMW-22637[m[33m)[m
+Author: Jain, Vinod Kumar <VinodKumar_Jain@comcast.com>
+Date:   Wed Jul 29 09:09:17 2026 -0500
+
+    RDKEMW-22637 : [VIPA][NativeScript][Rogers] FW request is getting truncated in device logs
+    
+    Reason for change: Logs are truncating
+    Test Procedure: Full log line must display
+    Risk: low
+    Priority: P1
+
+[33mcommit 252618aa98f91c4b42b75694ec3ef14073ccd92e[m
+Merge: 8e565f2 5005767
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Sat Jun 20 13:53:07 2026 -0500
+
+    Merge tag '2.0.6' into develop
+    
+    2.0.6 Release.
+
+[33mcommit 5005767231116ff18cb6dbd7b985f8466f330a0a[m[33m ([m[1;33mtag: [m[1;33m2.0.6[m[33m)[m
+Merge: 47ecb4b c4b9fb7
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Sat Jun 20 13:52:51 2026 -0500
+
+    Merge branch 'release/2.0.6'
+
+[33mcommit c4b9fb7527dae0b5e614dc39b22211fda541de9f[m
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Sat Jun 20 13:50:17 2026 -0500
+
+    2.0.6 release changelog updates
+
+[33mcommit 8e565f214af354bde7263b8a7c056c61e49a6675[m
+Merge: f905781 ade272b
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Tue Jun 9 07:51:26 2026 -0400
+
+    Merge pull request #134 from rdkcentral/topic/RDKEMW-18491
+    
+    RDKEMW-18491 : [rdknativescript] add debugger support similar to webkit
+
+[33mcommit ade272b381d58a68c903f1ed58ba9936144fda05[m[33m ([m[1;31morigin/topic/RDKEMW-18491[m[33m, [m[1;32mtopic/RDKEMW-18491[m[33m)[m
+Author: gsarng517_comcast <gurpreet_sarngal2@comcast.com>
+Date:   Thu Jun 4 07:36:54 2026 +0000
+
+    RDKEMW-18491 : [rdknativescript] add debugger support similar to webkit
+    
+    Reason for change: Added debugger support
+    Test Procedure: build should be successful
+    Risk: low
+    Priority: P2
+
+[33mcommit f9057814c0ccdc5cee69d092a4653b29a2d32956[m
+Merge: 1c8a075 798c70b
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Thu May 14 10:04:47 2026 -0500
+
+    Merge pull request #132 from rdkcentral/topic/RDKEMW-18233
+    
+    RDKEMW-18233: Route console logs to sky-message.log for jsruntime
+
+[33mcommit 798c70b3514d587cc830049191689e702e7f35b0[m[33m ([m[1;31morigin/topic/RDKEMW-18233[m[33m, [m[1;32mtopic/RDKEMW-18233[m[33m)[m
+Author: gurpreet319 <gurpreetsarngal@gmail.com>
+Date:   Tue May 12 12:05:59 2026 +0000
+
+    RDKEMW-18233: Route console logs to sky-message.log for jsruntime
+    
+    Reason for change: Added Support to route console logs to skymessage
+    Test Procedure: build should be successful
+    Risk: low
+    Priority: P2
+
+[33mcommit 1c8a0756f20528740dffe0d2e5baee3d637ae69d[m
+Merge: 236001b 47ecb4b
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Tue Mar 17 22:52:26 2026 -0500
+
+    Merge tag '2.0.4' into develop
+    
+    Release 2.0.4
+
+[33mcommit 47ecb4b1aab79825037823dc30eeb0221787c265[m[33m ([m[1;33mtag: [m[1;33m2.0.4[m[33m)[m
+Merge: 8ae59ef 139185a
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Tue Mar 17 22:52:15 2026 -0500
+
+    Merge branch 'release/2.0.4'
+
+[33mcommit 139185aaca49d0e03b242dbbda6d0ef6affa6cd2[m
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Tue Mar 17 22:50:03 2026 -0500
+
+    2.0.4 release changelog updates
+
+[33mcommit 236001b532c7be2d916b0d92e50a603598817c42[m
+Merge: 2b3435d 95dee28
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Tue Mar 17 22:35:17 2026 -0500
+
+    Merge pull request #128 from rdkcentral/topic/RDKEMW-14984
+    
+    RDKEMW-14984: VIPA playback is stopping with 2.0.3 nativescript tag
+
+[33mcommit 95dee28bd9041870d0817b983a839f1c10a836ff[m[33m ([m[1;31morigin/topic/RDKEMW-14984[m[33m)[m
+Merge: e85d736 2b3435d
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Tue Mar 17 22:32:40 2026 -0500
+
+    Merge branch 'develop' into topic/RDKEMW-14984
+
+[33mcommit e85d736708c1a5469f598237a6b80ccc930198cf[m
+Author: gsarng517_comcast <gurpreet_sarngal2@comcast.com>
+Date:   Wed Mar 4 19:00:19 2026 +0530
+
+    RDKEMW-14984: VIPA playback is stopping with 2.0.3 nativescript tag
+    
+    Reason for change: changed the jsbinding lib for dynamic loading
+    Test Procedure: build should be successful
+    Risk: low
+    Priority: P2
+
+[33mcommit 2b3435dafe7865f15ec4f1b58bcd06abc6b878cd[m
+Merge: b6f56ee 8ae59ef
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Thu Feb 26 20:36:56 2026 -0600
+
+    Merge tag '2.0.3' into develop
+    
+    Release 2.0.3 tag.
+
+[33mcommit 8ae59eff3b967bc773d5bff2f8b68b9d9a94dbc9[m[33m ([m[1;33mtag: [m[1;33m2.0.3[m[33m)[m
+Merge: e9292ba 8d44cdd
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Thu Feb 26 20:36:38 2026 -0600
+
+    Merge branch 'release/2.0.3'
+
+[33mcommit 8d44cddef89e8f1261a73894eaba8427a06984b1[m
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Thu Feb 26 20:34:53 2026 -0600
+
+    2.0.3 release changelog updates
+
+[33mcommit b6f56eef93396e63552f478928937c637022b92f[m
+Merge: 75a6c4b e035308
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Thu Feb 26 20:27:58 2026 -0600
+
+    Merge pull request #124 from rdkcentral/topic/RDKEMW-13657
+    
+    RDKEMW-13657: Plugin Feature fails on Xione-UK
+
+[33mcommit e035308b10738e8f50336472003499c07a31a41f[m[33m ([m[1;31morigin/topic/RDKEMW-13657[m[33m)[m
+Merge: c28551f 75a6c4b
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Thu Feb 26 20:24:47 2026 -0600
+
+    Merge branch 'develop' into topic/RDKEMW-13657
+
+[33mcommit 75a6c4b2610462d5e5f1a496acd89b4dc3993e95[m
+Merge: ffbd2d9 f842406
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Thu Feb 26 20:20:33 2026 -0600
+
+    Merge pull request #125 from rdkcentral/topic/RDKEMW-14592
+    
+    RDKEMW-14592: Nativescript widget is not working in support branch wi…
+
+[33mcommit f842406b6fd114c3a48e7c08292a59b7e84c4936[m[33m ([m[1;31morigin/topic/RDKEMW-14592[m[33m)[m
+Author: gsarng517_comcast <gurpreet_sarngal2@comcast.com>
+Date:   Wed Feb 25 19:53:23 2026 +0530
+
+    RDKEMW-14592: Nativescript widget is not working in support branch with VIPA 1.4.2 build
+    
+    Reason for change: updated minified jsdom with HTML APIs
+    Test Procedure: build should be successful
+    Risk: low
+    Priority: P2
+
+[33mcommit c28551fd63d12bc6eb27e1bfd5f0f25726344160[m
+Author: Sidhanth B H <sidhanthbh@gmail.com>
+Date:   Thu Feb 19 15:55:09 2026 +0530
+
+    RDKEMW-13657: Plugin Feature fails on Xione-UK
+    
+    Reason for change: Resolving the plugin issue
+    Test Procedure: build should be successful
+    Risk: low
+    Priority: P2
+
+[33mcommit ffbd2d968c5fe43b1b51b97cf01db46248c5c8bf[m
+Merge: 7b4569c de253bf
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Mon Feb 16 23:43:38 2026 -0600
+
+    Merge pull request #123 from rdkcentral/topic/RDKEMW-13250
+    
+    RDKEMW-13250: Memory Metrics analysis for VIPA
+
+[33mcommit de253bf5fcbd693a7ac5b4d167cb6e398dd66968[m[33m ([m[1;31morigin/topic/RDKEMW-13250[m[33m)[m
+Author: gsarng517_comcast <gurpreet_sarngal2@comcast.com>
+Date:   Mon Feb 16 15:33:34 2026 +0530
+
+    RDKEMW-13250: Memory Metrics analysis for VIPA
+    
+    Reason for change: Added minified jsdom for widget
+    Test Procedure: build should be successful
+    Risk: low
+    Priority: P2
+
+[33mcommit 7b4569c6c31487c0640f5bc9afa3158d83fa1271[m
+Merge: 55b7b45 e9292ba
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Wed Feb 11 11:59:09 2026 -0600
+
+    Merge tag '2.0.2' into develop
+    
+    Release 2.0.2
+
+[33mcommit e9292baafbdcf46250cdb8ba3cec6566be9509fe[m[33m ([m[1;33mtag: [m[1;33m2.0.2[m[33m)[m
+Merge: fd658c7 8f7e828
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Wed Feb 11 11:58:57 2026 -0600
+
+    Merge branch 'release/2.0.2'
+
+[33mcommit 8f7e8283f89638749a7937348ad3370474282038[m
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Wed Feb 11 11:56:25 2026 -0600
+
+    2.0.2 release changelog updates
+
+[33mcommit 55b7b45a8d1386a1ca8df95939e897461cabf687[m
+Merge: 96c54ce 4de5f6f
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Wed Feb 11 10:57:22 2026 -0600
+
+    Merge pull request #110 from rdkcentral/topic/RDKEMW-12252
+    
+    Fix High and Medium Level issues
+
+[33mcommit 4de5f6f5d4466fd36d997654f4b57ac922b37929[m[33m ([m[1;31morigin/topic/RDKEMW-12252[m[33m)[m
+Author: Sidhanth B H <sidhanth.b@tataelxsi.co.in>
+Date:   Wed Feb 11 19:02:00 2026 +0530
+
+    Fixing the Coverity Issue CID:430751
+
+[33mcommit c74416679b8e598e90d8a0d6994b28b1ec9d53fc[m
+Author: Sidhanth B H <sidhanthbh@gmail.com>
+Date:   Thu Feb 5 14:54:53 2026 +0530
+
+    Update src/jsc/jsc_lib/jsc_lib.cpp
+    
+    Co-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>
+
+[33mcommit 7f12965977c5a65d384a17bc6c2422992ac12571[m
+Author: Sidhanth B H <sidhanthbh@gmail.com>
+Date:   Thu Feb 5 12:12:03 2026 +0530
+
+    Update src/jsruntime.cpp
+    
+    Co-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>
+
+[33mcommit 893963239210611ccdf94ece9255a276890b553b[m
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Wed Feb 4 16:03:23 2026 -0600
+
+    Update src/jsruntime.cpp
+    
+    Co-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>
+
+[33mcommit be8f662765dfbe3d94b151a9d029dfe0e0294c3c[m
+Author: Sidhanth B H <sidhanthbh@gmail.com>
+Date:   Mon Jan 12 15:41:52 2026 +0530
+
+    RDKEMW-12252: Coverity Scan Report - Analyzing and Fixing all the Critical and High issues
+    Reason for change: Resolve Critical and high level issues in coverity
+    Test Procedure: build should be successful
+    Risk: low
+    Priority: P2
+
+[33mcommit 96c54ce68df58e9ac79d9dea64ed005d14742893[m
+Merge: 490cc2f fd658c7
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Mon Dec 15 14:12:12 2025 -0600
+
+    Merge tag '2.0.1' into develop
+    
+    Release 2.0.1
+
+[33mcommit fd658c7612f006e384946f167db03caf454ab399[m[33m ([m[1;33mtag: [m[1;33m2.0.1[m[33m)[m
+Merge: 7a81374 20c90f0
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Mon Dec 15 14:12:00 2025 -0600
+
+    Merge branch 'release/2.0.1'
+
+[33mcommit 20c90f07d7bf12362d3919e56de637d171186449[m
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Mon Dec 15 13:58:46 2025 -0600
+
+    2.0.1 release changelog updates
+
+[33mcommit 490cc2f78bdc89fc44abfbd6608a56ab7908061f[m
+Merge: 51a0410 0c505e1
+Author: Gurpreet Sarngal <65659795+gurpreet319@users.noreply.github.com>
+Date:   Mon Dec 15 17:36:27 2025 +0530
+
+    Merge pull request #100 from rdkcentral/topic/RDKEMW-11507
+    
+    RDKEMW-11507: Viper IPA not working with rdknative widget
+
+[33mcommit 0c505e10bf31bdbe12fc3fbaae44de447f333fad[m[33m ([m[1;31morigin/topic/RDKEMW-11507[m[33m)[m
+Author: gsarng517_comcast <gurpreet_sarngal2@comcast.com>
+Date:   Mon Dec 15 16:04:23 2025 +0530
+
+    RDKEMW-11507: Viper IPA not working with rdknative widget
+    
+    Reason for change: Fixing undefined errors in during VIPA playback
+    Test Procedure: VIPA JS version should launch using this widget.
+    Risks: low
+    Priority: P2
+
+[33mcommit 51a04109cb17643687722ed8b96da89929791cfb[m
+Merge: 9513535 7a81374
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Wed Dec 10 23:36:22 2025 -0600
+
+    Merge tag '2.0' into develop
+    
+    Release 2.0
+
+[33mcommit 7a81374692ce4df3e4b17d375f8fe62531813829[m[33m ([m[1;33mtag: [m[1;33m2.0[m[33m)[m
+Merge: ed86930 de7bbf3
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Wed Dec 10 23:36:05 2025 -0600
+
+    Merge branch 'release/2.0'
+
+[33mcommit de7bbf39545d91ca8b0fd7c3fca8b9cac9f44eac[m
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Wed Dec 10 23:33:37 2025 -0600
+
+    2.0 release changelog updates
+
+[33mcommit 9513535d0aa2b14be2370712dd7b2ad80ad63fe2[m
+Merge: a8b999f 3a565ca
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Wed Dec 10 23:25:59 2025 -0600
+
+    Merge pull request #90 from rdkcentral/topic/RDKEMW-9355
+    
+    RDKEMW-9355: Add Support to run app widgets in different contexts wit…
+
+[33mcommit 3a565cabb3ebc649cac333ab2993915dffdef3e5[m[33m ([m[1;31morigin/topic/RDKEMW-9355[m[33m)[m
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Wed Dec 10 23:19:35 2025 -0600
+
+    Update src/JSRuntimeServer.cpp
+    
+    Co-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>
+
+[33mcommit 62116afbefdf5b9b036f2d0894c47c763990e175[m
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Wed Dec 10 23:17:24 2025 -0600
+
+    Update src/JSRuntimeServer.cpp
+    
+    Co-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>
+
+[33mcommit ff8f3e911f4684e54c5b9b0ba71ae0efa4de9700[m
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Wed Dec 10 23:12:12 2025 -0600
+
+    Update src/JSRuntimeClientContainer.cpp
+    
+    Co-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>
+
+[33mcommit 7e7e35d0d5180306adc7372707db159330d46eb9[m
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Wed Dec 10 23:07:59 2025 -0600
+
+    Update src/JSRuntimeServer.cpp
+    
+    Co-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>
+
+[33mcommit f2fbbe9eec146be3b91a8aa550dddb26ff43d2ff[m
+Author: gurpreet319 <gurpreetsarngal@gmail.com>
+Date:   Fri Nov 14 18:47:43 2025 +0530
+
+    RDKEMW-9355: Add Support to run app widgets in different contexts within a single process
+    
+    Reason for change: Changes related to client/server
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+
+[33mcommit a8b999fc9d03f4a0baa8631b8b4b8c0dfcc85e91[m
+Merge: 158dd7f 641cfcd
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Wed Dec 10 07:38:57 2025 -0600
+
+    Merge pull request #79 from rdkcentral/topic/RDKEMW-8844
+    
+    RDKEMW-8844: Analyse and Improve L1 coverage
+
+[33mcommit 641cfcdbe2f5a8514ceb908f5be537e465abb3b5[m[33m ([m[1;31morigin/topic/RDKEMW-8844[m[33m)[m
+Merge: 3e0f65c 158dd7f
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Wed Dec 10 07:36:27 2025 -0600
+
+    Merge branch 'develop' into topic/RDKEMW-8844
+
+[33mcommit 3e0f65cf6a9d560b26e5a0ee6c26350d48046ded[m
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Wed Dec 10 07:34:32 2025 -0600
+
+    Update src/linux/KeyInput.cpp
+    
+    Co-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>
+
+[33mcommit 158dd7f90f5cc5db950d533f0507ddb774f44e8c[m
+Merge: 83a5667 52172c7
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Wed Dec 10 07:33:28 2025 -0600
+
+    Merge pull request #95 from rdkcentral/topic/RDKEMW-9785
+    
+    RDKEMW-9785: Increasing Test Coverage for L1 test
+
+[33mcommit bad6e9d5ff458c5a97502bb63d524a506a74a4a9[m
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Wed Dec 10 07:32:36 2025 -0600
+
+    Update include/NativeJSRenderer.h
+    
+    Co-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>
+
+[33mcommit a0796dfc9ee9301840842e4c629e29e3f665992a[m
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Wed Dec 10 07:32:15 2025 -0600
+
+    Update include/EssosInstance.h
+    
+    Co-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>
+
+[33mcommit 52172c7d23d803f4fb43b682c4fc1675a5bbc61a[m
+Author: Sidhanth B H <sidhanthbh@gmail.com>
+Date:   Thu Nov 27 17:39:20 2025 +0530
+
+    RDKEMW-9785: Increasing Test Coverage for L1 test
+    
+    Reason for change: Overall test coverage should 75%
+    Test Procedure: Build should be successful
+    Risk:low
+    Priority:P2
+
+[33mcommit 605e0ad2b4a9241aeceb5311ac4eaa53dd7b17fd[m
+Author: trupthi1403 <thrupthibp14@gmail.com>
+Date:   Wed Oct 15 14:41:24 2025 +0530
+
+        RDKEMW-8844: Improve L1 coverage
+    
+        Reason for change: Changes done to compile newly added test cases
+        Test Procedure: Able to build and run test cases in CI
+        Risks: low
+        Priority: P2
+
+[33mcommit 83a5667482e807cdb9ff0d614eaf4f77eac944a4[m
+Merge: 37f5d5a b25b0cd
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Tue Dec 9 11:13:07 2025 -0600
+
+    Merge pull request #93 from rdkcentral/topic/RDKEMW-11265
+    
+    RDKEMW-11265: Migrate L1 and native build workflow to rdk-e
+
+[33mcommit b25b0cd0a65d99146a21c0af65b90167532d1b81[m[33m ([m[1;31morigin/topic/RDKEMW-11265[m[33m)[m
+Merge: 37b83ba 37f5d5a
+Author: TRUPTHI B P <thrupthibp14@gmail.com>
+Date:   Tue Dec 9 19:51:45 2025 +0530
+
+    Merge branch 'develop' into topic/RDKEMW-11265
+
+[33mcommit 37b83bafdb56351dc03907bc3a436a5b2623354d[m
+Author: trupthi1403 <thrupthibp14@gmail.com>
+Date:   Tue Dec 9 19:47:06 2025 +0530
+
+    RDKEMW-11265: Migrate L1 and native build workflow to rdk-e
+    
+    Reason for change: Removed L1 and native build yml
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+
+[33mcommit 37f5d5a834561b232904e0a45e6c7150b4aeb2ef[m
+Merge: a1c57e1 896f2db
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Tue Dec 9 01:55:34 2025 -0600
+
+    Merge pull request #91 from rdkcentral/topic/RDKEMW-9172
+    
+    RDKEMW-9172: L2testcase for rdkNativeScript
+
+[33mcommit 896f2dbd6a393d2966dc15eba05041b4e2316e21[m[33m ([m[1;31morigin/topic/RDKEMW-9172[m[33m)[m
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Tue Dec 9 01:52:34 2025 -0600
+
+    Update src/jsruntime.cpp
+    
+    Co-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>
+
+[33mcommit fddbc2110fd35c6a05eb9b802382a47ac6f78d1d[m
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Tue Dec 9 01:52:21 2025 -0600
+
+    Update src/NativeJSRenderer.cpp
+    
+    Co-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>
+
+[33mcommit 961988eb5e1a2214ed917fa8afafe906d0e17fff[m
+Author: trupthi1403 <thrupthibp14@gmail.com>
+Date:   Wed Dec 3 10:43:15 2025 +0530
+
+    RDKEMW-9172: L2testcase for rdkNativeScript
+    
+    Reason for change: Changes to run L2 test cases
+    Test Procedure: Able to build and run test cases in CI
+    Risks: low
+    Priority: P2
+
+[33mcommit a1c57e1d9d1dfd0f587dabc3f28ca66645997ac3[m
+Merge: 08d5c85 14f1c9e
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Wed Dec 3 10:23:54 2025 -0600
+
+    Merge pull request #86 from rdkcentral/topic/RDK-59281
+    
+    RDK-59281:Modifying JSRuntime Widget for VIPA playback in 8.2_VIPA branch
+
+[33mcommit 14f1c9e5523b2f519ba61bd6c75de163cc1259ee[m
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Tue Dec 2 00:07:17 2025 -0600
+
+    Update URLSearchParams.js
+
+[33mcommit 43147a50242b64242783e5445a7f6e3b9c6f902f[m
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Tue Dec 2 00:05:57 2025 -0600
+
+    Update URLSearchParams.js
+    
+    Rewriting the doNotStripQMark
+
+[33mcommit 94444b486d00dd88cf669be43dbc4a3a97b3cd36[m
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Mon Dec 1 23:53:24 2025 -0600
+
+    Update URLSearchParams.js
+
+[33mcommit 2e18ed3efaf72126322bc148e6ea4ebee4f88b33[m
+Author: Sidhanth B H <sidhanthbh@gmail.com>
+Date:   Wed Nov 12 11:16:08 2025 +0530
+
+    RDK-59281:Modifying JSRuntime Widget for VIPA playback in 8.2_VIPA branch
+    
+    Reason for change: Resolve VIPA playback issue
+    Test Procedure: Build should be successful
+    Risk:low
+    Priority:P2
+
+[33mcommit 08d5c85b8ca9a3143b29707b9b5f01e588a77e10[m
+Merge: b405110 d3cf4d8
+Author: madanagopalt <madanagopal123@gmail.com>
+Date:   Wed Nov 19 14:35:42 2025 +0530
+
+    Merge pull request #84 from rdkcentral/topic/RDKEMW-9461
+    
+    RDKEMW-9461:Nativescript Minimal build for Coverity
+
+[33mcommit d3cf4d8f4beda729c200772834b0d9cefd2fd226[m[33m ([m[1;31morigin/topic/RDKEMW-9461[m[33m)[m
+Merge: 23402ed b405110
+Author: TRUPTHI B P <thrupthibp14@gmail.com>
+Date:   Tue Nov 18 18:41:21 2025 +0530
+
+    Merge branch 'develop' into topic/RDKEMW-9461
+
+[33mcommit 23402edf934ecc5e7401494243dd89d3ccfb3695[m
+Merge: eaf0fe2 68f6463
+Author: trupthi1403 <thrupthibp14@gmail.com>
+Date:   Wed Oct 22 00:08:12 2025 -0500
+
+    RDKEMW-9461:Nativescript Minimal build for Coverity
+    
+    Reason for change: Added native-full-build.yml file
+    Test Procedure: Able run the workflow and generate jsruntime library
+    Risks: low
+    Priority: P2
+
+[33mcommit b405110829bf4e785e7d9ae1d1732482cd1df5ad[m
+Merge: 88a1597 ed86930
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Fri Oct 31 12:40:51 2025 -0500
+
+    Merge tag '1.0.10' into develop
+    
+    Release 1.0.10
+
+[33mcommit ed8693097ece92b7ea8c14019559e4b5139d129c[m[33m ([m[1;33mtag: [m[1;33m1.0.10[m[33m)[m
+Merge: 68f6463 6233823
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Fri Oct 31 12:40:37 2025 -0500
+
+    Merge branch 'release/1.0.10'
+
+[33mcommit 62338232511edac45b4aa7c1a0c1622909c29098[m
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Fri Oct 31 12:38:04 2025 -0500
+
+    1.0.10 release changelog updates
+
+[33mcommit 88a159761d32092a543703f474313823191c6e1d[m
+Merge: b60efc0 881b332
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Fri Oct 31 12:19:54 2025 -0500
+
+    Merge pull request #77 from rdkcentral/topic/RDK-59629
+    
+    RDKEMW-9765 : UserAgent string need to be aligned with browser for diff…
+
+[33mcommit 881b332528ae114f0a9c2f767c8a1436154d380c[m[33m ([m[1;31morigin/topic/RDK-59629[m[33m)[m
+Author: gurpreet319 <gurpreetsarngal@gmail.com>
+Date:   Fri Oct 24 11:46:48 2025 +0530
+
+    RDKEMW-9765 : UserAgent string need to be aligned with browser for different agents
+    
+    Reason for change: Support for changing userAgent based on firebolt flag
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+
+[33mcommit b60efc01bf49975196c7a55aa3e6736af753916b[m
+Merge: eaf0fe2 68f6463
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Wed Oct 22 00:08:12 2025 -0500
+
+    Merge tag '1.0.9' into develop
+    
+    Release 1.0.9
+
+[33mcommit 68f6463bf6648256fcd03aa2d9c8512206a299db[m[33m ([m[1;33mtag: [m[1;33m1.0.9[m[33m)[m
+Merge: ff5fffb 85fcc69
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Wed Oct 22 00:07:54 2025 -0500
+
+    Merge branch 'release/1.0.9'
+
+[33mcommit 85fcc6933d60d3b46da0fd144adb19f3d458575b[m
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Tue Oct 21 23:54:36 2025 -0500
+
+    1.0.9 release changelog updates
+
+[33mcommit eaf0fe2985b8a8f2af93639efc54e3d82305d3b8[m
+Merge: bad6257 55af0ec
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Tue Oct 21 23:46:56 2025 -0500
+
+    Merge pull request #74 from rdkcentral/topic/RDK-59629
+    
+    RDK-59629 : UserAgent string need to be aligned with browser for diff…
+
+[33mcommit 55af0ec4471fa402421f3dd29370712e23e452b9[m
+Author: gurpreet319 <gurpreetsarngal@gmail.com>
+Date:   Fri Oct 17 16:17:20 2025 +0530
+
+    RDK-59629 : UserAgent string need to be aligned with browser for different agents
+    
+    Reason for change: Support for changing userAgent based on firebolt flag
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+
+[33mcommit bad62579572069c5a3f06bb70c0152022ddc7ce7[m
+Merge: 2f2339e ff5fffb
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Wed Oct 8 10:59:52 2025 -0500
+
+    Merge tag '1.0.8' into develop
+    
+    Release 1.0.8
+
+[33mcommit ff5fffb20971a2aba906b5f4aac9c095551c1165[m[33m ([m[1;33mtag: [m[1;33m1.0.8[m[33m)[m
+Merge: 49dcea2 ca57a38
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Wed Oct 8 10:59:26 2025 -0500
+
+    Merge branch 'release/1.0.8'
+
+[33mcommit ca57a38905f7004614ded25722f1769e0f117ca0[m
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Wed Oct 8 10:57:14 2025 -0500
+
+    1.0.8 release changelog updates
+
+[33mcommit 2f2339e0c0d90f0818a6a5323333dca0ca8a4f1e[m
+Merge: d367c14 505914d
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Wed Oct 8 10:47:05 2025 -0500
+
+    Merge pull request #71 from rdkcentral/topic/RDKEMW-8952
+    
+    RDKEMW-8952 : Switching between Xumo Fast Channels and Vipa activated…
+
+[33mcommit 505914dbfa6dbe842c7ec46e169ccca47ca6032b[m[33m ([m[1;31morigin/topic/RDKEMW-8952[m[33m)[m
+Author: gsarng517_comcast <Gurpreet_Sarngal2@comcast.com>
+Date:   Tue Oct 7 18:03:45 2025 +0530
+
+    RDKEMW-8952 : Switching between Xumo Fast Channels and Vipa activated Channels
+    
+    Reason for change: fix for crash
+    Test Procedure: crash shouldn't occur during channel change
+    Risks: low
+    Priority: P1
+
+[33mcommit d367c14f8efa22be9632ba692ed658321402a0e3[m
+Merge: d2a8e5c 49dcea2
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Tue Sep 30 11:34:21 2025 -0500
+
+    Merge tag '1.0.7' into develop
+    
+    Release 1.0.7
+
+[33mcommit 49dcea27ad8b1fc4d2c49623a117b2d9adb2124d[m[33m ([m[1;33mtag: [m[1;33m1.0.7[m[33m)[m
+Merge: 9824e77 0f3be4f
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Tue Sep 30 11:33:50 2025 -0500
+
+    Merge branch 'release/1.0.7'
+
+[33mcommit 0f3be4fecad9213a4d86c828e978c29199e5d190[m
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Tue Sep 30 11:31:40 2025 -0500
+
+    1.0.7 release changelog updates
+
+[33mcommit d2a8e5cecb7b5554fc6425bfa4d05212273bc2e3[m
+Merge: f78120b e2d6a43
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Tue Sep 30 10:11:00 2025 -0500
+
+    Merge pull request #68 from rdkcentral/topic/DELIA-68967
+    
+    DELIA-68967 : Switching between Xumo Fast Channels and Vipa activated…
+
+[33mcommit e2d6a43d1097a9b24e100c6706bab66df330587a[m[33m ([m[1;31morigin/topic/DELIA-68967[m[33m)[m
+Merge: 228cf8b f78120b
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Tue Sep 30 10:09:11 2025 -0500
+
+    Merge branch 'develop' into topic/DELIA-68967
+
+[33mcommit f78120b636f67822f1897fee128533b7db516d2c[m
+Merge: 60504ee eacd611
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Tue Sep 30 10:08:16 2025 -0500
+
+    Merge pull request #66 from rdkcentral/topic/RDKEMW-5610
+    
+    RDKEMW-5610 : L1 test cases for jsruntime
+
+[33mcommit eacd611d3b06c109d27e83826a50bbb29c5a38cf[m[33m ([m[1;31morigin/topic/RDKEMW-5610[m[33m)[m
+Merge: 56cf9ee 60504ee
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Tue Sep 30 08:46:34 2025 -0500
+
+    Merge branch 'develop' into topic/RDKEMW-5610
+
+[33mcommit 228cf8bfdde6d7f7d991805193038b392bc0e89b[m
+Author: gurpreet319 <gurpreetsarngal@gmail.com>
+Date:   Tue Sep 30 18:29:53 2025 +0530
+
+    DELIA-68967 : Switching between Xumo Fast Channels and Vipa activated Channels
+    
+    Reason for change: fix for crash
+    Test Procedure: crash shouldn't occur during channel change.
+    Risk : low
+    Priority: P1
+
+[33mcommit 60504ee3e26e672afc5c0f5d284ce4930e1c7b34[m
+Merge: 6259b29 743fd45
+Author: Alan Ryan <20208488+Alan-Ryan@users.noreply.github.com>
+Date:   Mon Sep 29 14:35:46 2025 +0100
+
+    Merge pull request #67 from rdkcentral/feature/actions/develop-fossid
+    
+    Deploy fossid_integration_stateless_diffscan_target_repo action
+
+[33mcommit 743fd457107c4109b347742b7b398aef0e06b922[m
+Author: rdkcmf <github@code.rdkcentral.com>
+Date:   Mon Sep 29 14:11:20 2025 +0100
+
+    Deploy fossid_integration_stateless_diffscan_target_repo action
+
+[33mcommit 56cf9eeb00fb8c90bd39bab9f69467a4e7d3c717[m
+Author: trupthi1403 <thrupthibp14@gmail.com>
+Date:   Fri Sep 19 12:33:33 2025 +0530
+
+    RDKEMW-5610 : L1 test cases for jsruntime
+    
+    Reason for Change : Added some flags to use mock headers, changes required to
+    build l1
+    Test Procedure : L1 build must be successful
+    Risk : Low
+
+[33mcommit 6259b29fefff9c7e2044cd887f046199be2ae1cd[m
+Merge: 8856ccf c7d064d
+Author: Alan Ryan <20208488+Alan-Ryan@users.noreply.github.com>
+Date:   Thu Sep 25 18:44:20 2025 +0100
+
+    Merge pull request #40 from rdkcentral/feature/action-deploy-for/develop
+    
+    Deploy cla action
+
+[33mcommit c7d064da21ec1297f47484cbcedddfd00e5c32e2[m
+Author: rdkcmf <github@code.rdkcentral.com>
+Date:   Thu Sep 25 18:29:15 2025 +0100
+
+    Deploy cla action
+
+[33mcommit b5f259ae01ec458283ec03e15c40022ce984bafa[m
+Merge: b954b62 8856ccf
+Author: rdkcmf <github@code.rdkcentral.com>
+Date:   Thu Sep 25 18:29:14 2025 +0100
+
+    Merge branch 'develop' into feature/action-deploy-for/develop
+
+[33mcommit 8856ccf3bb5bc99e54160a7586ef571e388a1cf0[m
+Merge: afdf341 e106c14
+Author: Stephen Barrett <sbarre01@users.noreply.github.com>
+Date:   Wed Sep 24 15:41:44 2025 +0100
+
+    Merge pull request #63 from rdkcentral/sbarre01-patch-1
+    
+    Update CODEOWNERS
+
+[33mcommit e106c14663f0fb9a2837679f88f25b2de92f5f93[m
+Author: Stephen Barrett <sbarre01@users.noreply.github.com>
+Date:   Wed Sep 24 14:37:18 2025 +0100
+
+    Update CODEOWNERS
+
+[33mcommit afdf341c4f81e7019d76f207c7b428dbd0ffc00d[m
+Merge: a52d33a 9824e77
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Tue Sep 16 13:56:42 2025 -0500
+
+    Merge tag '1.0.6' into develop
+    
+    Release 1.0.6
+
+[33mcommit 9824e773153631519f818e1c2380b3719a32007d[m[33m ([m[1;33mtag: [m[1;33m1.0.6[m[33m)[m
+Merge: 057c894 1721c05
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Tue Sep 16 13:56:06 2025 -0500
+
+    Merge branch 'release/1.0.6'
+
+[33mcommit 1721c05e9b79e6be0e98852b6f596abf7b6f1e68[m
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Tue Sep 16 13:53:10 2025 -0500
+
+    1.0.6 release changelog updates
+
+[33mcommit a52d33a7b6743f8b86865d584e46a0ce21611054[m
+Author: Gurpreet Sarngal <65659795+gurpreet319@users.noreply.github.com>
+Date:   Wed Sep 17 00:11:41 2025 +0530
+
+    RDKEMW-8240 : Add logs in jsruntime.log in /opt/logs (#60)
+    
+    Reason for Change : Add logs in jsruntime.log in /opt/logs
+    Test Procedure : log file will be created
+    Risk : Low
+
+[33mcommit 0bae809fc9bb8a69156798e07b15cade4c526431[m
+Merge: 74b9292 057c894
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Mon Sep 15 10:33:45 2025 -0500
+
+    Merge tag '1.0.5' into develop
+    
+    Release 1.0.5
+
+[33mcommit 057c89428193a51ab7e62a51ff174dd75ea23ff8[m[33m ([m[1;33mtag: [m[1;33m1.0.5[m[33m)[m
+Merge: 4721129 bd46b16
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Mon Sep 15 10:31:53 2025 -0500
+
+    Merge branch 'release/1.0.5'
+
+[33mcommit bd46b16959b0b828e09154fdd5c8f8b72ea989cc[m
+Author: Vinod Kumar Jain <vinodkumar_jain@comcast.com>
+Date:   Mon Sep 15 10:24:48 2025 -0500
+
+    1.0.5 release changelog updates
+
+[33mcommit 74b9292e8f0645988137b299c28d436459f76f44[m
+Merge: ad6b6ee b844886
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Mon Sep 15 09:36:55 2025 -0500
+
+    Merge pull request #57 from rdkcentral/topic/RDKEMW-8240
+    
+    RDKEMW-8240 : Add logs in jsruntime.log in /opt/logs
+
+[33mcommit b844886bd5e58e1fba3601a4b6dbbd62514803c3[m
+Author: gurpreet319 <gurpreetsarngal@gmail.com>
+Date:   Mon Sep 15 18:53:55 2025 +0530
+
+    RDKEMW-8240 : Add logs in jsruntime.log in /opt/logs
+    
+    Reason for Change : Add logs in jsruntime.log in /opt/logs
+    Test Procedure : log file will be created
+    Risk : Low
+
+[33mcommit ad6b6ee37cb5c76239a29e10c053e054e90b25df[m
+Merge: 829286c 4721129
+Author: vjain008_comcast <vinodkumar_jain@comcast.com>
+Date:   Sun Sep 7 19:41:04 2025 -0700
+
+    Merge tag '1.0.4' into develop
+    
+    Release 1.0.4
+
+[33mcommit 4721129464fbbdb9dbbda15e4e58a6cfc33cb91f[m[33m ([m[1;33mtag: [m[1;33m1.0.4[m[33m)[m
+Merge: cca49fc 2e56742
+Author: vjain008_comcast <vinodkumar_jain@comcast.com>
+Date:   Sun Sep 7 19:40:47 2025 -0700
+
+    Merge branch 'release/1.0.4' into main
+
+[33mcommit 2e56742d0adda04fe61277fa0782e2b5b2dde19c[m
+Author: vjain008_comcast <vinodkumar_jain@comcast.com>
+Date:   Sun Sep 7 19:39:01 2025 -0700
+
+    1.0.4 release changelog updates
+
+[33mcommit 829286ceb72d7312c3a1de9bd7589084a5a47dcb[m
+Merge: c170244 f09297b
+Author: madanagopalt <madanagopal123@gmail.com>
+Date:   Sat Sep 6 18:16:56 2025 +0530
+
+    Merge pull request #54 from rdkcentral/topic/RDKEMW-7489
+    
+    RDKEMW-7489: Adding Href support
+
+[33mcommit f09297bda7e93926527929feaee0102ec1e3a87b[m[33m ([m[1;31morigin/topic/RDKEMW-7489[m[33m)[m
+Author: trupthi1403 <thrupthibp14@gmail.com>
+Date:   Fri Aug 29 17:11:08 2025 +0530
+
+    RDKEMW-7489: Adding Href support
+    
+    Reason for change: Added Support for Random Num Generator,
+                        Local Storage class,
+                        Updated node-fetch file for header support
+    Risks: Low
+    Priority: P1
+
+[33mcommit c170244537f39ee33a0b8471090d092fddf4106d[m
+Merge: e15828d 0fc6540
+Author: madanagopalt <madanagopal123@gmail.com>
+Date:   Mon Aug 25 11:11:19 2025 +0530
+
+    Merge pull request #51 from rdkcentral/topic/RDKEMW-5556
+    
+    Ticket:RDKEMW-5556: Bug for terminateApplication
+
+[33mcommit 0fc654054b7e5ffc76211e12c5564ad3784fabd6[m[33m ([m[1;31morigin/topic/RDKEMW-5556[m[33m)[m
+Merge: 842a5cb e15828d
+Author: TRUPTHI B P <thrupthibp14@gmail.com>
+Date:   Fri Aug 22 12:32:53 2025 +0530
+
+    Merge branch 'develop' into topic/RDKEMW-5556
+
+[33mcommit e15828d5a330b072753e682f5c446b0f9ae14531[m
+Merge: 911ab98 cca49fc
+Author: vjain008_comcast <vinodkumar_jain@comcast.com>
+Date:   Wed Aug 6 22:39:40 2025 -0700
+
+    Merge tag '1.0.3' into develop
+    
+    New Release 1.0.3
+
+[33mcommit cca49fcb42139a57f9710b08fd8b4270f123cf82[m[33m ([m[1;33mtag: [m[1;33m1.0.3[m[33m)[m
+Merge: 5f4c685 9277a5e
+Author: vjain008_comcast <vinodkumar_jain@comcast.com>
+Date:   Wed Aug 6 22:39:09 2025 -0700
+
+    Merge branch 'release/1.0.3' into main
+
+[33mcommit 9277a5ecf6f6dc98a0600ba49a09403876592ff5[m
+Author: vjain008_comcast <vinodkumar_jain@comcast.com>
+Date:   Wed Aug 6 22:35:28 2025 -0700
+
+    1.0.3 release changelog updates
+
+[33mcommit 911ab987dda7aac1fc6faae4bc9b0c762d6b0b12[m
+Merge: f62ed95 38d2446
+Author: madanagopalt <madanagopal123@gmail.com>
+Date:   Fri Jul 18 15:20:36 2025 +0530
+
+    Merge pull request #48 from rdkcentral/topic/RDKEMW-4329
+    
+    RDKEMW-4329 : Missing file name and incorrect Statuscode in networkmetric
+
+[33mcommit 38d2446e592e92f3e85d77e46b9d425e57d93dee[m[33m ([m[1;31morigin/topic/RDKEMW-4329[m[33m)[m
+Author: gurpreet319 <gurpreetsarngal@gmail.com>
+Date:   Tue Jul 15 16:27:28 2025 +0530
+
+    RDKEMW-4329 : [RDK Native script]Missing file name and incorrect Status code in network metrics dump
+    
+    Reason for change: Bug fixing
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+
+[33mcommit f62ed9592d9ec176970f4d080d8704ae74c2147d[m
+Merge: 910642b 60bf71e
+Author: madanagopalt <madanagopal123@gmail.com>
+Date:   Thu Jul 10 17:51:09 2025 +0530
+
+    Merge pull request #45 from rdkcentral/topic/RDKEMW-5609
+    
+    RDKEMW-5609 : Creating an RDKE XIONE UK build with JSRuntime and WebAssembly support enabled
+
+[33mcommit 60bf71e0c42e60d293dfa569a71180f782b0cab9[m
+Author: Sidhanth B H <sidhanthbh@gmail.com>
+Date:   Fri Jul 4 16:42:30 2025 +0530
+
+    RDKEMW-5609 : Creating an RDKE XIONE UK build with JSRuntime and Web Assembly support enabled
+    
+    Reason for change: Added WebAssembly support
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+
+[33mcommit 842a5cb9683b68d82935fbef29c1f1e6c2b6b2a4[m
+Author: tboova469_comcast <Trupthi_BoovanahalliPuttaraju@comcast.com>
+Date:   Tue Jul 8 15:36:46 2025 +0530
+
+    Ticket:RDKEMW-5556: Bug for terminateApplication
+    
+    Reason for change: changed the symbol name for unloadJS
+    Risks: low
+    Priority: P2
+
+[33mcommit 910642b2f92ccab11e85b73914b6e6b5b6a9917b[m
+Merge: bbe641c 5f4c685
+Author: vjain008_comcast <vinodkumar_jain@comcast.com>
+Date:   Mon Jul 7 11:46:37 2025 -0700
+
+    Merge tag '1.0.2' into develop
+
+[33mcommit 5f4c6852193d36ef9e2c9ddf29b0ddcacbee3c3a[m[33m ([m[1;33mtag: [m[1;33m1.0.2[m[33m)[m
+Merge: 7a0abb8 bd89254
+Author: vjain008_comcast <vinodkumar_jain@comcast.com>
+Date:   Mon Jul 7 11:38:42 2025 -0700
+
+    Merge branch 'release/1.0.2' into main
+
+[33mcommit bd89254c510cbd92accda18c4df5fa8d7221615f[m
+Author: vjain008_comcast <vinodkumar_jain@comcast.com>
+Date:   Mon Jul 7 11:34:27 2025 -0700
+
+    1.0.2 release changelog updates
+
+[33mcommit bbe641cd29d8f90384c7df735fd75c8e2c827ed8[m
+Merge: 3222c4c 7edfb91
+Author: madanagopalt <madanagopal123@gmail.com>
+Date:   Thu Jun 26 17:05:12 2025 +0530
+
+    Merge pull request #39 from rdkcentral/topic/RDKEMW-3106
+    
+    RDKEMW-3106 : Ensure modules path works in all environments
+
+[33mcommit b954b629e1b3517816786659ace819daa09e3889[m
+Author: rdkcmf <github@code.rdkcentral.com>
+Date:   Tue Jun 24 15:07:27 2025 +0100
+
+    Deploy cla action
+
+[33mcommit 7edfb919334cb31d27d5ded9db4c6fbd1bcb8c1f[m[33m ([m[1;31morigin/topic/RDKEMW-3106[m[33m)[m
+Author: Sidhanth B H <sidhanthbh@gmail.com>
+Date:   Thu Jun 19 18:29:35 2025 +0530
+
+    RDKEMW-3106 : Ensure modules path works in all environments
+    
+    Reason for change: Cleaned up the code
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+
+[33mcommit ac64607c9ef96894462a0134d834ca43adbbde72[m
+Author: Sidhanth B H <sidhanthbh@gmail.com>
+Date:   Thu Jun 19 17:22:11 2025 +0530
+
+    RDKEMW-3106 : Ensure modules path works in all environments
+    
+    Reason for change: Resolving ModulesPath issue
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+
+[33mcommit 0c6d3ac5aa5d1d7a0e5e613cd7fabd5934d56531[m
+Author: Sidhanth B H <sidhanthbh@gmail.com>
+Date:   Thu Jun 19 17:18:32 2025 +0530
+
+    RDKEMW-3106 : Ensure modules path works in all environments
+    
+    Reason for change: Resolving ModulesPath issue
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+
+[33mcommit 3222c4c16a4d6b0f75172cbf2faeae26ca523d5f[m
+Merge: 064d334 812cd8c
+Author: madanagopalt <madanagopal123@gmail.com>
+Date:   Thu Jun 19 10:00:55 2025 +0530
+
+    Merge pull request #38 from rdkcentral/topic/RDKEMW-5230
+    
+    RDKEMW-5230: JSRuntimeLauncher component - RDKE
+
+[33mcommit 812cd8cf820b7b0d15620e02ae61b2ac2cf20d94[m[33m ([m[1;31morigin/topic/RDKEMW-5230[m[33m)[m
+Author: Gurpreet Sarngal <gurpreetsarngal@gmail.com>
+Date:   Wed Jun 18 11:25:32 2025 +0530
+
+    RDKEMW-5230: JSRuntimeLauncher component - RDKE
+    
+    Reason for change: Removed JSRuntimeLauncher
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+
+[33mcommit 064d334a9a95cace6b967c46a8ba5c2ffed6fcff[m
+Merge: 7d48e60 9162e1c
+Author: madanagopalt <madanagopal123@gmail.com>
+Date:   Tue Jun 3 18:07:48 2025 +0530
+
+    Merge pull request #33 from rdkcentral/topic/RDKEMW-4729
+    
+    RDKEMW-4729:Add support for clearMeasures
+
+[33mcommit 9162e1cc2b8c7a19c41a7420e19f05786df4899e[m[33m ([m[1;31morigin/topic/RDKEMW-4729[m[33m)[m
+Author: Trupthi BP <thrupthibp14@gmail.com>
+Date:   Tue Jun 3 16:46:44 2025 +0530
+
+    RDKEMW-4729: Code cleanup for window change
+    
+    Reason for change: Cleaned up code by adding flags
+    Test Procedure: build should be successful and plugins must work
+    Risks: low
+    Priority: P2
+
+[33mcommit cc269d95ec7c93333935a55b8eb7633fcec86928[m
+Author: Trupthi BP <thrupthibp14@gmail.com>
+Date:   Tue Jun 3 14:43:06 2025 +0530
+
+    RDKEMW-4729:Add support for clearMeasures
+    
+    Reason for change: Added clearMeasures function in utils.js
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+
+[33mcommit 7d48e60f20a89d98c9243298c3f9c125d1736909[m
+Merge: a9410f1 87a4588
+Author: madanagopalt <madanagopal123@gmail.com>
+Date:   Mon Jun 2 09:45:44 2025 +0530
+
+    Merge pull request #32 from rdkcentral/topic/RDKEMW-3466
+    
+    RDKEMW-3466 : JSRuntimeWidget
+
+[33mcommit 87a4588627f8f11f8fb6ac8881efd4fdcdf1f969[m
+Author: Sidhanth B H <sidhanth.b@tataelxsi.co.in>
+Date:   Fri May 30 16:55:11 2025 +0530
+
+    RDKEMW-3466 : JSRuntimeWidget
+    
+    Reason for change: Added a new file JSRuntimeLauncher
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+
+[33mcommit d098874e30e991e12621de2c85e6cfc3caa16b91[m
+Author: Sidhanth B H <sidhanth.b@tataelxsi.co.in>
+Date:   Fri May 30 16:55:11 2025 +0530
+
+    RDKEMW-3466 : JSRuntimeWidget
+    
+    Reason for change: Added a new file JSRuntimeLauncher
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+
+[33mcommit a9410f1f46a73551462f509173a9b4b9161cd207[m
+Merge: aa12d4d 87f48db
+Author: madanagopalt <madanagopal123@gmail.com>
+Date:   Thu May 29 12:18:05 2025 +0530
+
+    Merge pull request #29 from rdkcentral/topic/RDKEMW-4353
+    
+    RDKEMW-4353:Implement logs to remain
+
+[33mcommit 87f48dbebfffa1af6eec0970244fd723f7115d5f[m
+Author: Jain, Vinod Kumar <VinodKumar_Jain@comcast.com>
+Date:   Wed May 28 13:01:04 2025 -0500
+
+    RDKEMW-4353:Implement logs to remain
+    
+    Reason for change: Fixing build errors in NativeJSRenderer.cpp
+    Test Procedure:Build should complete without error.
+    Risks: low
+    Priority: P2
+
+[33mcommit aa12d4d8651b4d42f392a19b877015d28ef8c248[m
+Merge: 1ce1a11 32f6cf1
+Author: madanagopalt <madanagopal123@gmail.com>
+Date:   Wed May 28 14:31:58 2025 +0530
+
+    Merge pull request #28 from rdkcentral/topic/RDKEMW-4353
+    
+    Ticket Number:RDKEMW-4353:Bug when set DEBUG level
+
+[33mcommit 32f6cf11af9c786d34334838ff75065fbd0d70cf[m
+Author: Trupthi B P <thrupthibp14@gmail.com>
+Date:   Thu May 22 16:08:47 2025 +0530
+
+    Ticket Number:RDKEMW-4353:Implement logs to remain
+    
+    Reason for change: Converted remaining cout to log statements in
+    NativeJSRenderer.cpp file and rebased
+    Test Procedure:Able to set log levels without any runtime errors and
+    APIs must work
+    Risks: low
+    Priority: P2
+
+[33mcommit 6281c92d7a5afdc989a5531ea765979a6c19a010[m
+Author: Trupthi B P <thrupthibp14@gmail.com>
+Date:   Thu May 22 11:01:11 2025 +0530
+
+    Ticket Number:RDKEMW-4353:Bug when set DEBUG level
+    
+    Reason for change: Corrected the data type of id and resolved conflict1
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+
+[33mcommit 1ce1a11c02ed257307b7960c777a38158b876e20[m
+Merge: 84a69b0 fb28f79
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Tue May 27 07:55:52 2025 -0500
+
+    Merge pull request #27 from rdkcentral/topic/RDKEMW-4278
+    
+    Ticket Number:RDKEMW-4278:Update launchTime metrics
+
+[33mcommit fb28f79f1f50f64d0d9b8fe876fc604edf09a7ae[m
+Author: Trupthi B P <thrupthibp14@gmail.com>
+Date:   Tue May 13 17:17:01 2025 +0530
+
+    Ticket Number:RDKEMW-4278:Update launchTime metrics
+    
+    Reason for change: Added new metrics to calculate context creation time,
+    and made changes according to new NativeJS APIs
+    Test Procedure: build should be successful and observe metrics in
+    wpeframework.log
+    Risks: low
+    Priority: P2
+
+[33mcommit 84a69b03e172b343adf6ba5adad49713e3a6cb80[m
+Merge: cd9fe3b 7a0abb8
+Author: vjain008_comcast <vinodkumar_jain@comcast.com>
+Date:   Mon May 12 16:07:22 2025 -0700
+
+    Merge tag '1.0.1' into develop
+    
+    Release tag 1.0.1
+
+[33mcommit 7a0abb8de4db6c29f595c8ab746bb7501416f786[m[33m ([m[1;33mtag: [m[1;33m1.0.1[m[33m)[m
+Merge: 55d66df e60bbb2
+Author: vjain008_comcast <vinodkumar_jain@comcast.com>
+Date:   Mon May 12 16:06:15 2025 -0700
+
+    Merge branch 'release/1.0.1' into main
+
+[33mcommit e60bbb2b72c74a43c34af35179d4b619fd9ac779[m
+Author: vjain008_comcast <vinodkumar_jain@comcast.com>
+Date:   Mon May 12 14:56:53 2025 -0700
+
+    1.0.1 release changelog updates
+
+[33mcommit cd9fe3b66e3af2ed7cdf32bd43c4a3ae4dcd8c75[m
+Merge: 6a346ef 03cc02c
+Author: madanagopalt <madanagopal123@gmail.com>
+Date:   Fri May 9 21:16:33 2025 +0530
+
+    Merge pull request #24 from rdkcentral/topic/RDKEMW-3457
+    
+    RDKEMW-3457 : WebSocket IPC
+
+[33mcommit 03cc02c1a88dfa335a0bb821b9c1df2e0ccdc672[m[33m ([m[1;31morigin/topic/RDKEMW-3457[m[33m)[m
+Author: Gurpreet Sarngal <gurpreetsarngal@gmail.com>
+Date:   Fri May 9 15:01:00 2025 +0530
+
+    RDKEMW-3457 : WebSocket IPC
+    
+    Reason for change: Added support for websocket IPC
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+
+[33mcommit 6a346efe3617f9cfdeb9fe3c785fb57376f9585e[m
+Merge: a1874de 60fc51b
+Author: madanagopalt <madanagopal123@gmail.com>
+Date:   Fri May 9 17:53:40 2025 +0530
+
+    Merge pull request #20 from rdkcentral/topic/RDKEMW-3523
+    
+    RDKEMW-3523:Update rdkNativeScript with application identifiers
+
+[33mcommit 60fc51b6f48272e9671bc787c68a2ce19b036e0c[m
+Author: Sidhanth B H <sidhanthbh@gmail.com>
+Date:   Wed Apr 30 14:40:14 2025 +0530
+
+    3523:Update rdkNativeScript with interface API's
+    Reason for change: Cleaned up the code
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+
+[33mcommit a1874dee60e7f871af1b56cca222332046c5b95b[m
+Merge: 7c77860 38aa2b9
+Author: madanagopalt <madanagopal123@gmail.com>
+Date:   Thu May 8 17:48:47 2025 +0530
+
+    Merge pull request #22 from rdkcentral/topic/RDKEMW-3430
+    
+    Ticket Number:RDKEMW-3430: Implementing log levels
+
+[33mcommit 38aa2b91926a378d26328a74eee407167a78df0f[m[33m ([m[1;31morigin/topic/RDKEMW-3430[m[33m)[m
+Author: Trupthi B P <thrupthibp14@gmail.com>
+Date:   Mon May 5 16:32:23 2025 +0530
+
+    Ticket Number:RDKEMW-3430: Implementing log levels
+    
+    Reason for change: Added log statements
+    Test Procedure: build should be successful and able to set loglevels
+    Risks: low
+    Priority: P2
+
+[33mcommit 7c7786091e9a3e73cbbfd909c3f3d8c88e0a57d2[m
+Merge: 81fff9c fbd44ec
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Tue May 6 07:28:56 2025 -0500
+
+    Merge pull request #18 from rdkcentral/topic/RDKEMW-3105
+    
+    RDKEMW-3105 : Add ability to show network connections with details
+
+[33mcommit fbd44ec84e5252b7de2586e6004f2536dbc55a83[m[33m ([m[1;31morigin/topic/RDKEMW-3105[m[33m)[m
+Author: Gurpreet Sarngal <gurpreetsarngal@gmail.com>
+Date:   Thu Apr 17 19:21:08 2025 +0530
+
+    RDKEMW-3105 : Add ability to show network connections with details
+    
+    Reason for change: Added support for network metrics
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+
+[33mcommit 81fff9c501935fdfe39f1109e5afec894c65faef[m
+Merge: faa5adb 96ab718
+Author: madanagopalt <madanagopal123@gmail.com>
+Date:   Fri May 2 14:11:54 2025 +0530
+
+    Merge pull request #19 from rdkcentral/topic/RDKEMW-3557
+    
+    Ticket Number :RDKEMW-3557:-Metrics for launchtime
+
+[33mcommit 96ab71879088347e00243745f78195ca647d3dbf[m[33m ([m[1;31morigin/topic/RDKEMW-3557[m[33m)[m
+Author: Jain, Vinod Kumar <VinodKumar_Jain@comcast.com>
+Date:   Tue Apr 29 13:12:34 2025 -0500
+
+    RDKEMW-3557:-Metrics for launchtime
+    
+    Reason for change: Added timestamps and created structure to store it
+    Test Procedure: timestamp logs must appear on wpeframework.log
+    Risks: low
+    Priority: P2
+
+[33mcommit eca1c15b2e98e40156dba22696325c2c5d5fbaa5[m
+Author: Trupthi BP <thrupthibp14@gmail.com>
+Date:   Thu Apr 24 18:49:05 2025 +0530
+
+    Ticket Number:RDKEMW-3557:Metrics for launch time
+    
+    Reason for change: Aligned all collected timestamps and stored in structure
+    Test Procedure: Timestamp logs must come on wpeframework log.
+    Risks: low
+    Priority: P2
+
+[33mcommit 103a43f9bf83d5a5814fe492bf306b2a2ae8aedf[m
+Author: Trupthi BP <trupthibp14@gmail.com>
+Date:   Mon Apr 21 11:25:45 2025 +0530
+
+    Ticket Number :RDKEMW-3557:-Metrics for launchtime
+    
+    Reason for change: Added timestamps and created structure to store it
+    Test Procedure: timestamp logs must appear on wpeframework.log
+    Risks: low
+    Priority: P2
+
+[33mcommit faa5adb6895e1d794a0235a848cd9464e448dc4d[m
+Merge: 7168038 b99f97d
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Fri Mar 28 16:22:45 2025 -0500
+
+    Merge pull request #16 from rdkcentral/topic/RDKEMW-2175
+    
+    RDKEMW-2175 : Run player within jsruntime plugin via dynamic load of …
+
+[33mcommit b99f97de6d73074a57a934fd627b463de5592680[m[33m ([m[1;31morigin/topic/RDKEMW-2175[m[33m)[m
+Author: Gurpreet Sarngal <gurpreetsarngal@gmail.com>
+Date:   Fri Mar 28 15:56:44 2025 +0530
+
+    RDKEMW-2175 : Run player within jsruntime plugin via dynamic load of aampjsbindings
+    
+    Reason for change: Updating the changes for playback using dynamic lib loading
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+
+[33mcommit 7168038c6494c82dfabd438d3092e328b18b89a8[m
+Merge: fa08198 55d66df
+Author: Vinod Jain <vinodkumar_jain@comcast.com>
+Date:   Wed Mar 26 10:28:48 2025 -0700
+
+    Merge tag '1.0.0' into develop
+    
+    Release tag 1.0.0
+
+[33mcommit 55d66dfa5f636e408c18367ade1804a1595fba68[m[33m ([m[1;33mtag: [m[1;33m1.0.0[m[33m)[m
+Merge: fa08198 7af1a93
+Author: Vinod Jain <vinodkumar_jain@comcast.com>
+Date:   Wed Mar 26 10:27:20 2025 -0700
+
+    Merge branch 'release/1.0.0' into main
+
+[33mcommit 7af1a93c67467b175ad6b0d226226b704d556f46[m
+Author: Vinod Jain <vinodkumar_jain@comcast.com>
+Date:   Wed Mar 26 10:25:25 2025 -0700
+
+    1.0.0 release changelog updates
+
+[33mcommit fa08198dbf27755b8d3940dd2069c46ed832cf55[m
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Mon Mar 24 14:19:26 2025 -0500
+
+    Topic/rdkemw 2590 (#11)
+    
+    * RDKEMW-2590 Creating main branch and tagging for release
+    
+    Reason for change: Deleting existing Changelog.md file.
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+    
+    * RDKEMW-2590 Creating main branch and tagging for release
+    
+    Reason for change: Deleting existing Changelog.md file.
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+
+[33mcommit bf11beac42c876441c0caa71acf231f3c103d6dc[m
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Fri Mar 21 12:25:41 2025 -0500
+
+    RDKEMW-2121 Update rdknativescript refer to rdkcentral (#6) (#10)
+    
+    Reason for change: Support to build dunfell
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+    
+    Co-authored-by: Michael Fiess <10201495+mfiess@users.noreply.github.com>
+
+[33mcommit f590b1b81adf81f05a4ed8c52b3ea04499980992[m
+Author: TRUPTHI B P <thrupthibp14@gmail.com>
+Date:   Fri Mar 21 21:39:27 2025 +0530
+
+    RDKEMW-2170 : Merging latest change for phase1 video tag support (#5)
+    
+    Reason for change: Added the video.js file for video tag support
+    Test Procedure: build should be successful and able to run
+    main.js(application file) and verify properties: src, muted, autoplay, loop
+    Risks: low
+    Priority: P2
+    
+    Co-authored-by: Trupthi B P <trupthi.b@tataelxsi.co.in>
+
+[33mcommit a33656f28860ca9010a6b1dab3733c5627a26a3b[m
+Author: Gurpreet Sarngal <65659795+gurpreet319@users.noreply.github.com>
+Date:   Fri Mar 14 23:32:04 2025 +0530
+
+    RDKEMW-2469 : Merging latest changes of rdknativescript (#4)
+    
+    * RDKEMW-2469 : Merging latest changes of javascriptcore and rdknativescript for rdke build
+    
+    Reason for change: Added Utils, buffer, process js files
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+    
+    * RDKEMW-2469 : Merging latest changes of javascriptcore and rdknativescript for rdke build
+    
+    Reason for change: Updated credit for buffer.js.
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+    
+    ---------
+    
+    Co-authored-by: Jain, Vinod Kumar <VinodKumar_Jain@comcast.com>
+
+[33mcommit 2574b4b5d43ecbe4aad7908be316954c431efe93[m
+Author: Vinod Jain <98183059+vjain008@users.noreply.github.com>
+Date:   Thu Mar 13 12:45:33 2025 -0500
+
+    RDKEMW-2469 : Merging latest changes of javascriptcore and rdknativescript for rdke build (#3)
+    
+    Reason for change: Updating the CMakeLists.txt file for linking.
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+
+[33mcommit 34a6d93459a828a81a5a1e5416b3f0bcc91e1636[m
+Merge: dfc9b89 d5b0f08
+Author: Michael Fiess <10201495+mfiess@users.noreply.github.com>
+Date:   Fri Mar 7 14:43:14 2025 -0500
+
+    Merge pull request #2 from madanagopalt/updates_2024
+    
+    Bring latest changes till 2024
+
+[33mcommit d5b0f08f5859db5e31c133790b92fded685d93a3[m
+Author: Jain, Vinod Kumar <VinodKumar_Jain@comcast.com>
+Date:   Fri Mar 7 09:12:21 2025 -0600
+
+    RDK-56154 : Merging all rdknativescript latest changes to rdkcentral github from comcast rdke github
+    
+    Reason for change: Simplying and arranging the licensing for code.
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+
+[33mcommit 4bfe625c88238c591068b234a1dad3aff5d7eda7[m
+Author: Jain, Vinod Kumar <VinodKumar_Jain@comcast.com>
+Date:   Thu Mar 6 22:45:32 2025 -0600
+
+    RDK-56154 : Merging all rdknativescript latest changes to rdkcentral github from comcast rdke github
+    
+    Reason for change: Simplying and arranging the licensing for code.
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+
+[33mcommit 2115fe55dacad10a5ef424e329818b08f3b7192a[m
+Author: Jain, Vinod Kumar <VinodKumar_Jain@comcast.com>
+Date:   Thu Mar 6 22:37:19 2025 -0600
+
+    RDK-56154 : Merging all rdknativescript latest changes to rdkcentral github from comcast rdke github
+    
+    Reason for change: Simplying and arranging the licensing for code.
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+
+[33mcommit 43ae5c597e7d047e64a8e2bf05b339f3fe99e844[m
+Author: Jain, Vinod Kumar <VinodKumar_Jain@comcast.com>
+Date:   Thu Mar 6 20:59:18 2025 -0600
+
+    RDK-56154 : Merging all rdknativescript latest changes to rdkcentral github from comcast rdke github
+    
+    Reason for change: Simplying and arranging the licensing for code.
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+
+[33mcommit 782b284085f360dfbf9798b2c8bca27601099e27[m
+Author: Jain, Vinod Kumar <VinodKumar_Jain@comcast.com>
+Date:   Thu Mar 6 20:12:04 2025 -0600
+
+    RDK-56154 : Merging all rdknativescript latest changes to rdkcentral github from comcast rdke github
+    
+    Reason for change: Simplying and arranging the licensing for code.
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+
+[33mcommit f04ff7c55438b782f96d36ca052a2c2624f2cf26[m
+Author: Jain, Vinod Kumar <VinodKumar_Jain@comcast.com>
+Date:   Thu Mar 6 14:22:13 2025 -0600
+
+    RDK-56154 : Merging all rdknativescript latest changes to rdkcentral github from comcast rdke github
+    
+    Reason for change: Simplying and arranging the licensing for code.
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+
+[33mcommit 270dabae3eb0cafe92e6ab7e333ebde686b2bcdd[m
+Author: Jain, Vinod Kumar <VinodKumar_Jain@comcast.com>
+Date:   Wed Mar 5 23:04:10 2025 -0600
+
+    RDK-56154 : Merging all rdknativescript latest changes to rdkcentral github from comcast rdke github
+    
+    Reason for change: Simplying and arranging the licensing for code.
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+
+[33mcommit b05c9a356cded8e76726e6573f803b19bfeed51c[m
+Author: Jain, Vinod Kumar <VinodKumar_Jain@comcast.com>
+Date:   Mon Mar 3 12:22:07 2025 -0600
+
+    RDK-56154 : Merging all rdknativescript latest changes to rdkcentral github from comcast rdke github
+    
+    Reason for change: Simplying and arranging the licensing for code.
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P1
+
+[33mcommit 2542b7cac0c0c0dd1aef7d8b158e5dd63b56347e[m
+Author: Jain, Vinod Kumar <VinodKumar_Jain@comcast.com>
+Date:   Thu Feb 20 12:03:58 2025 -0600
+
+    RDK-56154 Merging all rdknativescript latest changes to rdkcentral github from comcast rdke github
+    
+    Reason for change: Simplying and arranging the licensing for code.
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+
+[33mcommit 0d8189e76bdfa9f2cf619af300d95e5ec8f4def9[m
+Author: Jain, Vinod Kumar <VinodKumar_Jain@comcast.com>
+Date:   Wed Feb 19 18:39:11 2025 -0600
+
+    RDK-56154: Merging all rdknativescript latest changes
+    to rdkcentral github from comcast rdke github
+    
+    Reason for change: LGPL Licensing and MIT Lecensing
+    Test Procedure: build should be successful.
+    Risks: low
+    Priority: P2
+
+[33mcommit 64d295c7672833647de189774f4ad788413a5255[m
+Author: Jain, Vinod Kumar <VinodKumar_Jain@comcast.com>
+Date:   Mon Feb 17 11:14:27 2025 -0600
+
+    Updating all licensing details for node modules code files.
+
+[33mcommit 97cf456c13d16eb15672e24dcc99bc0f0557b0f1[m
+Author: madanagopalt <madanagopal123@gmail.com>
+Date:   Mon Dec 23 11:50:55 2024 +0530
+
+    Bring latest changes till 2024
+
+[33mcommit dfc9b89df42fb0b844e04624b13808333afb19ce[m[33m ([m[1;33mtag: [m[1;33mIMPORT_INITIAL_develop[m[33m)[m
+Author: Stephen Barrett <stephen_barrett@comcast.com>
+Date:   Tue Dec 17 10:11:00 2024 +0000
+
+    Import of Comcast source (develop)
+    
+    Source: https://ccp.github.com/rdk-e/rdkNativeScript
+    SHA1: rdkcentral-migration-v1.0
