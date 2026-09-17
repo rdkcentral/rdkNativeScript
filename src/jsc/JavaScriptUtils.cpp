@@ -194,6 +194,29 @@ void assertIsMainThread()
     if (!downloadRequest->errorString().isEmpty()) {
       // Lambda captures by value - pointer fields are properly initialized
       // coverity[uninit_member : FALSE]
+            // gurpreet
+      rtLogError("========== DOWNLOAD FAILURE ==========");
+rtLogError("URL             : %s", this->url().cString());
+rtLogError("METHOD          : %s", this->method().cString());
+
+rtLogError("DOWNLOAD STATUS : %ld",
+    (long)downloadRequest->downloadStatusCode());
+
+rtLogError("HTTP STATUS     : %ld",
+    (long)downloadRequest->httpStatusCode());
+
+rtLogError("ERROR STRING    : %s",
+    downloadRequest->errorString().cString());
+
+rtLogError("HEADER SIZE     : %lu",
+    (unsigned long)downloadRequest->headerDataSize());
+
+rtLogError("BODY SIZE       : %lu",
+    (unsigned long)downloadRequest->downloadedDataSize());
+
+rtLogError("======================================");
+//gurpreet
+
       dispatchOnMainLoop(
         /* coverity[uninit_member : FALSE] */
         [this, errorString = downloadRequest->errorString(), statusCode = downloadRequest->downloadStatusCode()] ()
@@ -209,6 +232,24 @@ void assertIsMainThread()
           Release();
         });
     } else {
+  rtLogWarn("========== DOWNLOAD SUCCESS ==========");
+rtLogWarn("URL             : %s", this->url().cString());
+rtLogWarn("METHOD          : %s", this->method().cString());
+
+rtLogWarn("DOWNLOAD STATUS : %ld",
+    (long)downloadRequest->downloadStatusCode());
+
+rtLogWarn("HTTP STATUS     : %ld",
+    (long)downloadRequest->httpStatusCode());
+
+rtLogWarn("HEADER SIZE     : %lu",
+    (unsigned long)downloadRequest->headerDataSize());
+
+rtLogWarn("BODY SIZE       : %lu",
+    (unsigned long)downloadRequest->downloadedDataSize());
+
+rtLogWarn("======================================");
+
       rtHttpResponse* resp = new rtHttpResponse();
       resp->setStatusCode((int32_t)downloadRequest->httpStatusCode());
       resp->setErrorMessage(downloadRequest->errorString());
