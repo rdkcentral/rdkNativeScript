@@ -591,16 +591,74 @@ if (mModuleSettings.enablePlayer)
     }
 }
 
+static std::string jsonEscape(const char* str)
+{
+    std::string out;
+    if (!str) return out;
+    static const char* hex = "0123456789abcdef";
+    for (const unsigned char* p = reinterpret_cast<const unsigned char*>(str); *p; ++p) {
+        switch (*p) {
+            case '"':  out += "\\\""; break;
+            case '\\': out += "\\\\"; break;
+            case '\b': out += "\\b"; break;
+            case '\f': out += "\\f"; break;
+            case '\n': out += "\\n"; break;
+            case '\r': out += "\\r"; break;
+            case '\t': out += "\\t"; break;
+            default:
+                if (*p < 0x20) {
+                    out += "\\u00";
+                    out += hex[(*p >> 4) & 0x0f];
+                    out += hex[*p & 0x0f];
+                } else {
+                    out += static_cast<char>(*p);
+                }
+        }
+    }
+    return out;
+}
+
 void JavaScriptContext::onMetricsData (NetworkMetrics *net)
 {
-   if (!net) {
+    if (!net) {
         rtLogError("onMetricsData: Received null NetworkMetrics structure.");
         return;
     }
-    rtString key = net->url;
-    mNetworkMetricsData->set(key, rtValue((void *)net));
+
+    std::lock_guard<std::mutex> lock(mNetworkMetricsMutex);
+    if (!mNetworkCaptureEnabled) {
+        // Recording is off (inspector Network tab inactive) — drop without storing.
+        delete net;
+        return;
+    }
+
+    // Stream this request to the inspector (console-log style) and keep nothing.
+    std::ostringstream params;
+    params << "{\"url\":\"" << jsonEscape(net->url.cString()) << "\","
+            << "\"method\":\"" << jsonEscape(net->method.cString()) << "\","
+            << "\"statusCode\":" << net->statusCode << ","
+            << "\"headers\":[";
+    for (size_t j = 0; j < net->headers.size(); ++j) {
+        if (j) params << ",";
+        params << "\"" << jsonEscape(net->headers[j].cString()) << "\"";
+    }
+    params << "],\"timeMetricsData\":[";
+    bool firstMetric = true;
+    for (const auto& metric : net->timeMetricsData) {
+        if (!firstMetric) params << ",";
+        firstMetric = false;
+        params << "{\"" << jsonEscape(metric.first.cString()) << "\":\""
+                << jsonEscape(metric.second.toString().cString()) << "\"}";
+    }
+    params << "]}";
+
+    #ifdef REMOTE_INSPECTOR_ENABLE
+    InspectorHTTPServer::singleton().sendNetworkMetric(mContext, params.str().c_str());
+    #endif
 
     dumpNetworkMetricData(net, this->getUrl());
+    delete net;
+    net = nullptr;
 }
 
 void JavaScriptContext::dumpNetworkMetricData(NetworkMetrics *metrics, std::string appUrl)
@@ -687,4 +745,10 @@ void JavaScriptContext::handleExternalApplication(const std::string& url)
         printf("Got exteranl application set [%s] in id [%d] \n", url.c_str(), mIds);
         mExternalApplicationHandler->runExternalApplication(url, mIds);
     }
+}
+
+void JavaScriptContext::setNetworkCaptureEnabled(bool enabled)
+{
+    std::lock_guard<std::mutex> lock(mNetworkMetricsMutex);
+    mNetworkCaptureEnabled = enabled;
 }

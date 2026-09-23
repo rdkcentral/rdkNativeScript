@@ -738,4 +738,26 @@ void InspectorHTTPServer::handleCDPMessage(SoupWebsocketConnection* connection, 
     
 }
 
+void InspectorHTTPServer::sendNetworkMetric(JSContextRef context, const char* paramsJson)
+{
+    if (!context || !paramsJson) return;
+
+    JSGlobalContextRef globalContext = const_cast<JSGlobalContextRef>(context);
+
+    SoupWebsocketConnection* targetConnection = nullptr;
+    for (const auto& pair : m_connections) {
+        if (pair.second == globalContext) {
+            targetConnection = pair.first;
+            break;
+        }
+    }
+
+    if (!targetConnection) return;
+    if (soup_websocket_connection_get_state(targetConnection) != SOUP_WEBSOCKET_STATE_OPEN) return;
+
+    std::ostringstream event;
+    event << "{\"method\":\"JSRuntime.networkMetric\",\"params\":" << paramsJson << "}";
+    std::string eventStr = event.str();
+    soup_websocket_connection_send_text(targetConnection, eventStr.c_str());
+}
 #endif // REMOTE_INSPECTOR_ENABLE
