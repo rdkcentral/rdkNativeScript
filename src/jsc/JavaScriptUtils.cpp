@@ -70,7 +70,7 @@ std::thread::id gMainThreadId;
 
 static std::list<std::function<void ()>> gPendingFun;
 static std::mutex gDispatchMutex;
-bool enabled = std::getenv("NATIVEJS_DUMP_NETWORKMETRIC") != nullptr || std::getenv("ETHAN_LOGGING_PIPE") != nullptr;
+bool envValue = std::getenv("NATIVEJS_DUMP_NETWORKMETRIC") != nullptr || std::getenv("ETHAN_LOGGING_PIPE") != nullptr;
 void TimeoutQueue::pushTimeouts(const std::vector<TimeoutInfo*>& timerVec)
 {
     if (!timerVec.size())
