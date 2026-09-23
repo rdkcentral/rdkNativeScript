@@ -54,6 +54,24 @@
         #clear-btn { background: #d0d0d0; border: none; color: #1e1e1e; padding: 4px 12px; border-radius: 3px; cursor: pointer; font-size: 11px; }
         #clear-btn:hover { background: #b8b8b8; }
 
+        /* Network Panel */
+        #network-panel { display: none; flex-direction: column; height: 100%; }
+        #network-panel.active { display: flex; }
+        #network-toolbar { background: #e8e8e8; padding: 6px 8px; border-bottom: 1px solid #c8c8c8; display: flex; align-items: center; gap: 8px; }
+        #network-toolbar button { background: #d0d0d0; border: 1px solid #b0b0b0; color: #1e1e1e; padding: 4px 10px; border-radius: 3px; cursor: pointer; font-size: 11px; }
+        #network-output { flex: 1; overflow: auto; background: #fafafa; font-family: Menlo, Monaco, Consolas, monospace; font-size: 12px; }
+        .network-table { width: 100%; border-collapse: collapse; background: #fff; }
+        .network-table th, .network-table td { border-bottom: 1px solid #e5e5e5; padding: 8px 10px; text-align: left; vertical-align: top; }
+        .network-table th { background: #f0f0f0; color: #333; font-size: 11px; font-weight: 600; position: sticky; top: 0; z-index: 1; }
+        .network-table td { color: #1e1e1e; font-size: 12px; }
+        .network-table tr:hover { background: #f9fbff; }
+        .name-cell { min-width: 220px; word-break: break-all; }
+        .domain-cell { color: #555; }
+        .network-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 10px; color: #666; min-height: 180px; }
+        .network-empty .placeholder-icon { font-size: 28px; opacity: 0.5; }
+        .network-empty .placeholder-title { font-size: 14px; color: #333; font-weight: 600; }
+        .network-empty .placeholder-hint { font-size: 11px; line-height: 1.5; }
+
         /* Sources Panel */
         #sources-panel { flex-direction: row !important; }
         #sources-sidebar { width: 280px; background: #ebebeb; border-right: 1px solid #c8c8c8; overflow-y: auto; }
@@ -103,6 +121,7 @@
 
     <div id="tabs">
         <div class="tab active" data-panel="console">Console</div>
+        <div class="tab" data-panel="network">Network</div>
         <div class="tab" data-panel="sources">Sources</div>
     </div>
 
@@ -121,6 +140,17 @@
             <div id="console-input">
                 <input type="text" id="input" placeholder="Evaluate JavaScript expression...">
                 <button id="clear-btn" class="btn">Clear</button>
+            </div>
+        </div>
+
+        <!-- Network Panel -->
+        <div id="network-panel" class="panel">
+            <div id="network-toolbar">
+                <button id="network-export-har-btn">Export HAR</button>
+                <span style="font-size: 11px; color: #666;">Live network metrics stream while this tab is active</span>
+            </div>
+            <div id="network-output">
+                <div class="empty-state" style="padding: 20px; font-size: 12px;">Recording starts when this tab is open. Network requests will appear here.</div>
             </div>
         </div>
 
@@ -162,7 +192,8 @@
             contextId: 1,
             scripts: new Map(),
             currentScript: null,
-            pendingCallbacks: new Map()
+            pendingCallbacks: new Map(),
+            networkEntries: []
         };
 
         // DOM elements
@@ -181,7 +212,9 @@
                 document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
                 tab.classList.add('active');
                 $(tab.dataset.panel + '-panel').classList.add('active');
-
+                if (tab.dataset.panel === 'network') {
+                    renderNetworkMetrics(state.networkEntries);
+                }
             });
         });
 
@@ -261,6 +294,11 @@
                 send({ method: 'Runtime.enable' });
                 send({ method: 'Console.enable' });
                 send({ method: 'Debugger.enable' });
+                // Keep network capture enabled for the whole inspector session,
+                // similar to console logging.
+                setNetworkCapture(true);
+                const netActive = $('network-panel') && $('network-panel').classList.contains('active');
+                if (netActive) renderNetworkMetrics(state.networkEntries);
                 loadInitialScripts();
             };
 
@@ -306,6 +344,19 @@
                     const args = msg.params.args || [];
                     const text = args.map(arg => arg.value || '').join(' ');
                     log(text, type);
+                }
+                else if (msg.method === 'JSRuntime.networkMetric') {
+                    // Streamed request (console-log style) — accumulate locally, never stored on the runtime.
+                    const metric = msg.params || {};
+                    state.networkEntries.push(metric);
+                    const MAX_ENTRIES = 2000;
+                    if (state.networkEntries.length > MAX_ENTRIES) {
+                        state.networkEntries.splice(0, state.networkEntries.length - MAX_ENTRIES);
+                    }
+                    const panel = $('network-panel');
+                    if (panel && panel.classList.contains('active')) {
+                        renderNetworkMetrics(state.networkEntries);
+                    }
                 }
                 else if (msg.method === 'Runtime.executionContextCreated') {
                     log(`Context created (id: ${msg.params.context.id})`, 'debug');
@@ -355,6 +406,317 @@
         }
 
         // Sources panel
+        function extractMetricValue(metrics, key) {
+            if (!Array.isArray(metrics)) return null;
+            for (const item of metrics) {
+                if (item && typeof item === 'object' && Object.prototype.hasOwnProperty.call(item, key)) {
+                    return item[key];
+                }
+            }
+            return null;
+        }
+
+        function extractHeaderValue(headers, key) {
+            if (!Array.isArray(headers)) return null;
+            for (const header of headers) {
+                if (typeof header === 'string' && header.toLowerCase().startsWith(key.toLowerCase() + ':')) {
+                    return header.split(':').slice(1).join(':').trim();
+                }
+            }
+            return null;
+        }
+
+        function getRequestType(url) {
+            if (!url) return 'Other';
+            try {
+                const pathname = new URL(url).pathname.toLowerCase();
+                if (pathname.endsWith('.js') || pathname.includes('script')) return 'Script';
+                if (pathname.endsWith('.css') || pathname.includes('style')) return 'Stylesheet';
+                if (pathname.endsWith('.png') || pathname.endsWith('.jpg') || pathname.endsWith('.jpeg') || pathname.endsWith('.gif') || pathname.endsWith('.webp')) return 'Image';
+                if (pathname.endsWith('.woff') || pathname.endsWith('.ttf') || pathname.endsWith('.otf')) return 'Font';
+                if (pathname.includes('/api/') || pathname.includes('/xhr') || pathname.includes('/fetch')) return 'XHR';
+                return 'Document';
+            } catch (e) {
+                return 'XHR';
+            }
+        }
+
+        function getRequestSummary(entry) {
+            const url = entry && entry.url ? String(entry.url) : '';
+            const domain = (() => {
+                try { return new URL(url).hostname || ''; } catch (e) { return ''; }
+            })();
+            const method = (entry && entry.method) ? String(entry.method).toUpperCase() : 'GET';
+            const status = entry && entry.statusCode !== undefined ? Number(entry.statusCode) : 0;
+            const statusText = Number.isFinite(status) && status > 0 ? String(status) : '--';
+            const timeValue = extractMetricValue(entry && entry.timeMetricsData, 'totalDownloadTimeMs');
+            const connectValue = extractMetricValue(entry && entry.timeMetricsData, 'connectTimeMs');
+            const time = (timeValue !== null && timeValue !== undefined) ? `${timeValue} ms` : (connectValue !== null && connectValue !== undefined ? `${connectValue} ms` : 'n/a');
+            const transferBytes = extractHeaderValue(entry && entry.headers, 'Content-Length');
+            const size = transferBytes ? `${transferBytes} B` : (
+                (extractMetricValue(entry && entry.timeMetricsData, 'downloadSpeedBytesPerSecond') !== null && extractMetricValue(entry && entry.timeMetricsData, 'downloadSpeedBytesPerSecond') !== undefined && timeValue !== null && timeValue !== undefined)
+                    ? `${Math.max(1, Math.round((extractMetricValue(entry && entry.timeMetricsData, 'downloadSpeedBytesPerSecond') * Number(timeValue)) / 1000))} B`
+                    : 'n/a'
+            );
+            const type = getRequestType(url);
+            const initiator = method === 'GET' || method === 'POST' ? 'xhr' : 'script';
+            const name = (() => {
+                if (!url) return 'Unknown';
+                try { return new URL(url).pathname || url; } catch (e) { return url; }
+            })();
+
+            return {
+                name,
+                domain,
+                method,
+                status,
+                statusText,
+                type,
+                time,
+                size,
+                initiator
+            };
+        }
+
+        function renderNetworkMetrics(metrics) {
+            const output = $('network-output');
+            if (!output) return;
+
+            if (!Array.isArray(metrics) || metrics.length === 0) {
+                output.innerHTML = `
+                    <div class="network-empty">
+                        <div class="placeholder-icon">⏳</div>
+                        <div class="placeholder-title">No network requests yet</div>
+                        <div class="placeholder-hint">The Network tab will show browser-like request details as calls complete.</div>
+                    </div>
+                `;
+                return;
+            }
+
+            const rows = metrics.map((entry) => {
+                const summary = getRequestSummary(entry);
+
+                return `
+                    <tr>
+                        <td class="name-cell">${escapeHtml(summary.name)}</td>
+                        <td class="domain-cell">${escapeHtml(summary.domain || 'n/a')}</td>
+                        <td>${escapeHtml(summary.size)}</td>
+                        <td>${escapeHtml(summary.type)}</td>
+                        <td>${escapeHtml(summary.time)}</td>
+                        <td>${escapeHtml(summary.initiator)}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            output.innerHTML = `
+                <table class="network-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Domain</th>
+                            <th>Transfer size</th>
+                            <th>Type</th>
+                            <th>Time</th>
+                            <th>Initiator</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            `;
+        }
+
+        // Keep native recording enabled while the inspector session is connected.
+        function setNetworkCapture(enabled) {
+            if (!state.ws || state.ws.readyState !== WebSocket.OPEN) return;
+            send({
+                method: 'Runtime.evaluate',
+                params: {
+                    expression: '(typeof JSRuntimeDownloadMetrics === "function") ? JSRuntimeDownloadMetrics(' + (enabled ? 'true' : 'false') + ') : false',
+                    returnByValue: true
+                }
+            });
+        }
+
+        // Drop all captured requests and start fresh (browser-like refresh).
+        function clearNetworkCapture() {
+            state.networkEntries = [];
+            const output = $('network-output');
+            if (output) {
+                output.innerHTML = '<div class="empty-state" style="padding: 20px; font-size: 12px;">Recording… network requests will appear here.</div>';
+            }
+        }
+
+        // ── HAR 1.2 export (client-side, built from streamed network entries) ──────────────
+        function harFlattenTimings(timeMetricsData) {
+            const flat = {};
+            if (!Array.isArray(timeMetricsData)) return flat;
+            for (const entry of timeMetricsData) {
+                if (entry && typeof entry === 'object') {
+                    for (const k in entry) {
+                        if (Object.prototype.hasOwnProperty.call(entry, k)) flat[k] = entry[k];
+                    }
+                }
+            }
+            return flat;
+        }
+
+        function harToNumber(value) {
+            const n = typeof value === 'number' ? value : parseFloat(value);
+            return isFinite(n) ? n : -1;
+        }
+
+        // Values may be seconds or ms; normalize to ms.
+        function harToMillis(value) {
+            const n = harToNumber(value);
+            if (n < 0) return -1;
+            return n < 100 ? n * 1000 : n;
+        }
+
+        function harPickTiming(flat, keys) {
+            for (const key of keys) {
+                if (flat[key] !== undefined) return harToMillis(flat[key]);
+            }
+            return -1;
+        }
+
+        function harParseHeaders(headers) {
+            const out = [];
+            if (!Array.isArray(headers)) return out;
+            for (const raw of headers) {
+                if (raw && typeof raw === 'object' && raw.name !== undefined) {
+                    out.push({ name: String(raw.name), value: String(raw.value === undefined ? '' : raw.value) });
+                    continue;
+                }
+                const str = String(raw === undefined ? '' : raw);
+                const idx = str.indexOf(':');
+                if (idx >= 0) {
+                    out.push({ name: str.slice(0, idx).trim(), value: str.slice(idx + 1).trim() });
+                } else if (str.length) {
+                    out.push({ name: str.trim(), value: '' });
+                }
+            }
+            return out;
+        }
+
+        function harParseQueryString(url) {
+            const out = [];
+            const q = String(url || '').indexOf('?');
+            if (q < 0) return out;
+            let query = String(url).slice(q + 1);
+            const hash = query.indexOf('#');
+            if (hash >= 0) query = query.slice(0, hash);
+            if (!query.length) return out;
+            for (const pair of query.split('&')) {
+                if (!pair.length) continue;
+                const eq = pair.indexOf('=');
+                const name = eq >= 0 ? pair.slice(0, eq) : pair;
+                const value = eq >= 0 ? pair.slice(eq + 1) : '';
+                let dn = name, dv = value;
+                try { dn = decodeURIComponent(name); } catch (e) { dn = name; }
+                try { dv = decodeURIComponent(value); } catch (e2) { dv = value; }
+                out.push({ name: dn, value: dv });
+            }
+            return out;
+        }
+
+        function harBuildTimings(flat) {
+            return {
+                blocked: -1,
+                dns: harPickTiming(flat, ['dns', 'dnsTime', 'dnsTimeMs', 'nameLookupTime', 'namelookup']),
+                connect: harPickTiming(flat, ['connect', 'connectTime', 'connectTimeMs', 'connecttime']),
+                ssl: harPickTiming(flat, ['ssl', 'sslTime', 'sslTimeMs', 'appConnectTime', 'appconnect']),
+                send: (() => { const v = harPickTiming(flat, ['send', 'sendTime', 'sendTimeMs']); return v >= 0 ? v : 0; })(),
+                wait: (() => { const v = harPickTiming(flat, ['wait', 'waitTime', 'startTransferTime', 'starttransfer', 'ttfb']); return v >= 0 ? v : 0; })(),
+                receive: (() => { const v = harPickTiming(flat, ['receive', 'receiveTime', 'totalDownloadTimeMs']); return v >= 0 ? v : 0; })()
+            };
+        }
+
+        function harBuildEntry(metric) {
+            const url = metric && metric.url !== undefined ? String(metric.url) : '';
+            const method = metric && metric.method !== undefined ? String(metric.method) : 'GET';
+            const status = metric && metric.statusCode !== undefined ? harToNumber(metric.statusCode) : 0;
+            const flat = harFlattenTimings(metric ? metric.timeMetricsData : null);
+            const timings = harBuildTimings(flat);
+
+            let total = harPickTiming(flat, ['total', 'totalTime', 'totalDownloadTimeMs', 'totaltime']);
+            if (total < 0) {
+                let sum = 0, any = false;
+                for (const part of ['dns', 'connect', 'ssl', 'send', 'wait', 'receive']) {
+                    if (timings[part] >= 0) { sum += timings[part]; any = true; }
+                }
+                total = any ? sum : 0;
+            }
+
+            return {
+                startedDateTime: new Date().toISOString(),
+                time: total,
+                request: {
+                    method: method,
+                    url: url,
+                    httpVersion: 'HTTP/1.1',
+                    cookies: [],
+                    headers: harParseHeaders(metric ? metric.headers : null),
+                    queryString: harParseQueryString(url),
+                    headersSize: -1,
+                    bodySize: -1
+                },
+                response: {
+                    status: status,
+                    statusText: '',
+                    httpVersion: 'HTTP/1.1',
+                    cookies: [],
+                    headers: [],
+                    content: { size: 0, mimeType: '' },
+                    redirectURL: '',
+                    headersSize: -1,
+                    bodySize: -1
+                },
+                cache: {},
+                timings: timings
+            };
+        }
+
+        function buildHarFromMetrics(metrics) {
+            const entries = Array.isArray(metrics) ? metrics.map(harBuildEntry) : [];
+            return {
+                log: {
+                    version: '1.2',
+                    creator: { name: 'rdkNativeScript-Inspector', version: '1.0' },
+                    pages: [],
+                    entries: entries
+                }
+            };
+        }
+
+        function downloadHarFile(harObject) {
+            const text = JSON.stringify(harObject, null, 2);
+            const blob = new Blob([text], { type: 'application/json' });
+            const objectUrl = URL.createObjectURL(blob);
+            const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const a = document.createElement('a');
+            a.href = objectUrl;
+            a.download = `jsruntime-${stamp}.har`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+        }
+
+        function exportHAR() {
+            const btn = $('network-export-har-btn');
+            if (btn) { btn.disabled = true; btn.textContent = 'Exporting…'; }
+            try {
+                const har = buildHarFromMetrics(state.networkEntries);
+                const count = har.log.entries.length;
+                downloadHarFile(har);
+                log(`Exported HAR with ${count} entr${count === 1 ? 'y' : 'ies'}`, 'info');
+            } catch (e) {
+                log('HAR export error: ' + e.message, 'error');
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = 'Export HAR'; }
+            }
+        }
+
         function toggleFolder(element) {
             element.classList.toggle('open');
         }
@@ -553,6 +915,9 @@
             lastLogEntry = null;
             renderFileTree();
 
+            // Browser-like refresh: drop all captured network data and start fresh.
+            clearNetworkCapture();
+
             // Ask the runtime to reload via Page.reload (CDP).
             // The server re-executes the app and pushes fresh Debugger.scriptParsed
             // events over the existing WebSocket — no reconnect needed.
@@ -565,10 +930,12 @@
         }
 
         $('reload-btn').addEventListener('click', reloadContext);
+        $('network-export-har-btn').addEventListener('click', exportHAR);
 
         // Initialize
         connect();
     </script>
 </body>
 </html>
+
 
