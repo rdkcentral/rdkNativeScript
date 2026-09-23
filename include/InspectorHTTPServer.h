@@ -44,6 +44,8 @@ public:
 
     void sendConsoleMessage(JSContextRef context, const char* level, const char* text);
 
+    void sendNetworkMetric(JSContextRef context, const char* paramsJson);
+
     void registerScript(const char* url, const char* source);
 
     // Called when frontend sends Page.reload.
