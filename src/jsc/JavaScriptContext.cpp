@@ -591,6 +591,7 @@ if (mModuleSettings.enablePlayer)
     }
 }
 
+
 static std::string jsonEscape(const char* str)
 {
     std::string out;
@@ -618,6 +619,39 @@ static std::string jsonEscape(const char* str)
     return out;
 }
 
+static std::string buildNetworkMetricPayload(const NetworkMetrics& net)
+{
+    std::ostringstream params;
+    params << "{\"url\":\"" << jsonEscape(net.url.cString()) << "\"," 
+           << "\"method\":\"" << jsonEscape(net.method.cString()) << "\"," 
+           << "\"statusCode\":" << net.statusCode << ","
+           << "\"headers\":[";
+
+    for (size_t j = 0; j < net.headers.size(); ++j) {
+        if (j) {
+            params << ",";
+        }
+        params << "\"" << jsonEscape(net.headers[j].cString()) << "\"";
+    }
+
+    params << "],\"timeMetricsData\":[";
+    bool firstMetric = true;
+    for (const auto& metric : net.timeMetricsData) {
+        if (!firstMetric) {
+            params << ",";
+        }
+        firstMetric = false;
+
+        const rtString metricKey = metric.first;
+        const rtString metricValue = metric.second.toString();
+        params << "{\"" << jsonEscape(metricKey.cString()) << "\":\""
+               << jsonEscape(metricValue.cString()) << "\"}";
+    }
+
+    params << "]}";
+    return params.str();
+}
+
 void JavaScriptContext::onMetricsData (NetworkMetrics *net)
 {
     if (!net) {
@@ -625,35 +659,21 @@ void JavaScriptContext::onMetricsData (NetworkMetrics *net)
         return;
     }
 
-    std::lock_guard<std::mutex> lock(mNetworkMetricsMutex);
-    if (!mNetworkCaptureEnabled) {
-        // Recording is off (inspector Network tab inactive) — drop without storing.
+    bool networkCaptureEnabled = false;
+    {
+        std::lock_guard<std::mutex> lock(mNetworkMetricsMutex);
+        networkCaptureEnabled = mNetworkCaptureEnabled;
+    }
+
+    if (!networkCaptureEnabled) {
         delete net;
         return;
     }
 
-    // Stream this request to the inspector (console-log style) and keep nothing.
-    std::ostringstream params;
-    params << "{\"url\":\"" << jsonEscape(net->url.cString()) << "\","
-            << "\"method\":\"" << jsonEscape(net->method.cString()) << "\","
-            << "\"statusCode\":" << net->statusCode << ","
-            << "\"headers\":[";
-    for (size_t j = 0; j < net->headers.size(); ++j) {
-        if (j) params << ",";
-        params << "\"" << jsonEscape(net->headers[j].cString()) << "\"";
-    }
-    params << "],\"timeMetricsData\":[";
-    bool firstMetric = true;
-    for (const auto& metric : net->timeMetricsData) {
-        if (!firstMetric) params << ",";
-        firstMetric = false;
-        params << "{\"" << jsonEscape(metric.first.cString()) << "\":\""
-                << jsonEscape(metric.second.toString().cString()) << "\"}";
-    }
-    params << "]}";
+    const std::string params = buildNetworkMetricPayload(*net);
 
     #ifdef REMOTE_INSPECTOR_ENABLE
-    InspectorHTTPServer::singleton().sendNetworkMetric(mContext, params.str().c_str());
+    InspectorHTTPServer::singleton().sendNetworkMetric(mContext, params.c_str());
     #endif
 
     dumpNetworkMetricData(net, this->getUrl());
