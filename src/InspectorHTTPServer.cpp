@@ -269,12 +269,9 @@ void InspectorHTTPServer::registerScript(const char* url, const char* source)
         << "\"executionContextId\":1,\"hash\":\"\""
         << "}}";
     std::string evtStr = evt.str();
-
+    std::lock_guard<std::mutex> connectionsLock(m_connectionsMutex);
     for (const auto& pair : m_connections) {
-        SoupWebsocketConnection* conn = pair.first;
-        if (soup_websocket_connection_get_state(conn) == SOUP_WEBSOCKET_STATE_OPEN) {
-            soup_websocket_connection_send_text(conn, evtStr.c_str());
-        }
+        sendText(pair.first, evtStr);
     }
 }
 
