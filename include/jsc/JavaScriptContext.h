@@ -83,6 +83,7 @@ class JavaScriptContext: public JavaScriptContextBase, public NetworkMetricsList
     virtual void onMetricsData (NetworkMetrics *net) override;
     rtMapObject* getNetworkMetricsData() const { return mNetworkMetricsData; }
     void dumpNetworkMetricData(NetworkMetrics *metrics, std::string appUrl);
+    void setNetworkCaptureEnabled(bool enabled);
 
     void setCreateApplicationStartTime(double time);
     void setCreateApplicationEndTime(double time,uint32_t id);
@@ -116,6 +117,8 @@ class JavaScriptContext: public JavaScriptContextBase, public NetworkMetricsList
     JSGlobalContextRef mContext;
     PerformanceMetrics mPerformanceMetrics;
     rtMapObject* mNetworkMetricsData;
+    std::mutex mNetworkMetricsMutex;
+    bool mNetworkCaptureEnabled = false;
     rtRef<rtJSCContextPrivate> mPriv;
     rtRef<rtFunctionCallback> m_webSocketBinding;
     rtRef<rtFunctionCallback> m_webSocketServerBinding;
