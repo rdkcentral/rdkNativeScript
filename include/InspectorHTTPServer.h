@@ -51,7 +51,7 @@ public:
 
     // Called when frontend sends Page.reload.
     void setReloadCallback(std::function<void()> callback);
-
+bool hasActiveConnection();
 private:
     InspectorHTTPServer();
 
@@ -85,7 +85,6 @@ private:
     struct ScriptInfo {
         std::string id;
         std::string url;
-        std::string source;
     };
 
     SoupServer* m_server;

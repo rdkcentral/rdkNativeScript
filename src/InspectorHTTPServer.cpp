@@ -50,8 +50,9 @@ static std::string escapeJSON(const char* str)
     }();
     static const char kHexDigits[] = "0123456789abcdef";
 
+    const size_t len = std::strlen(str);
     std::string escaped;
-    escaped.reserve(std::strlen(str) + 8);
+    escaped.reserve(len + len / 8 + 16);
 
     for (const unsigned char* p = reinterpret_cast<const unsigned char*>(str); *p; ++p) {
         const char* replacement = kEscapes[*p];
@@ -106,6 +107,14 @@ bool InspectorHTTPServer::sendText(SoupWebsocketConnection* connection, const st
     return true;
 }
 
+bool InspectorHTTPServer::hasActiveConnection()
+{
+  NativeJSLogger::log(ERROR, "hasActiveConnection ");
+
+    std::lock_guard<std::mutex> lock(m_connectionsMutex);
+    return !m_connections.empty();
+}
+
 SoupWebsocketConnection* InspectorHTTPServer::findConnectionForContext(JSGlobalContextRef context)
 {
     std::lock_guard<std::mutex> connectionsLock(m_connectionsMutex);
@@ -123,22 +132,22 @@ bool InspectorHTTPServer::start(const char* address, int port)
         NativeJSLogger::log(DEBUG, "InspectorHTTPServer: Already running\n");
         return false;
     }
-    
+
     m_server = soup_server_new(nullptr, nullptr);
-    
+
     if (!m_server) {
         NativeJSLogger::log(ERROR, "InspectorHTTPServer: Failed to create server\n");
         return false;
     }
-    
+
     soup_server_add_handler(m_server, "/", onHTTPRequest, this, nullptr);
     soup_server_add_handler(m_server, "/json", onHTTPRequest, this, nullptr);
     soup_server_add_handler(m_server, "/json/list", onHTTPRequest, this, nullptr);
     soup_server_add_handler(m_server, "/json/version", onHTTPRequest, this, nullptr);
-    
+
     soup_server_add_websocket_handler(m_server, "/devtools", nullptr, nullptr,
                                       onWebSocketRequest, this, nullptr);
-    
+
     // Bind requested port; if busy, retry next few ports.
     static const int kMaxPortTries = 10;
     int boundPort = -1;
@@ -155,7 +164,7 @@ bool InspectorHTTPServer::start(const char* address, int port)
                             tryPort, error ? error->message : "unknown", tryPort + 1);
         if (error) g_error_free(error);
     }
-    
+
     if (boundPort < 0) {
         NativeJSLogger::log(WARN, "InspectorHTTPServer: No free port found in range %d-%d\n",
                             port, port + kMaxPortTries - 1);
@@ -163,12 +172,12 @@ bool InspectorHTTPServer::start(const char* address, int port)
         m_server = nullptr;
         return false;
     }
-    
+
     m_port = boundPort;
-    
+
     NativeJSLogger::log(INFO, "InspectorHTTPServer: Started on %s:%d\n", address, boundPort);
     NativeJSLogger::log(DEBUG, "InspectorHTTPServer: Open chrome://inspect in Chrome to connect\n");
-    
+
     return true;
 }
 
@@ -177,37 +186,54 @@ void InspectorHTTPServer::stop()
     if (m_server) {
         soup_server_disconnect(m_server);
         g_object_unref(m_server);
+
         m_server = nullptr;
-        NativeJSLogger::log(INFO, "InspectorHTTPServer: Stopped\n");
+
+        NativeJSLogger::log(
+            INFO,
+            "InspectorHTTPServer: Stopped\n");
     }
 
-    std::lock_guard<std::mutex> connectionsLock(m_connectionsMutex);
-    for (auto& pair : m_connections) {
-        g_object_unref(pair.first);
+    {
+        std::lock_guard<std::mutex> lock(
+            m_connectionsMutex);
+
+        for (auto& pair : m_connections) {
+            g_object_unref(pair.first);
+        }
+
+        m_connections.clear();
     }
 
     m_contexts.clear();
-    m_connections.clear();
+
+    {
+        std::lock_guard<std::mutex> lock(
+            m_scriptsMutex);
+
+        m_scripts.clear();
+        m_nextScriptId = 1;
+    }
 }
 
 void InspectorHTTPServer::registerContext(JSGlobalContextRef context, const char* title, const char* url)
 {
     NativeJSLogger::log(DEBUG, "InspectorHTTPServer: registerContext called - context=%p, title=%s, url=%s\n",
                        context, title ? title : "null", url ? url : "null");
-    
+
     if (!context) {
         NativeJSLogger::log(WARN, "InspectorHTTPServer: registerContext - context is NULL, aborting\n");
         return;
     }
-    
+
     ContextInfo info;
     info.context = context;
     info.title = title ? title : "JavaScript Context";
     info.url = url ? url : "rdknativescript://context";
     info.id = m_nextContextId++;
-    
+
     m_contexts[context] = info;
-    
+
     NativeJSLogger::log(INFO, "InspectorHTTPServer: Registered context '%s' (id=%llu), total contexts=%zu\n",
                        info.title.c_str(), info.id, m_contexts.size());
 }
@@ -223,10 +249,16 @@ void InspectorHTTPServer::unregisterContext(JSGlobalContextRef context)
 
 void InspectorHTTPServer::sendConsoleMessage(JSContextRef context, const char* level, const char* text)
 {
-    if (!context || !level || !text) return;
-    
+    // No Chrome inspector client connected.
+    // Skip all inspector allocations.
+    if (!hasActiveConnection())
+    return;
+
+    if (!context || !level || !text)
+    return;
+
     JSGlobalContextRef globalContext = const_cast<JSGlobalContextRef>(context);
-    
+
     SoupWebsocketConnection* targetConnection = findConnectionForContext(globalContext);
 
     if (!targetConnection) {
@@ -234,36 +266,60 @@ void InspectorHTTPServer::sendConsoleMessage(JSContextRef context, const char* l
         return;
     }
 
-    const std::string escapedText = escapeJSON(text);
-    
-    std::ostringstream event;
-    event << "{\"method\":\"Runtime.consoleAPICalled\",\"params\":{"
-          << "\"type\":\"" << level << "\","
-          << "\"args\":[{\"type\":\"string\",\"value\":\"" << escapedText << "\"}],"
-          << "\"executionContextId\":1,"
-          << "\"timestamp\":" << (long long)(time(nullptr) * 1000) 
-          << "}}";
-    
-    std::string eventStr = event.str();
-    if (!sendText(targetConnection, eventStr)) {
-        NativeJSLogger::log(DEBUG, "InspectorHTTPServer: WebSocket connection is not open for console event\n");
-    }
+    std::string escapedText = escapeJSON(text);
+
+    std::string event;
+    event.reserve(escapedText.size() + 180);
+
+    event += "{\"method\":\"Runtime.consoleAPICalled\",\"params\":{";
+    event += "\"type\":\"";
+    event += level;
+    event += "\",";
+    event += "\"args\":[{\"type\":\"string\",\"value\":\"";
+    event += escapedText;
+    event += "\"}],";
+    event += "\"executionContextId\":1,";
+    event += "\"timestamp\":";
+    event += std::to_string(
+        static_cast<long long>(time(nullptr)) * 1000);
+    event += "}}";
+
+    sendText(targetConnection, event);
+
 }
 
-void InspectorHTTPServer::sendNetworkMetric(JSContextRef context, const char* paramsJson)
+void InspectorHTTPServer::sendNetworkMetric(
+    JSContextRef context,
+    const char* paramsJson)
 {
-    if (!context || !paramsJson) return;
+    if (!hasActiveConnection())
+        return;
 
-    JSGlobalContextRef globalContext = const_cast<JSGlobalContextRef>(context);
+    if (!context || !paramsJson)
+        return;
 
-    SoupWebsocketConnection* targetConnection = findConnectionForContext(globalContext);
+    JSGlobalContextRef globalContext =
+        const_cast<JSGlobalContextRef>(context);
 
-    if (!targetConnection) return;
+    SoupWebsocketConnection* targetConnection =
+        findConnectionForContext(globalContext);
 
-    std::ostringstream event;
-    event << "{\"method\":\"JSRuntime.networkMetric\",\"params\":" << paramsJson << "}";
-    std::string eventStr = event.str();
-    sendText(targetConnection, eventStr);
+    if (!targetConnection)
+        return;
+
+    const size_t paramsLen =
+        std::strlen(paramsJson);
+
+    std::string event;
+    event.reserve(paramsLen + 64);
+
+    event +=
+        "{\"method\":\"JSRuntime.networkMetric\",\"params\":";
+
+    event += paramsJson;
+    event += "}";
+
+    sendText(targetConnection, event);
 }
 
 void InspectorHTTPServer::setReloadCallback(std::function<void()> callback)
@@ -273,38 +329,49 @@ void InspectorHTTPServer::setReloadCallback(std::function<void()> callback)
 
 void InspectorHTTPServer::registerScript(const char* url, const char* source)
 {
-    if (!url || !source) return;
+    if (!url || !source)
+        return;
 
-    // Skip tiny internal snippets.
-    if (strlen(source) < 10) return;
+    if (strlen(source) < 10)
+        return;
 
     std::lock_guard<std::mutex> lock(m_scriptsMutex);
 
     for (const auto& pair : m_scripts) {
-        if (pair.second.url == url) return;
+        if (pair.second.url == url)
+            return;
     }
 
     std::string scriptId = std::to_string(m_nextScriptId++);
 
     ScriptInfo info;
-    info.id     = scriptId;
-    info.url    = url;
-    info.source = source;
-    m_scripts[scriptId] = info;
+    info.id = scriptId;
+    info.url = url;
 
-    std::ostringstream evt;
-    evt << "{\"method\":\"Debugger.scriptParsed\",\"params\":{"
-        << "\"scriptId\":\"" << scriptId << "\","
-        << "\"url\":\"" << escapeJSON(url) << "\","
-        << "\"startLine\":0,\"startColumn\":0,"
-        << "\"endLine\":0,\"endColumn\":0,"
-        << "\"executionContextId\":1,\"hash\":\"\""
-        << "}}";
-    std::string evtStr = evt.str();
+    m_scripts.emplace(scriptId, std::move(info));
 
-    std::lock_guard<std::mutex> connectionsLock(m_connectionsMutex);
+    if (!hasActiveConnection())
+    return;
+
+    std::string evt;
+    evt.reserve(256 + strlen(url));
+
+    evt += "{\"method\":\"Debugger.scriptParsed\",\"params\":{";
+    evt += "\"scriptId\":\"";
+    evt += scriptId;
+    evt += "\",\"url\":\"";
+    evt += escapeJSON(url);
+    evt += "\",\"startLine\":0,\"startColumn\":0,";
+    evt += "\"endLine\":0,\"endColumn\":0,";
+    evt += "\"executionContextId\":1,\"hash\":\"\"}}";
+
     for (const auto& pair : m_connections) {
-        sendText(pair.first, evtStr);
+        SoupWebsocketConnection* conn = pair.first;
+
+        if (soup_websocket_connection_get_state(conn) ==
+            SOUP_WEBSOCKET_STATE_OPEN) {
+              sendText(conn, evt);
+        }
     }
 }
 
@@ -312,14 +379,14 @@ std::string InspectorHTTPServer::generateTargetListJSON()
 {
     std::ostringstream json;
     json << "[";
-    
+
     bool first = true;
     for (const auto& pair : m_contexts) {
         const ContextInfo& info = pair.second;
-        
+
         if (!first) json << ",";
         first = false;
-        
+
         json << "{";
         json << "\"id\":\"" << info.id << "\",";
         json << "\"type\":\"page\",";
@@ -329,9 +396,9 @@ std::string InspectorHTTPServer::generateTargetListJSON()
         json << "\"devtoolsFrontendUrl\":\"devtools://devtools/bundled/inspector.html?ws=127.0.0.1:" << m_port << "/devtools/page/" << info.id << "\"";
         json << "}";
     }
-    
+
     json << "]";
-    
+
     std::string result = json.str();
     return result;
 }
@@ -341,37 +408,34 @@ void InspectorHTTPServer::onHTTPRequest(SoupServer* server, SoupServerMessage* m
                                        gpointer userData)
 {
     InspectorHTTPServer* self = static_cast<InspectorHTTPServer*>(userData);
-    
+
     if (strcmp(path, "/") == 0 || strcmp(path, "/inspector") == 0) {
         const char* possiblePaths[] = {
-            "src/nativevjsinspector.html",
+            "nativevjsinspector.html",
             "../src/nativevjsinspector.html",
             "/runtime/modules/nativevjsinspector.html",
             nullptr
         };
-        
+
         std::string htmlContent;
         bool loaded = false;
-        
-        char cwdBuf[1024] = {};
-        getcwd(cwdBuf, sizeof(cwdBuf));
-        
+
+
         for (int i = 0; possiblePaths[i] != nullptr; i++) {
-            char resolvedPath[4096] = {};
-            realpath(possiblePaths[i], resolvedPath);
-            
+
             std::ifstream file(possiblePaths[i]);
+
             if (file.is_open()) {
-                htmlContent.assign((std::istreambuf_iterator<char>(file)),
-                                 std::istreambuf_iterator<char>());
-                file.close();
+
+                htmlContent.assign(
+                    (std::istreambuf_iterator<char>(file)),
+                    std::istreambuf_iterator<char>());
+
                 loaded = true;
-                char absPath[4096] = {};
-                realpath(possiblePaths[i], absPath);
                 break;
             }
         }
-        
+
         if (loaded) {
             SoupMessageHeaders* headers = soup_server_message_get_response_headers(msg);
             soup_message_headers_set_content_type(headers, "text/html", nullptr);
@@ -380,13 +444,13 @@ void InspectorHTTPServer::onHTTPRequest(SoupServer* server, SoupServerMessage* m
             soup_server_message_set_status(msg, SOUP_STATUS_OK, nullptr);
             return;
         }
-        
+
         NativeJSLogger::log(WARN, "InspectorHTTPServer: nativevjsinspector.html not found, using fallback\n");
-        
+
         const char* fallbackHTML = R"HTML(<!DOCTYPE html>
 <html><head><title>Inspector Error</title></head>
 <body><h1>Inspector UI Not Found</h1><p>Could not load nativevjsinspector.html</p></body></html>)HTML";
-        
+
         SoupMessageHeaders* headers = soup_server_message_get_response_headers(msg);
         soup_message_headers_set_content_type(headers, "text/html", nullptr);
         soup_server_message_set_response(msg, "text/html", SOUP_MEMORY_STATIC,
@@ -394,7 +458,7 @@ void InspectorHTTPServer::onHTTPRequest(SoupServer* server, SoupServerMessage* m
         soup_server_message_set_status(msg, SOUP_STATUS_OK, nullptr);
         return;
     }
-    
+
     if (strcmp(path, "/json/version") == 0) {
         std::ostringstream version;
         version << "{"
@@ -405,9 +469,9 @@ void InspectorHTTPServer::onHTTPRequest(SoupServer* server, SoupServerMessage* m
                 << "\"WebKit-Version\":\"JavaScriptCore\","
                 << "\"webSocketDebuggerUrl\":\"ws://127.0.0.1:" << self->m_port << "/devtools\""
                 << "}";
-        
+
         std::string versionStr = version.str();
-        
+
         SoupMessageHeaders* headers = soup_server_message_get_response_headers(msg);
         soup_message_headers_set_content_type(headers, "application/json", nullptr);
         soup_message_headers_append(headers, "Access-Control-Allow-Origin", "*");
@@ -416,13 +480,13 @@ void InspectorHTTPServer::onHTTPRequest(SoupServer* server, SoupServerMessage* m
         soup_server_message_set_status(msg, SOUP_STATUS_OK, nullptr);
         return;
     }
-    
+
     std::string jsonResponse = self->generateTargetListJSON();
-    
+
     SoupMessageHeaders* headers = soup_server_message_get_response_headers(msg);
     soup_message_headers_set_content_type(headers, "application/json", nullptr);
     soup_message_headers_append(headers, "Access-Control-Allow-Origin", "*");
-    
+
     soup_server_message_set_response(msg, "application/json", SOUP_MEMORY_COPY,
                                     jsonResponse.c_str(), jsonResponse.length());
     soup_server_message_set_status(msg, SOUP_STATUS_OK, nullptr);
@@ -433,7 +497,7 @@ void InspectorHTTPServer::onWebSocketRequest(SoupServer* server, SoupServerMessa
                                             gpointer userData)
 {
     InspectorHTTPServer* self = static_cast<InspectorHTTPServer*>(userData);
-    
+
     uint64_t contextId = 0;
     if (sscanf(path, "/devtools/page/%llu", &contextId) == 1) {
         JSGlobalContextRef targetContext = nullptr;
@@ -443,17 +507,17 @@ void InspectorHTTPServer::onWebSocketRequest(SoupServer* server, SoupServerMessa
                 break;
             }
         }
-        
+
         if (targetContext) {
             g_object_ref(connection);
             {
                 std::lock_guard<std::mutex> connectionsLock(self->m_connectionsMutex);
                 self->m_connections[connection] = targetContext;
             }
-            
+
             g_signal_connect(connection, "message", G_CALLBACK(onWebSocketMessage), userData);
             g_signal_connect(connection, "closed", G_CALLBACK(onWebSocketClosed), userData);
-            
+
             NativeJSLogger::log(DEBUG, "InspectorHTTPServer: WebSocket connected to context %llu\n", contextId);
         } else {
             NativeJSLogger::log(WARN, "InspectorHTTPServer: Context %llu not found\n", contextId);
@@ -470,15 +534,15 @@ void InspectorHTTPServer::onWebSocketMessage(SoupWebsocketConnection* connection
                                             GBytes* message, gpointer userData)
 {
     InspectorHTTPServer* self = static_cast<InspectorHTTPServer*>(userData);
-    
+
     if (dataType != SOUP_WEBSOCKET_DATA_TEXT) {
         NativeJSLogger::log(DEBUG, "InspectorHTTPServer: Received non-text WebSocket message\n");
         return;
     }
-    
+
     gsize size;
     const char* data = static_cast<const char*>(g_bytes_get_data(message, &size));
-    
+
     if (data && size > 0) {
         std::string messageStr(data, size);
         self->handleCDPMessage(connection, messageStr.c_str());
@@ -512,13 +576,13 @@ void InspectorHTTPServer::handleCDPMessage(SoupWebsocketConnection* connection, 
     }
 
     std::string msg(message);
-    
+
     size_t idPos = msg.find("\"id\":");
     int messageId = 1;
     if (idPos != std::string::npos) {
         sscanf(msg.c_str() + idPos + 5, "%d", &messageId);
     }
-    
+
     std::string method;
     size_t methodPos = msg.find("\"method\":\"");
     if (methodPos != std::string::npos) {
@@ -528,23 +592,23 @@ void InspectorHTTPServer::handleCDPMessage(SoupWebsocketConnection* connection, 
             method = msg.substr(methodStart, methodEnd - methodStart);
         }
     }
-    
+
     std::ostringstream response;
-    
+
     if (method == "Runtime.enable") {
         response << "{\"id\":" << messageId << ",\"result\":{}}";
-        
-        std::ostringstream contextCreated;
-        contextCreated << "{\"method\":\"Runtime.executionContextCreated\",\"params\":{"
-                      << "\"context\":{"
-                      << "\"id\":1,"
-                      << "\"origin\":\"\","
-                      << "\"name\":\"RDK NativeScript\""
-                      << "}}}";
-        std::string eventStr = contextCreated.str();
-        sendText(connection, eventStr);
+
+        static const std::string contextCreated =
+            "{\"method\":\"Runtime.executionContextCreated\","
+            "\"params\":{\"context\":{"
+            "\"id\":1,"
+            "\"origin\":\"\","
+            "\"name\":\"RDK NativeScript\""
+            "}}}";
+
+        sendText(connection, contextCreated);
     }
-    else if (method == "Debugger.enable" || 
+    else if (method == "Debugger.enable" ||
         method == "Console.enable" || method == "Runtime.runIfWaitingForDebugger" ||
         method == "Profiler.enable" || method == "Profiler.setSamplingInterval" ||
         method == "HeapProfiler.enable" || method == "Debugger.setAsyncCallStackDepth" ||
@@ -553,22 +617,28 @@ void InspectorHTTPServer::handleCDPMessage(SoupWebsocketConnection* connection, 
         method == "Page.getResourceTree" || method == "Network.enable" ||
         method == "Log.enable" || method == "Log.startViolationsReport") {
         response << "{\"id\":" << messageId << ",\"result\":{}}";
-        
+
         // Replay known scripts after Debugger.enable.
         if (method == "Debugger.enable") {
             std::lock_guard<std::mutex> lock(m_scriptsMutex);
             for (const auto& pair : m_scripts) {
                 const ScriptInfo& info = pair.second;
-                std::ostringstream scriptParsed;
-                scriptParsed << "{\"method\":\"Debugger.scriptParsed\",\"params\":{"
-                             << "\"scriptId\":\"" << info.id << "\","
-                             << "\"url\":\"" << escapeJSON(info.url.c_str()) << "\","
-                             << "\"startLine\":0,\"startColumn\":0,"
-                             << "\"endLine\":0,\"endColumn\":0,"
-                             << "\"executionContextId\":1,\"hash\":\"\""
-                             << "}}";
-                std::string evtStr = scriptParsed.str();
-                sendText(connection, evtStr);
+                std::string escapedUrl =
+                    escapeJSON(info.url.c_str());
+
+                std::string evt;
+                evt.reserve(escapedUrl.size() + 180);
+
+                evt += "{\"method\":\"Debugger.scriptParsed\",\"params\":{";
+                evt += "\"scriptId\":\"";
+                evt += info.id;
+                evt += "\",\"url\":\"";
+                evt += escapedUrl;
+                evt += "\",\"startLine\":0,\"startColumn\":0,";
+                evt += "\"endLine\":0,\"endColumn\":0,";
+                evt += "\"executionContextId\":1,\"hash\":\"\"}}";
+
+                sendText(connection, evt);
             }
         }
     }
@@ -706,7 +776,7 @@ void InspectorHTTPServer::handleCDPMessage(SoupWebsocketConnection* connection, 
             size_t pathEnd = msg.find("\"", pathStart);
             if (pathEnd != std::string::npos) {
                 filePath = msg.substr(pathStart, pathEnd - pathStart);
-                
+
                 size_t pos = 0;
                 while ((pos = filePath.find("\\\\", pos)) != std::string::npos) {
                     filePath.replace(pos, 2, "\\");
@@ -714,25 +784,25 @@ void InspectorHTTPServer::handleCDPMessage(SoupWebsocketConnection* connection, 
                 }
             }
         }
-        
+
         if (!filePath.empty()) {
             NativeJSLogger::log(DEBUG, "InspectorHTTPServer: Reading file: %s\n", filePath.c_str());
-            
+
             std::ifstream file(filePath);
             if (file.is_open()) {
                 std::string content((std::istreambuf_iterator<char>(file)),
                                    std::istreambuf_iterator<char>());
                 file.close();
-                
+
                 std::string escapedContent = escapeJSON(content.c_str());
                 std::string escapedPath = escapeJSON(filePath.c_str());
-                
-                response << "{\"id\":" << messageId 
-                        << ",\"result\":{\"filename\":\"" << escapedPath 
+
+                response << "{\"id\":" << messageId
+                        << ",\"result\":{\"filename\":\"" << escapedPath
                         << "\",\"content\":\"" << escapedContent << "\"}}";
             } else {
-                response << "{\"id\":" << messageId 
-                        << ",\"result\":{\"filename\":\"" << escapeJSON(filePath.c_str()) 
+                response << "{\"id\":" << messageId
+                        << ",\"result\":{\"filename\":\"" << escapeJSON(filePath.c_str())
                         << "\",\"error\":\"File not found or cannot be opened\"}}";
             }
         } else {
@@ -740,39 +810,75 @@ void InspectorHTTPServer::handleCDPMessage(SoupWebsocketConnection* connection, 
         }
     }
     else if (method == "Debugger.getScriptSource") {
-        size_t scriptIdPos = msg.find("\"scriptId\":\"");
-        std::string scriptId;
-        if (scriptIdPos != std::string::npos) {
-            size_t idStart = scriptIdPos + 12;
-            size_t idEnd = msg.find("\"", idStart);
-            if (idEnd != std::string::npos) {
-                scriptId = msg.substr(idStart, idEnd - idStart);
-            }
-        }
-        
-        if (!scriptId.empty()) {
-            std::lock_guard<std::mutex> lock(m_scriptsMutex);
-            auto sit = m_scripts.find(scriptId);
-            if (sit != m_scripts.end()) {
-                response << "{\"id\":" << messageId
-                         << ",\"result\":{\"scriptSource\":\""
-                         << escapeJSON(sit->second.source.c_str()) << "\"}}";
-            } else {
-                response << "{\"id\":" << messageId
-                         << ",\"result\":{\"scriptSource\":\"// Script id "
-                         << scriptId << " not found\"}}";
-            }
-        } else {
-            response << "{\"id\":" << messageId << ",\"result\":{\"scriptSource\":\"\"}}";
-        }
-    }
+
+      size_t scriptIdPos = msg.find("\"scriptId\":\"");
+      std::string scriptId;
+
+      if (scriptIdPos != std::string::npos) {
+
+          size_t idStart = scriptIdPos + 12;
+          size_t idEnd = msg.find("\"", idStart);
+
+          if (idEnd != std::string::npos) {
+              scriptId =
+                  msg.substr(idStart, idEnd - idStart);
+          }
+      }
+
+      if (!scriptId.empty()) {
+
+          std::lock_guard<std::mutex> lock(m_scriptsMutex);
+
+          auto sit = m_scripts.find(scriptId);
+
+          if (sit != m_scripts.end()) {
+
+              std::ifstream file(sit->second.url);
+
+              if (file.is_open()) {
+
+                  std::string source(
+                      (std::istreambuf_iterator<char>(file)),
+                      std::istreambuf_iterator<char>());
+
+                  std::string escapedSource =
+                      escapeJSON(source.c_str());
+
+                  response
+                      << "{\"id\":" << messageId
+                      << ",\"result\":{\"scriptSource\":\""
+                      << escapedSource
+                      << "\"}}";
+
+              } else {
+
+                  response
+                      << "{\"id\":" << messageId
+                      << ",\"result\":{\"scriptSource\":\"\","
+                         "\"error\":\"Unable to read script\"}}";
+              }
+
+          } else {
+
+              response
+                  << "{\"id\":" << messageId
+                  << ",\"result\":{\"scriptSource\":\"\"}}";
+          }
+
+      } else {
+
+          response
+              << "{\"id\":" << messageId
+              << ",\"result\":{\"scriptSource\":\"\"}}";
+      }
+  }
     else {
         response << "{\"id\":" << messageId << ",\"result\":{}}";
     }
-    
+
     std::string responseStr = response.str();
     sendText(connection, responseStr);
-    
+
 }
 
 #endif // REMOTE_INSPECTOR_ENABLE

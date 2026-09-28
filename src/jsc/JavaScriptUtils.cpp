@@ -20,7 +20,8 @@
 #include "JavaScriptUtils.h"
 #include "JavaScriptWrapper.h"
 #include "rtLog.h"
-
+#include <atomic>
+#include <malloc.h>
 #ifdef USE_JSCLIB_MOCK
 #include "jsc_lib_mock.h"
 #else
@@ -67,10 +68,43 @@
 #define MAX_TOKEN_BUFFER_LENGTH 2048
 
 std::thread::id gMainThreadId;
+extern JSGlobalContextRef gTopLevelContext;
+//static uint32_t gCompletedXHRCount = 0;
+static std::atomic<uint32_t> gHttpRequestCreated{0};
+static std::atomic<uint32_t> gHttpRequestDestroyed{0};
+static std::atomic<uint32_t> gHttpResponseCreated{0};
+static std::atomic<uint32_t> gCompletedXHRCount{0};
+static std::atomic<uint32_t> gResponseCallbacksCreated{0};
+static std::atomic<uint32_t> gResponseCallbacksCompleted{0};
+#include <malloc.h>
 
+static void dumpMallocStats()
+{
+    struct mallinfo mi = mallinfo();
+
+    const double mib = 1024.0 * 1024.0;
+
+    rtLogWarn(
+        "MEMDBG MALLOC "
+        "arena=%.2fMB "
+        "used=%.2fMB "
+        "free=%.2fMB "
+        "releasable=%.2fMB "
+        "mmap=%.2fMB",
+        static_cast<double>(mi.arena) / mib,
+        static_cast<double>(mi.uordblks) / mib,
+        static_cast<double>(mi.fordblks) / mib,
+        static_cast<double>(mi.keepcost) / mib,
+        static_cast<double>(mi.hblkhd) / mib);
+}
+
+extern "C" JS_EXPORT void
+JSSynchronousGarbageCollectForDebugging(JSContextRef);
 static std::list<std::function<void ()>> gPendingFun;
 static std::mutex gDispatchMutex;
 bool envValue = std::getenv("NATIVEJS_DUMP_NETWORKMETRIC") != nullptr || std::getenv("ETHAN_LOGGING_PIPE") != nullptr;
+bool shouldCaptureMetrics = envValue;
+
 void TimeoutQueue::pushTimeouts(const std::vector<TimeoutInfo*>& timerVec)
 {
     if (!timerVec.size())
@@ -127,8 +161,13 @@ void dispatchOnMainLoop(std::function<void ()>&& fun)
 {
   std::unique_lock<std::mutex> lock(gDispatchMutex);
   gPendingFun.push_back(std::move(fun));
-}
 
+}
+static size_t getPendingFunctionCount()
+{
+std::lock_guard<std::mutex> lock(gDispatchMutex);
+return gPendingFun.size();
+}
 void dispatchTimeouts()
 {
   const auto currentTime = std::chrono::steady_clock::now();
@@ -165,11 +204,13 @@ void assertIsMainThread()
   rtHttpRequestEx::rtHttpRequestEx(const rtString& url)
     : rtHttpRequest(url)
   {
+++gHttpRequestCreated;
   }
 
   rtHttpRequestEx::rtHttpRequestEx(const rtObjectRef& options)
     : rtHttpRequest(options)
   {
+++gHttpRequestCreated;
   }
 
   void rtHttpRequestEx::onDownloadProgressImpl(double progress)
@@ -179,17 +220,30 @@ void assertIsMainThread()
       dispatchOnMainLoop(
         [this, downloadedsize = progress] ()
         {
+
+
           rtObjectRef e = new rtMapObject;
           e.set("progress", downloadedsize);
 
           mEmit.send("loadprogress", e);
+
+
           Release();
         });
+
+return;
+  }
+  rtHttpRequestEx::~rtHttpRequestEx()
+  {
+    ++gHttpRequestDestroyed;
+
   }
 
   void rtHttpRequestEx::onDownloadCompleteImpl(rtFileDownloadRequest* downloadRequest)
   {
+
     AddRef();
+
     if (!downloadRequest->errorString().isEmpty()) {
       // Lambda captures by value - pointer fields are properly initialized
       // coverity[uninit_member : FALSE]
@@ -205,16 +259,24 @@ void assertIsMainThread()
 	  {
             mEmit.send("error", errorString);
 	  }
+
           Release();
         });
     } else {
       rtHttpResponse* resp = new rtHttpResponse();
+++gHttpResponseCreated;
       resp->setStatusCode((int32_t)downloadRequest->httpStatusCode());
       resp->setErrorMessage(downloadRequest->errorString());
       resp->setHeaders(downloadRequest->headerData(), downloadRequest->headerDataSize());
       resp->setDownloadedData(downloadRequest->downloadedData(), downloadRequest->downloadedDataSize());
 
-      if (mMetricsListener && envValue)
+      #ifdef REMOTE_INSPECTOR_ENABLE
+      shouldCaptureMetrics =
+      shouldCaptureMetrics &&
+      InspectorHTTPServer::singleton().hasActiveConnection();
+      #endif
+
+      if (mMetricsListener && shouldCaptureMetrics)
       {
  	rtLogWarn("metriclistener");
         NetworkMetrics *metrics = new NetworkMetrics();
@@ -224,8 +286,8 @@ void assertIsMainThread()
         }
 	metrics->url = this->url();
 	metrics->method = this->method();
-	std::vector<rtString> headerValues = this->headers();
-	metrics->headers = headerValues;
+	metrics->headers = this->headers();
+
        metrics->statusCode = downloadRequest->httpStatusCode();
 
 	rtObjectRef timeMetrics = downloadRequest->downloadMetrics();
@@ -247,17 +309,66 @@ void assertIsMainThread()
       rtObjectRef protectedRef = resp;
       // Lambda captures by value - pointer fields are properly initialized
       // coverity[uninit_member : FALSE]
+      ++gResponseCallbacksCreated;
       dispatchOnMainLoop(
-        /* coverity[uninit_member : FALSE] */
-        [this, resp = resp, ref = protectedRef] () {
-          mEmit.send("response", ref);
-          resp->onData();
-          resp->onEnd();
-          Release();
-        });
+          [this, resp = resp, ref = protectedRef] () {
+
+              mEmit.send("response", ref);
+
+              resp->onData();
+              resp->onEnd();
+
+              ++gResponseCallbacksCompleted;
+
+              const uint32_t completed =
+                  ++gCompletedXHRCount;
+
+              if ((completed % 20) == 0)
+              {
+                  const uint32_t reqCreated =
+                      gHttpRequestCreated.load();
+
+                  const uint32_t reqDestroyed =
+                      gHttpRequestDestroyed.load();
+
+                  const uint32_t respCreated =
+                      gHttpResponseCreated.load();
+
+                  const uint32_t cbCreated =
+                      gResponseCallbacksCreated.load();
+
+                  const uint32_t cbCompleted =
+                      gResponseCallbacksCompleted.load();
+
+                  rtLogWarn(
+                      "MEMDBG HTTP "
+                      "completed=%u "
+                      "REQ[%u/%u live=%u] "
+                      "RESP created=%u "
+                      "CALLBACK[%u/%u pending=%u] "
+                      "queue=%zu",
+                      completed,
+
+                      reqCreated,
+                      reqDestroyed,
+                      reqCreated - reqDestroyed,
+
+                      respCreated,
+
+                      cbCreated,
+                      cbCompleted,
+                      cbCreated - cbCompleted,
+
+                      getPendingFunctionCount());
+
+                  dumpMallocStats();
+              }
+
+              Release();
+          });
        }
      }
-
+[O
 rtDefineObject(rtHttpRequestEx, rtHttpRequest);
 
 rtError rtHttpGetBinding(int numArgs, const rtValue* args, rtValue* result, void* context)
@@ -266,11 +377,6 @@ rtError rtHttpGetBinding(int numArgs, const rtValue* args, rtValue* result, void
   if (numArgs < 1) {
     rtLogError("%s: invalid args", __FUNCTION__);
     return RT_ERROR_INVALID_ARG;
-  }
-
-  JavaScriptContext* jscContext = (JavaScriptContext*)context;
-  if (!jscContext) {
-    rtLogError("context is null!");
   }
 
   rtHttpRequest* req;
@@ -289,9 +395,14 @@ rtError rtHttpGetBinding(int numArgs, const rtValue* args, rtValue* result, void
   if (numArgs > 1 && args[1].getType() == RT_functionType) {
     req->addListener("response", args[1].toFunction());
   }
-
-  req->setNetworkMetricsListener(jscContext);
-
+  if (shouldCaptureMetrics){
+    rtLogWarn("gurpreet");
+    JavaScriptContext* jscContext = (JavaScriptContext*)context;
+    if (!jscContext) {
+      rtLogError("context is null!");
+    }
+    req->setNetworkMetricsListener(jscContext);
+  }
   rtObjectRef ref = req;
   *result = ref;
   return RT_OK;
@@ -774,11 +885,13 @@ rtError rtGetRandomValuesBinding(int numArgs, const rtValue* args, rtValue* /*re
 }
 
 //Wrapper for console logs, used when running inside widget
-static JSValueRef consoleCallbackImpl(JSContextRef ctx, size_t argumentCount,
-                                      const JSValueRef arguments[], JSValueRef* exception,
-                                      const char* methodName)
+static JSValueRef consoleCallbackImpl(
+    JSContextRef ctx,
+    size_t argumentCount,
+    const JSValueRef arguments[],
+    JSValueRef* exception,
+    const char* methodName)
 {
-
     if (argumentCount == 0)
         return JSValueMakeUndefined(ctx);
 
@@ -786,49 +899,101 @@ static JSValueRef consoleCallbackImpl(JSContextRef ctx, size_t argumentCount,
     oss << methodName << " ";
 
     for (size_t i = 0; i < argumentCount; i++) {
-        JSStringRef jsStr = JSValueToStringCopy(ctx, arguments[i], exception);
-        if (jsStr) {
-            size_t size = JSStringGetMaximumUTF8CStringSize(jsStr);
-            char* buffer = new char[size];
-            JSStringGetUTF8CString(jsStr, buffer, size);
 
-            if (i == 0 && buffer) {
-                oss << buffer;
+        JSStringRef jsStr =
+            JSValueToStringCopy(
+                ctx,
+                arguments[i],
+                exception);
+
+        if (jsStr) {
+
+            size_t size =
+                JSStringGetMaximumUTF8CStringSize(jsStr);
+
+            std::unique_ptr<char[]> buffer(
+                new char[size]);
+
+            JSStringGetUTF8CString(
+                jsStr,
+                buffer.get(),
+                size);
+
+            if (i == 0) {
+                oss << buffer.get();
             } else {
-                oss << " " << buffer;
+                oss << " " << buffer.get();
             }
-            delete[] buffer;
+
             JSStringRelease(jsStr);
         }
     }
-#ifdef REMOTE_INSPECTOR_ENABLE
-    // Forward to inspector
-    const char* level = "log";
-    if (strstr(methodName, ".warn")) level = "warn";
-    else if (strstr(methodName, ".error")) level = "error";
-    else if (strstr(methodName, ".debug")) level = "debug";
-    else if (strstr(methodName, ".info")) level = "info";
 
-    InspectorHTTPServer::singleton().sendConsoleMessage(ctx, level, oss.str().c_str());
-#endif
+    // Create this only once.
     const std::string fullMsg = oss.str();
+
+#ifdef REMOTE_INSPECTOR_ENABLE
+
+    if (InspectorHTTPServer::singleton().hasActiveConnection())
+    {
+        const char* level = "log";
+
+        if (strstr(methodName, ".warn"))
+            level = "warn";
+        else if (strstr(methodName, ".error"))
+            level = "error";
+        else if (strstr(methodName, ".debug"))
+            level = "debug";
+        else if (strstr(methodName, ".info"))
+            level = "info";
+
+        InspectorHTTPServer::singleton().sendConsoleMessage(
+            ctx,
+            level,
+            fullMsg.c_str());
+    }
+
+#endif
+
     constexpr size_t kMaxLogChunk = 420;
 
     if (fullMsg.size() <= kMaxLogChunk) {
-        NativeJSLogger::log(INFO, "%s", fullMsg.c_str());
+
+        NativeJSLogger::log(
+            INFO,
+            "%s",
+            fullMsg.c_str());
+
     } else {
+
         size_t offset = 0;
+
         while (offset < fullMsg.size()) {
-            const size_t len = std::min(kMaxLogChunk, fullMsg.size() - offset);
-            const bool hasMore = (offset + len) < fullMsg.size();
-            std::string chunk = fullMsg.substr(offset, len);
+
+            const size_t len =
+                std::min(
+                    kMaxLogChunk,
+                    fullMsg.size() - offset);
+
+            const bool hasMore =
+                (offset + len) < fullMsg.size();
+
+            std::string chunk =
+                fullMsg.substr(offset, len);
+
             if (hasMore) {
-                chunk += " \u21b5";  // ↵ continuation marker
+                chunk += " ↵";
             }
-            NativeJSLogger::log(INFO, "%s", chunk.c_str());
+
+            NativeJSLogger::log(
+                INFO,
+                "%s",
+                chunk.c_str());
+
             offset += len;
         }
     }
+
     return JSValueMakeUndefined(ctx);
 }
 
@@ -866,3 +1031,4 @@ JSValueRef consoleInfoCallback(JSContextRef ctx, JSObjectRef function,
 {
     return consoleCallbackImpl(ctx, argumentCount, arguments, exception, "console.info");
 }
+

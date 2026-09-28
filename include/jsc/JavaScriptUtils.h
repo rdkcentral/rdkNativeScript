@@ -63,7 +63,8 @@ public:
   rtDeclareObject(rtHttpRequestEx, rtHttpRequest);
   rtHttpRequestEx(const rtString& url);
   rtHttpRequestEx(const rtObjectRef& options);
-  void onDownloadProgressImpl(double progress) final;
+~rtHttpRequestEx();
+void onDownloadProgressImpl(double progress) final;
   void onDownloadCompleteImpl(rtFileDownloadRequest* downloadRequest) final;
 };
 

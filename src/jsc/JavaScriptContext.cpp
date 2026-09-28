@@ -202,7 +202,7 @@ void JavaScriptContext::unloadAAMPJSBindingsLib()
     {
         dlclose(gAAMPJSBindings->PlayerLibHandle);
 	 if(!getenv("ETHAN_LOGGING_PIPE"))
-            dlclose(jscLibHandle);
+[O            dlclose(jscLibHandle);
 
     }
 }
@@ -398,6 +398,7 @@ void JavaScriptContext::registerUtils()
     m_JSRuntimeDownloadMetrics = new rtFunctionCallback(rtJSRuntimeDownloadMetrics, this);
     m_setExternalAppHandlerBinding = new rtFunctionCallback(rtSetExternalAppHandlerBinding, this);
     m_getRandomValuesBinding = new rtFunctionCallback(rtGetRandomValuesBinding, nullptr);
+
     add("webSocket", m_webSocketBinding.getPtr());
 #ifdef WS_SERVER_ENABLED
     if (mEnableWebSockerServer)
@@ -450,8 +451,8 @@ if (mModuleSettings.enablePlayer)
       };
     injectFun(mContext, "require", requireCallback);
 
-#ifdef USE_ETHANLOG
-    if (getenv("ETHAN_LOGGING_PIPE") != nullptr) {
+//#ifdef USE_ETHANLOG
+  //  if (getenv("ETHAN_LOGGING_PIPE") != nullptr) {
 
         injectFun(mContext, "__ethanLog", consoleLogCallback);
         injectFun(mContext, "__ethanWarn", consoleWarnCallback);
@@ -472,23 +473,63 @@ if (mModuleSettings.enablePlayer)
               };
 
               function getCallerLocation() {
-                  const stack = new Error().stack;
-                  if (!stack) return null;
-                  const lines = stack.split("\n");
-                  const callerLine = lines[2] || "";
-                  const match = callerLine.match(/([^\s@]+\.js:\d+:\d+)/);
-                  return match ? match[1] : null;
+                  var stack = new Error().stack;
+
+                  if (!stack)
+                      return null;
+
+                  var first = stack.indexOf('\n');
+                  if (first < 0)
+                      return null;
+
+                  var second = stack.indexOf('\n', first + 1);
+                  if (second < 0)
+                      return null;
+
+                  var third = stack.indexOf('\n', second + 1);
+
+                  var line = third >= 0
+                      ? stack.substring(second + 1, third)
+                      : stack.substring(second + 1);
+
+                  var js = line.indexOf('.js:');
+
+                  if (js < 0)
+                      return null;
+
+                  var start = line.lastIndexOf('@', js);
+
+                  if (start < 0)
+                      start = line.lastIndexOf(' ', js);
+
+                  start = start >= 0 ? start + 1 : 0;
+
+                  return line.substring(start);
               }
 
               function consoleMethod(methodName, original, ethanFn) {
                   return function() {
+
                       var caller = getCallerLocation();
-                      var args = Array.prototype.slice.call(arguments);
-                      if (caller) args.unshift('[' + caller + ']');
-                      if (original) original.apply(console, args);
-                      ethanFn.apply(null, args);
+
+                      if (original)
+                          original.apply(console, arguments);
+
+                      if (caller) {
+                          var args = new Array(arguments.length + 1);
+
+                          args[0] = '[' + caller + ']';
+
+                          for (var i = 0; i < arguments.length; i++)
+                              args[i + 1] = arguments[i];
+
+                          ethanFn.apply(null, args);
+                      } else {
+                          ethanFn.apply(null, arguments);
+                      }
                   };
               }
+
               console.log = consoleMethod('log', originalMethods.log, __ethanLog);
               console.warn = consoleMethod('warn', originalMethods.warn, __ethanWarn);
               console.error = consoleMethod('error', originalMethods.error, __ethanError);
@@ -510,8 +551,8 @@ if (mModuleSettings.enablePlayer)
         } else {
             NativeJSLogger::log(INFO, "Console extended - added ethanlog routing\n");
         }
-      }
-#endif
+    //  }
+//#endif
 
     if(mModuleSettings.enablePlayer)
     {
@@ -622,8 +663,8 @@ static std::string jsonEscape(const char* str)
 static std::string buildNetworkMetricPayload(const NetworkMetrics& net)
 {
     std::ostringstream params;
-    params << "{\"url\":\"" << jsonEscape(net.url.cString()) << "\"," 
-           << "\"method\":\"" << jsonEscape(net.method.cString()) << "\"," 
+    params << "{\"url\":\"" << jsonEscape(net.url.cString()) << "\","
+           << "\"method\":\"" << jsonEscape(net.method.cString()) << "\","
            << "\"statusCode\":" << net.statusCode << ","
            << "\"headers\":[";
 
@@ -670,10 +711,13 @@ void JavaScriptContext::onMetricsData (NetworkMetrics *net)
         return;
     }
 
-    const std::string params = buildNetworkMetricPayload(*net);
 
     #ifdef REMOTE_INSPECTOR_ENABLE
-    InspectorHTTPServer::singleton().sendNetworkMetric(mContext, params.c_str());
+    if (InspectorHTTPServer::singleton().hasActiveConnection())
+    {
+    const std::string params = buildNetworkMetricPayload(*net);
+    InspectorHTTPServer::singleton().sendNetworkMetric(mContext,params.c_str());
+    }
     #endif
 
     dumpNetworkMetricData(net, this->getUrl());
@@ -767,8 +811,16 @@ void JavaScriptContext::handleExternalApplication(const std::string& url)
     }
 }
 
+
 void JavaScriptContext::setNetworkCaptureEnabled(bool enabled)
 {
     std::lock_guard<std::mutex> lock(mNetworkMetricsMutex);
     mNetworkCaptureEnabled = enabled;
 }
+
+
+bool JavaScriptContext::isNetworkCaptureEnabled() const
+{
+    return mNetworkCaptureEnabled;
+}
+

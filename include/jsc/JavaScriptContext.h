@@ -84,7 +84,8 @@ class JavaScriptContext: public JavaScriptContextBase, public NetworkMetricsList
     rtMapObject* getNetworkMetricsData() const { return mNetworkMetricsData; }
     void dumpNetworkMetricData(NetworkMetrics *metrics, std::string appUrl);
     void setNetworkCaptureEnabled(bool enabled);
-
+    bool isNetworkCaptureEnabled() const;
+    std::mutex& getNetworkMetricsMutex() { return mNetworkMetricsMutex; }
     void setCreateApplicationStartTime(double time);
     void setCreateApplicationEndTime(double time,uint32_t id);
     virtual void setPlaybackStartTime(double time);
