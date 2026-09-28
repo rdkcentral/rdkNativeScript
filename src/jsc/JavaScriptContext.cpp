@@ -202,7 +202,7 @@ void JavaScriptContext::unloadAAMPJSBindingsLib()
     {
         dlclose(gAAMPJSBindings->PlayerLibHandle);
 	 if(!getenv("ETHAN_LOGGING_PIPE"))
-[O            dlclose(jscLibHandle);
+            dlclose(jscLibHandle);
 
     }
 }
