@@ -368,7 +368,6 @@ return;
           });
        }
      }
-[O
 rtDefineObject(rtHttpRequestEx, rtHttpRequest);
 
 rtError rtHttpGetBinding(int numArgs, const rtValue* args, rtValue* result, void* context)
