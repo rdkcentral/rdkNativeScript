@@ -29,6 +29,7 @@
 #include <utility>
 #include <rtValue.h>
 #include <rtObject.h>
+#include <NativeJSLocalStorage.h>
 
 #include <JavaScriptCore/JavaScript.h>
 #include <JavaScriptContextBase.h>
@@ -115,6 +116,7 @@ class JavaScriptContext: public JavaScriptContextBase, public NetworkMetricsList
 #endif
     JSContextGroupRef mContextGroup;
     JSGlobalContextRef mContext;
+    NativeJSLocalStorage mLocalStorage;
     PerformanceMetrics mPerformanceMetrics;
     rtMapObject* mNetworkMetricsData;
     std::mutex mNetworkMetricsMutex;

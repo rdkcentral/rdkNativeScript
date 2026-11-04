@@ -22,6 +22,8 @@
 #include <errno.h>
 
 #include <algorithm>
+#include <codecvt>
+#include <locale>
 #include <string>
 #include <vector>
 #include <utility>
@@ -71,6 +73,135 @@ JSContextGroupRef globalContextGroup()
 }
 
 JSGlobalContextRef gTopLevelContext = nullptr;
+
+namespace
+{
+JSStringRef makeJSString(const std::string &value)
+{
+    try
+    {
+        std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> converter;
+        const std::u16string utf16 = converter.from_bytes(value);
+        return JSStringCreateWithCharacters(
+            reinterpret_cast<const JSChar *>(utf16.data()), utf16.length());
+    }
+    catch (const std::range_error &)
+    {
+        return JSStringCreateWithUTF8CString("");
+    }
+}
+
+bool valueToString(JSContextRef context, JSValueRef value, std::string &result,
+                   JSValueRef *exception)
+{
+    JSStringRef string = JSValueToStringCopy(context, value, exception);
+    if (!string)
+        return false;
+
+    std::vector<char> buffer(JSStringGetMaximumUTF8CStringSize(string));
+    const std::size_t written = JSStringGetUTF8CString(
+        string, buffer.data(), buffer.size());
+    if (written > 0)
+        result.assign(buffer.data(), written - 1);
+    JSStringRelease(string);
+    return true;
+}
+
+JSValueRef storageError(JSContextRef context, JSValueRef *exception,
+                        const std::string &message)
+{
+    NativeJSLogger::log(ERROR, "NativeJSLocalStorage: %s\n", message.c_str());
+    if (exception)
+    {
+        JSStringRef text = makeJSString(message);
+        JSValueRef argument = JSValueMakeString(context, text);
+        *exception = JSObjectMakeError(context, 1, &argument, nullptr);
+        JSStringRelease(text);
+    }
+    return JSValueMakeUndefined(context);
+}
+
+NativeJSLocalStorage *storageFor(JSObjectRef thisObject)
+{
+    return static_cast<NativeJSLocalStorage *>(JSObjectGetPrivate(thisObject));
+}
+
+JSValueRef localStorageLoad(JSContextRef context, JSObjectRef,
+                            JSObjectRef thisObject, size_t,
+                            const JSValueRef[], JSValueRef *exception)
+{
+    NativeJSLocalStorage *storage = storageFor(thisObject);
+    if (!storage)
+        return storageError(context, exception, "localStorage is unavailable");
+
+    std::string snapshot;
+    std::string error;
+    if (!storage->load(snapshot, error))
+        return storageError(context, exception, error);
+
+    JSStringRef result = makeJSString(snapshot);
+    JSValueRef jsValue = JSValueMakeString(context, result);
+    JSStringRelease(result);
+    return jsValue;
+}
+
+JSValueRef localStorageSave(JSContextRef context, JSObjectRef,
+                            JSObjectRef thisObject, size_t argumentCount,
+                            const JSValueRef arguments[], JSValueRef *exception)
+{
+    NativeJSLocalStorage *storage = storageFor(thisObject);
+    if (!storage)
+        return storageError(context, exception, "localStorage is unavailable");
+
+    if (!argumentCount)
+        return storageError(context, exception, "localStorage snapshot is required");
+
+    std::string snapshot;
+    if (!valueToString(context, arguments[0], snapshot, exception))
+        return JSValueMakeUndefined(context);
+
+    std::string error;
+    if (!storage->save(snapshot, error))
+        return storageError(context, exception, error);
+    return JSValueMakeUndefined(context);
+}
+
+void installLocalStorage(JSContextRef context, NativeJSLocalStorage *storage)
+{
+    static JSClassRef storageClass = [] {
+        JSClassDefinition definition = kJSClassDefinitionEmpty;
+        definition.className = "NativeJSLocalStorage";
+        return JSClassCreate(&definition);
+    }();
+
+    JSObjectRef object = JSObjectMake(context, storageClass, storage);
+    const std::pair<const char *, JSObjectCallAsFunctionCallback> methods[] = {
+        { "load", localStorageLoad },
+        { "save", localStorageSave }
+    };
+
+    for (const auto &method : methods)
+    {
+        JSStringRef name = JSStringCreateWithUTF8CString(method.first);
+        JSObjectRef function = JSObjectMakeFunctionWithCallback(
+            context, name, method.second);
+        JSObjectSetProperty(context, object, name, function,
+                            kJSPropertyAttributeReadOnly |
+                                kJSPropertyAttributeDontDelete,
+                            nullptr);
+        JSStringRelease(name);
+    }
+
+    JSObjectRef global = JSContextGetGlobalObject(context);
+    JSStringRef name = JSStringCreateWithUTF8CString("__nativeLocalStorage");
+    JSObjectSetProperty(context, global, name, object,
+                        kJSPropertyAttributeReadOnly |
+                            kJSPropertyAttributeDontDelete |
+                            kJSPropertyAttributeDontEnum,
+                        nullptr);
+    JSStringRelease(name);
+}
+}
 
 JavaScriptContext::JavaScriptContext(JavaScriptContextFeatures& features, std::string url, IJavaScriptEngine* jsEngine):JavaScriptContextBase(features, url, jsEngine)
 {
@@ -380,6 +511,8 @@ void JavaScriptContext::processKeyEvent(struct JavaScriptKeyDetails& details, bo
 
 void JavaScriptContext::registerUtils()
 {
+    installLocalStorage(mContext, &mLocalStorage);
+
     m_webSocketBinding = new rtFunctionCallback(rtWebSocketBinding, nullptr);
 #ifdef WS_SERVER_ENABLED
     if (mEnableWebSockerServer)
