@@ -175,22 +175,57 @@ catch(err)
 
 class LocalStorage {
     constructor() {
-        this.data = {};
+		this.native = typeof __nativeLocalStorage === "undefined"
+			? null
+			: __nativeLocalStorage;
+		this.data = Object.create(null);
+		this.reload();
+	}
+
+	reload() {
+		if (!this.native)
+			return;
+		let saved;
+		try {
+			saved = JSON.parse(this.native.load());
+		} catch (err) {
+			saved = null;
+		}
+		const data = Object.create(null);
+		if (saved && typeof saved === "object" && !Array.isArray(saved)) {
+			for (const key of Object.keys(saved))
+				data[key] = String(saved[key]);
+		}
+		this.data = data;
+	}
+
+	persist() {
+		if (this.native)
+			this.native.save(JSON.stringify(this.data));
     }
 
     getItem(key) {
-        return this.data[key] || null;
+		key = String(key);
+		return Object.prototype.hasOwnProperty.call(this.data, key)
+			? this.data[key]
+			: null;
     }
     setItem(key, value) {
-        this.data[key] = String(value);
+		key = String(key);
+		value = String(value);
+		this.data[key] = value;
+		this.persist();
     }
 
     removeItem(key) {
+		key = String(key);
         delete this.data[key];
+		this.persist();
     }
 
     clear() {
-        this.data = {};
+		this.data = Object.create(null);
+		this.persist();
     }
 
     get length() {
@@ -199,9 +234,13 @@ class LocalStorage {
 
     key(index) {
         const keys = Object.keys(this.data);
-        return keys[index] || null;
+		return keys[index] === undefined ? null : keys[index];
     }
 }
 
 const localStorage = new LocalStorage();
+if (typeof window !== "undefined")
+	window.localStorage = localStorage;
+if (typeof globalThis !== "undefined")
+	globalThis.localStorage = localStorage;
 
