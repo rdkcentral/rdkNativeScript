@@ -122,7 +122,10 @@ bool JavaScriptContextBase::runFile(const char *file, const char* args, bool isA
     bool ret = evaluateScript(scriptToRun.c_str(), isApplication?file:nullptr, args, isApplication);
 #ifdef REMOTE_INSPECTOR_ENABLE
     // Register every file-based script so it shows up in the Sources panel,
-    if (ret) InspectorHTTPServer::singleton().registerScript(file, scriptToRun.c_str());
+    if (ret) {
+        if (auto* inspector = InspectorHTTPServer::runningInstance())
+            inspector->registerScript(file, scriptToRun.c_str());
+    }
 #endif
     return ret;
 }
