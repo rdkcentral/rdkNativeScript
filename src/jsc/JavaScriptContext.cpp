@@ -214,14 +214,16 @@ JavaScriptContext::JavaScriptContext(JavaScriptContextFeatures& features, std::s
       gTopLevelContext = mContext;
 
 #ifdef REMOTE_INSPECTOR_ENABLE
+    if (auto* inspector = InspectorHTTPServer::runningInstance()) {
       // Register this context with the web inspector server
-      InspectorHTTPServer::singleton().registerContext(gTopLevelContext,
+    inspector->registerContext(gTopLevelContext,
                                                        "RDK NativeScript",
-                                                       "rdknativescript://main");
+                                                       "rdknativescript://main",
+                                                       [this]() { setNetworkCaptureEnabled(false); });
 
       // Register a reload callback so the inspector's Reload button re-executes
       // the application entry script inside the existing JSC context.
-      InspectorHTTPServer::singleton().setReloadCallback([this]() {
+    inspector->setReloadCallback([this]() {
           if (!mApplicationUrl.empty()) {
               rtLogInfo("Web Inspector: Reloading application: %s\n", mApplicationUrl.c_str());
               runFile(mApplicationUrl.c_str(), nullptr, true);
@@ -230,6 +232,7 @@ JavaScriptContext::JavaScriptContext(JavaScriptContextFeatures& features, std::s
           }
       });
       rtLogInfo("Web Inspector: Context registered\n");
+    }
 #endif
     }
     registerUtils();
@@ -271,8 +274,10 @@ if (mModuleSettings.enablePlayer)
             JSSynchronousGarbageCollectForDebugging(gTopLevelContext);
         }
 #ifdef REMOTE_INSPECTOR_ENABLE
-        InspectorHTTPServer::singleton().setReloadCallback(nullptr);
-        InspectorHTTPServer::singleton().unregisterContext(gTopLevelContext);
+    if (auto* inspector = InspectorHTTPServer::runningInstance()) {
+        inspector->setReloadCallback(nullptr);
+        inspector->unregisterContext(gTopLevelContext);
+    }
 #endif
         gTopLevelContext = nullptr;
     }
@@ -904,4 +909,10 @@ void JavaScriptContext::setNetworkCaptureEnabled(bool enabled)
 {
     std::lock_guard<std::mutex> lock(mNetworkMetricsMutex);
     mNetworkCaptureEnabled = enabled;
+}
+
+bool JavaScriptContext::isNetworkCaptureEnabled() const
+{
+    std::lock_guard<std::mutex> lock(mNetworkMetricsMutex);
+    return mNetworkCaptureEnabled;
 }

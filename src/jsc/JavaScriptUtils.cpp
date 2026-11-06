@@ -70,7 +70,6 @@ std::thread::id gMainThreadId;
 
 static std::list<std::function<void ()>> gPendingFun;
 static std::mutex gDispatchMutex;
-bool envValue = std::getenv("NATIVEJS_DUMP_NETWORKMETRIC") != nullptr || std::getenv("ETHAN_LOGGING_PIPE") != nullptr;
 void TimeoutQueue::pushTimeouts(const std::vector<TimeoutInfo*>& timerVec)
 {
     if (!timerVec.size())
@@ -162,14 +161,16 @@ void assertIsMainThread()
   assert(std::this_thread::get_id() == gMainThreadId);
 }
 
-  rtHttpRequestEx::rtHttpRequestEx(const rtString& url)
+  rtHttpRequestEx::rtHttpRequestEx(const rtString& url, JavaScriptContext* context)
     : rtHttpRequest(url)
+    , mJscContext(context)
     , mRequestStartTime(std::chrono::system_clock::now())
   {
   }
 
-  rtHttpRequestEx::rtHttpRequestEx(const rtObjectRef& options)
+  rtHttpRequestEx::rtHttpRequestEx(const rtObjectRef& options, JavaScriptContext* context)
     : rtHttpRequest(options)
+    , mJscContext(context)
     , mRequestStartTime(std::chrono::system_clock::now())
   {
   }
@@ -216,7 +217,7 @@ void assertIsMainThread()
       resp->setHeaders(downloadRequest->headerData(), downloadRequest->headerDataSize());
       resp->setDownloadedData(downloadRequest->downloadedData(), downloadRequest->downloadedDataSize());
 
-      if (mMetricsListener && envValue)
+      if (mMetricsListener && mJscContext && mJscContext->isNetworkCaptureEnabled())
       {
  	rtLogWarn("metriclistener");
         NetworkMetrics *metrics = new NetworkMetrics();
@@ -281,7 +282,6 @@ rtDefineObject(rtHttpRequestEx, rtHttpRequest);
 
 rtError rtHttpGetBinding(int numArgs, const rtValue* args, rtValue* result, void* context)
 {
-  UNUSED_PARAM(context);
   if (numArgs < 1) {
     rtLogError("%s: invalid args", __FUNCTION__);
     return RT_ERROR_INVALID_ARG;
@@ -290,11 +290,12 @@ rtError rtHttpGetBinding(int numArgs, const rtValue* args, rtValue* result, void
   JavaScriptContext* jscContext = (JavaScriptContext*)context;
   if (!jscContext) {
     rtLogError("context is null!");
+    return RT_FAIL;
   }
 
   rtHttpRequest* req;
   if (args[0].getType() == RT_stringType) {
-    req = new rtHttpRequestEx(args[0].toString());
+    req = new rtHttpRequestEx(args[0].toString(), jscContext);
   }
   else {
     if (args[0].getType() != RT_objectType) {
@@ -302,7 +303,7 @@ rtError rtHttpGetBinding(int numArgs, const rtValue* args, rtValue* result, void
       return RT_ERROR_INVALID_ARG;
     }
     rtLogInfo("new rtHttpRequest");
-    req = new rtHttpRequestEx(args[0].toObject());
+    req = new rtHttpRequestEx(args[0].toObject(), jscContext);
   }
 
   if (numArgs > 1 && args[1].getType() == RT_functionType) {
