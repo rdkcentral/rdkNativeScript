@@ -164,11 +164,13 @@ void assertIsMainThread()
 
   rtHttpRequestEx::rtHttpRequestEx(const rtString& url)
     : rtHttpRequest(url)
+    , mRequestStartTime(std::chrono::system_clock::now())
   {
   }
 
   rtHttpRequestEx::rtHttpRequestEx(const rtObjectRef& options)
     : rtHttpRequest(options)
+    , mRequestStartTime(std::chrono::system_clock::now())
   {
   }
 
@@ -240,6 +242,23 @@ void assertIsMainThread()
         	}
     	    }
 	}
+      const char *responseHeaderData = downloadRequest->headerData();
+      const size_t responseHeaderSize = downloadRequest->headerDataSize();
+      rtValue responseHeaders;
+      responseHeaders.setString(rtString(responseHeaderData ? responseHeaderData : "",
+                                         responseHeaderSize));
+      metrics->timeMetricsData[rtString("harResponseHeadersRaw")] = responseHeaders;
+      rtValue responseHeaderBytes;
+      responseHeaderBytes.setString(std::to_string(responseHeaderSize).c_str());
+      metrics->timeMetricsData[rtString("harResponseHeadersSizeBytes")] = responseHeaderBytes;
+      rtValue responseBodyBytes;
+      responseBodyBytes.setString(std::to_string(downloadRequest->downloadedDataSize()).c_str());
+      metrics->timeMetricsData[rtString("harResponseBodySizeBytes")] = responseBodyBytes;
+      const auto requestStartTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+          mRequestStartTime.time_since_epoch()).count();
+      rtValue requestStartTime;
+      requestStartTime.setString(std::to_string(requestStartTimeMs).c_str());
+      metrics->timeMetricsData[rtString("requestStartTimeEpochMs")] = requestStartTime;
 
 	mMetricsListener->onMetricsData(metrics);
       }

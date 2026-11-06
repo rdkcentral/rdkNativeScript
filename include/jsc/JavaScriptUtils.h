@@ -65,6 +65,9 @@ public:
   rtHttpRequestEx(const rtObjectRef& options);
   void onDownloadProgressImpl(double progress) final;
   void onDownloadCompleteImpl(rtFileDownloadRequest* downloadRequest) final;
+
+private:
+  std::chrono::system_clock::time_point mRequestStartTime;
 };
 
 struct TimeoutInfo
