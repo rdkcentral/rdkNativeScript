@@ -598,6 +598,28 @@
             return out;
         }
 
+        function harParseResponseHeaders(rawHeaders) {
+            const headers = [];
+            let statusText = '';
+            for (const line of String(rawHeaders || '').split(/\r?\n/)) {
+                if (!line) continue;
+                const statusLine = line.match(/^HTTP\/\S+\s+\d{3}(?:\s+(.*))?$/i);
+                if (statusLine) {
+                    statusText = statusLine[1] || '';
+                    headers.length = 0;
+                    continue;
+                }
+                const separator = line.indexOf(':');
+                if (separator > 0) {
+                    headers.push({
+                        name: line.slice(0, separator).trim(),
+                        value: line.slice(separator + 1).trim()
+                    });
+                }
+            }
+            return { statusText, headers };
+        }
+
         function harParseQueryString(url) {
             const out = [];
             const q = String(url || '').indexOf('?');
@@ -637,6 +659,12 @@
             const status = metric && metric.statusCode !== undefined ? harToNumber(metric.statusCode) : 0;
             const flat = harFlattenTimings(metric ? metric.timeMetricsData : null);
             const timings = harBuildTimings(flat);
+            const requestStartTime = harToNumber(flat.requestStartTimeEpochMs);
+            const parsedResponse = harParseResponseHeaders(flat.harResponseHeadersRaw);
+            const responseHeadersSize = harToNumber(flat.harResponseHeadersSizeBytes);
+            const responseBodySize = harToNumber(flat.harResponseBodySizeBytes);
+            const contentType = parsedResponse.headers.find(header => header.name.toLowerCase() === 'content-type');
+            const redirectLocation = parsedResponse.headers.find(header => header.name.toLowerCase() === 'location');
 
             let total = harPickTiming(flat, ['total', 'totalTime', 'totalDownloadTimeMs', 'totaltime']);
             if (total < 0) {
@@ -648,7 +676,9 @@
             }
 
             return {
-                startedDateTime: new Date().toISOString(),
+                startedDateTime: requestStartTime >= 0
+                    ? new Date(requestStartTime).toISOString()
+                    : new Date().toISOString(),
                 time: total,
                 request: {
                     method: method,
@@ -662,14 +692,17 @@
                 },
                 response: {
                     status: status,
-                    statusText: '',
+                    statusText: parsedResponse.statusText,
                     httpVersion: 'HTTP/1.1',
                     cookies: [],
-                    headers: [],
-                    content: { size: 0, mimeType: '' },
-                    redirectURL: '',
-                    headersSize: -1,
-                    bodySize: -1
+                    headers: parsedResponse.headers,
+                    content: {
+                        size: responseBodySize >= 0 ? responseBodySize : 0,
+                        mimeType: contentType ? contentType.value.split(';')[0].trim() : ''
+                    },
+                    redirectURL: redirectLocation ? redirectLocation.value : '',
+                    headersSize: responseHeadersSize >= 0 ? responseHeadersSize : -1,
+                    bodySize: responseBodySize >= 0 ? responseBodySize : -1
                 },
                 cache: {},
                 timings: timings

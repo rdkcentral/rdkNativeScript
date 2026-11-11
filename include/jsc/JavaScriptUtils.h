@@ -57,14 +57,20 @@ protected:
 };
 }
 
+class JavaScriptContext;
+
 class rtHttpRequestEx : public rtHttpRequest
 {
 public:
   rtDeclareObject(rtHttpRequestEx, rtHttpRequest);
-  rtHttpRequestEx(const rtString& url);
-  rtHttpRequestEx(const rtObjectRef& options);
+  rtHttpRequestEx(const rtString& url, JavaScriptContext* context);
+  rtHttpRequestEx(const rtObjectRef& options, JavaScriptContext* context);
   void onDownloadProgressImpl(double progress) final;
   void onDownloadCompleteImpl(rtFileDownloadRequest* downloadRequest) final;
+
+private:
+  JavaScriptContext* mJscContext { nullptr };
+  std::chrono::system_clock::time_point mRequestStartTime;
 };
 
 struct TimeoutInfo
