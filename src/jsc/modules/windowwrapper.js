@@ -244,3 +244,12 @@ if (typeof window !== "undefined")
 if (typeof globalThis !== "undefined")
 	globalThis.localStorage = localStorage;
 
+if (typeof window.getComputedStyle !== "function") {
+    window.getComputedStyle = function(element) {
+        return (element && element.style) || {};
+    };
+}
+
+if (typeof globalThis.getComputedStyle !== "function") {
+    globalThis.getComputedStyle = window.getComputedStyle;
+}

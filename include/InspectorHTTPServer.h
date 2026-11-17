@@ -31,6 +31,7 @@
 class InspectorHTTPServer {
 public:
     static InspectorHTTPServer& singleton();
+    static InspectorHTTPServer* runningInstance();
     ~InspectorHTTPServer();
 
     bool start(const char* address, int port);
@@ -38,7 +39,8 @@ public:
 
     bool isRunning() const { return m_server != nullptr; }
 
-    void registerContext(JSGlobalContextRef context, const char* title, const char* url);
+    void registerContext(JSGlobalContextRef context, const char* title, const char* url,
+                         std::function<void()> disableNetworkCapture = {});
 
     void unregisterContext(JSGlobalContextRef context);
 
@@ -53,6 +55,7 @@ public:
     void setReloadCallback(std::function<void()> callback);
 
 private:
+    static InspectorHTTPServer* s_instance;
     InspectorHTTPServer();
 
     static void onHTTPRequest(SoupServer* server, SoupServerMessage* msg,
@@ -80,6 +83,7 @@ private:
         std::string title;
         std::string url;
         uint64_t id;
+        std::function<void()> disableNetworkCapture;
     };
 
     struct ScriptInfo {

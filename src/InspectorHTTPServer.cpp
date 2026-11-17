@@ -72,10 +72,18 @@ static std::string escapeJSON(const char* str)
     return escaped;
 }
 
+InspectorHTTPServer* InspectorHTTPServer::s_instance = nullptr;
+
 InspectorHTTPServer& InspectorHTTPServer::singleton()
 {
     static InspectorHTTPServer instance;
+    s_instance = &instance;
     return instance;
+}
+
+InspectorHTTPServer* InspectorHTTPServer::runningInstance()
+{
+    return s_instance && s_instance->isRunning() ? s_instance : nullptr;
 }
 
 InspectorHTTPServer::InspectorHTTPServer()
@@ -89,6 +97,7 @@ InspectorHTTPServer::InspectorHTTPServer()
 InspectorHTTPServer::~InspectorHTTPServer()
 {
     stop();
+    s_instance = nullptr;
 }
 
 bool InspectorHTTPServer::sendText(SoupWebsocketConnection* connection, const std::string& message)
@@ -174,6 +183,10 @@ bool InspectorHTTPServer::start(const char* address, int port)
 
 void InspectorHTTPServer::stop()
 {
+    for (const auto& context : m_contexts) {
+        if (context.second.disableNetworkCapture)
+            context.second.disableNetworkCapture();
+    }
     if (m_server) {
         soup_server_disconnect(m_server);
         g_object_unref(m_server);
@@ -181,17 +194,26 @@ void InspectorHTTPServer::stop()
         NativeJSLogger::log(INFO, "InspectorHTTPServer: Stopped\n");
     }
 
-    std::lock_guard<std::mutex> connectionsLock(m_connectionsMutex);
-    for (auto& pair : m_connections) {
-        g_object_unref(pair.first);
+    {
+        std::lock_guard<std::mutex> connectionsLock(m_connectionsMutex);
+        for (auto& pair : m_connections) {
+            g_object_unref(pair.first);
+        }
+        m_connections.clear();
     }
 
     m_contexts.clear();
-    m_connections.clear();
+    m_reloadCallback = nullptr;
+    {
+        std::lock_guard<std::mutex> scriptsLock(m_scriptsMutex);
+        m_scripts.clear();
+    }
 }
 
-void InspectorHTTPServer::registerContext(JSGlobalContextRef context, const char* title, const char* url)
+void InspectorHTTPServer::registerContext(JSGlobalContextRef context, const char* title, const char* url,
+                                         std::function<void()> disableNetworkCapture)
 {
+    if (!isRunning()) return;
     NativeJSLogger::log(DEBUG, "InspectorHTTPServer: registerContext called - context=%p, title=%s, url=%s\n",
                        context, title ? title : "null", url ? url : "null");
     
@@ -205,6 +227,7 @@ void InspectorHTTPServer::registerContext(JSGlobalContextRef context, const char
     info.title = title ? title : "JavaScript Context";
     info.url = url ? url : "rdknativescript://context";
     info.id = m_nextContextId++;
+    info.disableNetworkCapture = std::move(disableNetworkCapture);
     
     m_contexts[context] = info;
     
@@ -273,7 +296,7 @@ void InspectorHTTPServer::setReloadCallback(std::function<void()> callback)
 
 void InspectorHTTPServer::registerScript(const char* url, const char* source)
 {
-    if (!url || !source) return;
+    if (!isRunning() || !url || !source) return;
 
     // Skip tiny internal snippets.
     if (strlen(source) < 10) return;
@@ -489,13 +512,28 @@ void InspectorHTTPServer::onWebSocketClosed(SoupWebsocketConnection* connection,
 {
     InspectorHTTPServer* self = static_cast<InspectorHTTPServer*>(userData);
 
-    std::lock_guard<std::mutex> connectionsLock(self->m_connectionsMutex);
-    auto it = self->m_connections.find(connection);
-    if (it != self->m_connections.end()) {
-        NativeJSLogger::log(DEBUG, "InspectorHTTPServer: WebSocket connection closed\n");
+    JSGlobalContextRef context = nullptr;
+    {
+        std::lock_guard<std::mutex> connectionsLock(self->m_connectionsMutex);
+        auto it = self->m_connections.find(connection);
+        if (it == self->m_connections.end())
+            return;
+        context = it->second;
         self->m_connections.erase(it);
-        g_object_unref(connection);
+        for (const auto& remaining : self->m_connections) {
+            if (remaining.second == context) {
+                context = nullptr;
+                break;
+            }
+        }
     }
+    if (context) {
+        auto info = self->m_contexts.find(context);
+        if (info != self->m_contexts.end() && info->second.disableNetworkCapture)
+            info->second.disableNetworkCapture();
+    }
+    NativeJSLogger::log(DEBUG, "InspectorHTTPServer: WebSocket connection closed\n");
+    g_object_unref(connection);
 }
 
 void InspectorHTTPServer::handleCDPMessage(SoupWebsocketConnection* connection, const char* message)
