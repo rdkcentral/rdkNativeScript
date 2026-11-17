@@ -31,6 +31,7 @@
 class InspectorHTTPServer {
 public:
     static InspectorHTTPServer& singleton();
+    static InspectorHTTPServer* runningInstance();
     ~InspectorHTTPServer();
 
     bool start(const char* address, int port);
@@ -38,11 +39,15 @@ public:
 
     bool isRunning() const { return m_server != nullptr; }
 
-    void registerContext(JSGlobalContextRef context, const char* title, const char* url);
+    void registerContext(JSGlobalContextRef context, const char* title, const char* url,
+                         std::function<void()> disableNetworkCapture = {});
 
     void unregisterContext(JSGlobalContextRef context);
 
     void sendConsoleMessage(JSContextRef context, const char* level, const char* text);
+
+    // Streams a single network metric to the connected frontend (no server-side storage).
+    void sendNetworkMetric(JSContextRef context, const char* paramsJson);
 
     void registerScript(const char* url, const char* source);
 
@@ -50,6 +55,7 @@ public:
     void setReloadCallback(std::function<void()> callback);
 
 private:
+    static InspectorHTTPServer* s_instance;
     InspectorHTTPServer();
 
     static void onHTTPRequest(SoupServer* server, SoupServerMessage* msg,
@@ -69,12 +75,15 @@ private:
     std::string generateTargetListJSON();
 
     void handleCDPMessage(SoupWebsocketConnection* connection, const char* message);
+    bool sendText(SoupWebsocketConnection* connection, const std::string& message);
+    SoupWebsocketConnection* findConnectionForContext(JSGlobalContextRef context);
 
     struct ContextInfo {
         JSGlobalContextRef context;
         std::string title;
         std::string url;
         uint64_t id;
+        std::function<void()> disableNetworkCapture;
     };
 
     struct ScriptInfo {
@@ -87,6 +96,8 @@ private:
     int m_port;
     std::map<JSGlobalContextRef, ContextInfo> m_contexts;
     std::map<SoupWebsocketConnection*, JSGlobalContextRef> m_connections;
+    std::mutex m_connectionsMutex;
+    std::mutex m_sendMutex;
     std::map<std::string, ScriptInfo> m_scripts;
     std::mutex m_scriptsMutex;
     uint64_t m_nextContextId;
@@ -95,4 +106,3 @@ private:
 };
 
 #endif // REMOTE_INSPECTOR_ENABLE
-

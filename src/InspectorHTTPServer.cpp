@@ -72,10 +72,18 @@ static std::string escapeJSON(const char* str)
     return escaped;
 }
 
+InspectorHTTPServer* InspectorHTTPServer::s_instance = nullptr;
+
 InspectorHTTPServer& InspectorHTTPServer::singleton()
 {
     static InspectorHTTPServer instance;
+    s_instance = &instance;
     return instance;
+}
+
+InspectorHTTPServer* InspectorHTTPServer::runningInstance()
+{
+    return s_instance && s_instance->isRunning() ? s_instance : nullptr;
 }
 
 InspectorHTTPServer::InspectorHTTPServer()
@@ -89,6 +97,33 @@ InspectorHTTPServer::InspectorHTTPServer()
 InspectorHTTPServer::~InspectorHTTPServer()
 {
     stop();
+    s_instance = nullptr;
+}
+
+bool InspectorHTTPServer::sendText(SoupWebsocketConnection* connection, const std::string& message)
+{
+    if (!connection) {
+        return false;
+    }
+
+    std::lock_guard<std::mutex> sendLock(m_sendMutex);
+    if (soup_websocket_connection_get_state(connection) != SOUP_WEBSOCKET_STATE_OPEN) {
+        return false;
+    }
+
+    soup_websocket_connection_send_text(connection, message.c_str());
+    return true;
+}
+
+SoupWebsocketConnection* InspectorHTTPServer::findConnectionForContext(JSGlobalContextRef context)
+{
+    std::lock_guard<std::mutex> connectionsLock(m_connectionsMutex);
+    for (const auto& pair : m_connections) {
+        if (pair.second == context) {
+            return pair.first;
+        }
+    }
+    return nullptr;
 }
 
 bool InspectorHTTPServer::start(const char* address, int port)
@@ -148,23 +183,37 @@ bool InspectorHTTPServer::start(const char* address, int port)
 
 void InspectorHTTPServer::stop()
 {
+    for (const auto& context : m_contexts) {
+        if (context.second.disableNetworkCapture)
+            context.second.disableNetworkCapture();
+    }
     if (m_server) {
         soup_server_disconnect(m_server);
         g_object_unref(m_server);
         m_server = nullptr;
         NativeJSLogger::log(INFO, "InspectorHTTPServer: Stopped\n");
     }
-    
-    for (auto& pair : m_connections) {
-        g_object_unref(pair.first);
+
+    {
+        std::lock_guard<std::mutex> connectionsLock(m_connectionsMutex);
+        for (auto& pair : m_connections) {
+            g_object_unref(pair.first);
+        }
+        m_connections.clear();
     }
-    
+
     m_contexts.clear();
-    m_connections.clear();
+    m_reloadCallback = nullptr;
+    {
+        std::lock_guard<std::mutex> scriptsLock(m_scriptsMutex);
+        m_scripts.clear();
+    }
 }
 
-void InspectorHTTPServer::registerContext(JSGlobalContextRef context, const char* title, const char* url)
+void InspectorHTTPServer::registerContext(JSGlobalContextRef context, const char* title, const char* url,
+                                         std::function<void()> disableNetworkCapture)
 {
+    if (!isRunning()) return;
     NativeJSLogger::log(DEBUG, "InspectorHTTPServer: registerContext called - context=%p, title=%s, url=%s\n",
                        context, title ? title : "null", url ? url : "null");
     
@@ -178,6 +227,7 @@ void InspectorHTTPServer::registerContext(JSGlobalContextRef context, const char
     info.title = title ? title : "JavaScript Context";
     info.url = url ? url : "rdknativescript://context";
     info.id = m_nextContextId++;
+    info.disableNetworkCapture = std::move(disableNetworkCapture);
     
     m_contexts[context] = info;
     
@@ -200,25 +250,13 @@ void InspectorHTTPServer::sendConsoleMessage(JSContextRef context, const char* l
     
     JSGlobalContextRef globalContext = const_cast<JSGlobalContextRef>(context);
     
-    SoupWebsocketConnection* targetConnection = nullptr;
-    for (const auto& pair : m_connections) {
-        if (pair.second == globalContext) {
-            targetConnection = pair.first;
-            break;
-        }
-    }
-    
+    SoupWebsocketConnection* targetConnection = findConnectionForContext(globalContext);
+
     if (!targetConnection) {
         NativeJSLogger::log(DEBUG, "InspectorHTTPServer: No WebSocket connection found for this context\n");
         return;
     }
-    
-    SoupWebsocketState state = soup_websocket_connection_get_state(targetConnection);
-    if (state != SOUP_WEBSOCKET_STATE_OPEN) {
-        NativeJSLogger::log(DEBUG, "InspectorHTTPServer: WebSocket connection is not open (state=%d)\n", state);
-        return;
-    }
-    
+
     const std::string escapedText = escapeJSON(text);
     
     std::ostringstream event;
@@ -230,8 +268,25 @@ void InspectorHTTPServer::sendConsoleMessage(JSContextRef context, const char* l
           << "}}";
     
     std::string eventStr = event.str();
-    soup_websocket_connection_send_text(targetConnection, eventStr.c_str());
-    
+    if (!sendText(targetConnection, eventStr)) {
+        NativeJSLogger::log(DEBUG, "InspectorHTTPServer: WebSocket connection is not open for console event\n");
+    }
+}
+
+void InspectorHTTPServer::sendNetworkMetric(JSContextRef context, const char* paramsJson)
+{
+    if (!context || !paramsJson) return;
+
+    JSGlobalContextRef globalContext = const_cast<JSGlobalContextRef>(context);
+
+    SoupWebsocketConnection* targetConnection = findConnectionForContext(globalContext);
+
+    if (!targetConnection) return;
+
+    std::ostringstream event;
+    event << "{\"method\":\"JSRuntime.networkMetric\",\"params\":" << paramsJson << "}";
+    std::string eventStr = event.str();
+    sendText(targetConnection, eventStr);
 }
 
 void InspectorHTTPServer::setReloadCallback(std::function<void()> callback)
@@ -241,7 +296,7 @@ void InspectorHTTPServer::setReloadCallback(std::function<void()> callback)
 
 void InspectorHTTPServer::registerScript(const char* url, const char* source)
 {
-    if (!url || !source) return;
+    if (!isRunning() || !url || !source) return;
 
     // Skip tiny internal snippets.
     if (strlen(source) < 10) return;
@@ -270,11 +325,9 @@ void InspectorHTTPServer::registerScript(const char* url, const char* source)
         << "}}";
     std::string evtStr = evt.str();
 
+    std::lock_guard<std::mutex> connectionsLock(m_connectionsMutex);
     for (const auto& pair : m_connections) {
-        SoupWebsocketConnection* conn = pair.first;
-        if (soup_websocket_connection_get_state(conn) == SOUP_WEBSOCKET_STATE_OPEN) {
-            soup_websocket_connection_send_text(conn, evtStr.c_str());
-        }
+        sendText(pair.first, evtStr);
     }
 }
 
@@ -416,7 +469,10 @@ void InspectorHTTPServer::onWebSocketRequest(SoupServer* server, SoupServerMessa
         
         if (targetContext) {
             g_object_ref(connection);
-            self->m_connections[connection] = targetContext;
+            {
+                std::lock_guard<std::mutex> connectionsLock(self->m_connectionsMutex);
+                self->m_connections[connection] = targetContext;
+            }
             
             g_signal_connect(connection, "message", G_CALLBACK(onWebSocketMessage), userData);
             g_signal_connect(connection, "closed", G_CALLBACK(onWebSocketClosed), userData);
@@ -455,25 +511,44 @@ void InspectorHTTPServer::onWebSocketMessage(SoupWebsocketConnection* connection
 void InspectorHTTPServer::onWebSocketClosed(SoupWebsocketConnection* connection, gpointer userData)
 {
     InspectorHTTPServer* self = static_cast<InspectorHTTPServer*>(userData);
-    
-    auto it = self->m_connections.find(connection);
-    if (it != self->m_connections.end()) {
-        NativeJSLogger::log(DEBUG, "InspectorHTTPServer: WebSocket connection closed\n");
+
+    JSGlobalContextRef context = nullptr;
+    {
+        std::lock_guard<std::mutex> connectionsLock(self->m_connectionsMutex);
+        auto it = self->m_connections.find(connection);
+        if (it == self->m_connections.end())
+            return;
+        context = it->second;
         self->m_connections.erase(it);
-        g_object_unref(connection);
+        for (const auto& remaining : self->m_connections) {
+            if (remaining.second == context) {
+                context = nullptr;
+                break;
+            }
+        }
     }
+    if (context) {
+        auto info = self->m_contexts.find(context);
+        if (info != self->m_contexts.end() && info->second.disableNetworkCapture)
+            info->second.disableNetworkCapture();
+    }
+    NativeJSLogger::log(DEBUG, "InspectorHTTPServer: WebSocket connection closed\n");
+    g_object_unref(connection);
 }
 
 void InspectorHTTPServer::handleCDPMessage(SoupWebsocketConnection* connection, const char* message)
 {
-    auto it = m_connections.find(connection);
-    if (it == m_connections.end()) {
-        NativeJSLogger::log(DEBUG, "InspectorHTTPServer: No context for connection\n");
-        return;
+    JSGlobalContextRef context = nullptr;
+    {
+        std::lock_guard<std::mutex> connectionsLock(m_connectionsMutex);
+        auto it = m_connections.find(connection);
+        if (it == m_connections.end()) {
+            NativeJSLogger::log(DEBUG, "InspectorHTTPServer: No context for connection\n");
+            return;
+        }
+        context = it->second;
     }
-    
-    JSGlobalContextRef context = it->second;
-    
+
     std::string msg(message);
     
     size_t idPos = msg.find("\"id\":");
@@ -505,7 +580,7 @@ void InspectorHTTPServer::handleCDPMessage(SoupWebsocketConnection* connection, 
                       << "\"name\":\"RDK NativeScript\""
                       << "}}}";
         std::string eventStr = contextCreated.str();
-        soup_websocket_connection_send_text(connection, eventStr.c_str());
+        sendText(connection, eventStr);
     }
     else if (method == "Debugger.enable" || 
         method == "Console.enable" || method == "Runtime.runIfWaitingForDebugger" ||
@@ -531,7 +606,7 @@ void InspectorHTTPServer::handleCDPMessage(SoupWebsocketConnection* connection, 
                              << "\"executionContextId\":1,\"hash\":\"\""
                              << "}}";
                 std::string evtStr = scriptParsed.str();
-                soup_websocket_connection_send_text(connection, evtStr.c_str());
+                sendText(connection, evtStr);
             }
         }
     }
@@ -624,12 +699,12 @@ void InspectorHTTPServer::handleCDPMessage(SoupWebsocketConnection* connection, 
         // Ack first so frontend does not time out.
         response << "{\"id\":" << messageId << ",\"result\":{}}";
         std::string ackStr = response.str();
-        soup_websocket_connection_send_text(connection, ackStr.c_str());
+        sendText(connection, ackStr);
 
         const char* destroyedEvt =
             "{\"method\":\"Runtime.executionContextDestroyed\","
             "\"params\":{\"executionContextId\":1}}";
-        soup_websocket_connection_send_text(connection, destroyedEvt);
+        sendText(connection, destroyedEvt);
 
         {
             std::lock_guard<std::mutex> lock(m_scriptsMutex);
@@ -647,7 +722,7 @@ void InspectorHTTPServer::handleCDPMessage(SoupWebsocketConnection* connection, 
         const char* createdEvt =
             "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{"
             "\"id\":1,\"origin\":\"\",\"name\":\"RDK NativeScript\"}}}";
-        soup_websocket_connection_send_text(connection, createdEvt);
+        sendText(connection, createdEvt);
 
         NativeJSLogger::log(INFO, "InspectorHTTPServer: Page.reload complete\n");
         return;
@@ -734,8 +809,9 @@ void InspectorHTTPServer::handleCDPMessage(SoupWebsocketConnection* connection, 
     }
     
     std::string responseStr = response.str();
-    soup_websocket_connection_send_text(connection, responseStr.c_str());
+    sendText(connection, responseStr);
     
 }
 
 #endif // REMOTE_INSPECTOR_ENABLE
+

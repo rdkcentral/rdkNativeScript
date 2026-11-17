@@ -22,6 +22,8 @@
 #include <errno.h>
 
 #include <algorithm>
+#include <codecvt>
+#include <locale>
 #include <string>
 #include <vector>
 #include <utility>
@@ -72,6 +74,135 @@ JSContextGroupRef globalContextGroup()
 
 JSGlobalContextRef gTopLevelContext = nullptr;
 
+namespace
+{
+JSStringRef makeJSString(const std::string &value)
+{
+    try
+    {
+        std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> converter;
+        const std::u16string utf16 = converter.from_bytes(value);
+        return JSStringCreateWithCharacters(
+            reinterpret_cast<const JSChar *>(utf16.data()), utf16.length());
+    }
+    catch (const std::range_error &)
+    {
+        return JSStringCreateWithUTF8CString("");
+    }
+}
+
+bool valueToString(JSContextRef context, JSValueRef value, std::string &result,
+                   JSValueRef *exception)
+{
+    JSStringRef string = JSValueToStringCopy(context, value, exception);
+    if (!string)
+        return false;
+
+    std::vector<char> buffer(JSStringGetMaximumUTF8CStringSize(string));
+    const std::size_t written = JSStringGetUTF8CString(
+        string, buffer.data(), buffer.size());
+    if (written > 0)
+        result.assign(buffer.data(), written - 1);
+    JSStringRelease(string);
+    return true;
+}
+
+JSValueRef storageError(JSContextRef context, JSValueRef *exception,
+                        const std::string &message)
+{
+    NativeJSLogger::log(ERROR, "NativeJSLocalStorage: %s\n", message.c_str());
+    if (exception)
+    {
+        JSStringRef text = makeJSString(message);
+        JSValueRef argument = JSValueMakeString(context, text);
+        *exception = JSObjectMakeError(context, 1, &argument, nullptr);
+        JSStringRelease(text);
+    }
+    return JSValueMakeUndefined(context);
+}
+
+NativeJSLocalStorage *storageFor(JSObjectRef thisObject)
+{
+    return static_cast<NativeJSLocalStorage *>(JSObjectGetPrivate(thisObject));
+}
+
+JSValueRef localStorageLoad(JSContextRef context, JSObjectRef,
+                            JSObjectRef thisObject, size_t,
+                            const JSValueRef[], JSValueRef *exception)
+{
+    NativeJSLocalStorage *storage = storageFor(thisObject);
+    if (!storage)
+        return storageError(context, exception, "localStorage is unavailable");
+
+    std::string snapshot;
+    std::string error;
+    if (!storage->load(snapshot, error))
+        return storageError(context, exception, error);
+
+    JSStringRef result = makeJSString(snapshot);
+    JSValueRef jsValue = JSValueMakeString(context, result);
+    JSStringRelease(result);
+    return jsValue;
+}
+
+JSValueRef localStorageSave(JSContextRef context, JSObjectRef,
+                            JSObjectRef thisObject, size_t argumentCount,
+                            const JSValueRef arguments[], JSValueRef *exception)
+{
+    NativeJSLocalStorage *storage = storageFor(thisObject);
+    if (!storage)
+        return storageError(context, exception, "localStorage is unavailable");
+
+    if (!argumentCount)
+        return storageError(context, exception, "localStorage snapshot is required");
+
+    std::string snapshot;
+    if (!valueToString(context, arguments[0], snapshot, exception))
+        return JSValueMakeUndefined(context);
+
+    std::string error;
+    if (!storage->save(snapshot, error))
+        return storageError(context, exception, error);
+    return JSValueMakeUndefined(context);
+}
+
+void installLocalStorage(JSContextRef context, NativeJSLocalStorage *storage)
+{
+    static JSClassRef storageClass = [] {
+        JSClassDefinition definition = kJSClassDefinitionEmpty;
+        definition.className = "NativeJSLocalStorage";
+        return JSClassCreate(&definition);
+    }();
+
+    JSObjectRef object = JSObjectMake(context, storageClass, storage);
+    const std::pair<const char *, JSObjectCallAsFunctionCallback> methods[] = {
+        { "load", localStorageLoad },
+        { "save", localStorageSave }
+    };
+
+    for (const auto &method : methods)
+    {
+        JSStringRef name = JSStringCreateWithUTF8CString(method.first);
+        JSObjectRef function = JSObjectMakeFunctionWithCallback(
+            context, name, method.second);
+        JSObjectSetProperty(context, object, name, function,
+                            kJSPropertyAttributeReadOnly |
+                                kJSPropertyAttributeDontDelete,
+                            nullptr);
+        JSStringRelease(name);
+    }
+
+    JSObjectRef global = JSContextGetGlobalObject(context);
+    JSStringRef name = JSStringCreateWithUTF8CString("__nativeLocalStorage");
+    JSObjectSetProperty(context, global, name, object,
+                        kJSPropertyAttributeReadOnly |
+                            kJSPropertyAttributeDontDelete |
+                            kJSPropertyAttributeDontEnum,
+                        nullptr);
+    JSStringRelease(name);
+}
+}
+
 JavaScriptContext::JavaScriptContext(JavaScriptContextFeatures& features, std::string url, IJavaScriptEngine* jsEngine):JavaScriptContextBase(features, url, jsEngine)
 {
     rtLogInfo("%s", __FUNCTION__);
@@ -83,14 +214,16 @@ JavaScriptContext::JavaScriptContext(JavaScriptContextFeatures& features, std::s
       gTopLevelContext = mContext;
 
 #ifdef REMOTE_INSPECTOR_ENABLE
+    if (auto* inspector = InspectorHTTPServer::runningInstance()) {
       // Register this context with the web inspector server
-      InspectorHTTPServer::singleton().registerContext(gTopLevelContext,
+    inspector->registerContext(gTopLevelContext,
                                                        "RDK NativeScript",
-                                                       "rdknativescript://main");
+                                                       "rdknativescript://main",
+                                                       [this]() { setNetworkCaptureEnabled(false); });
 
       // Register a reload callback so the inspector's Reload button re-executes
       // the application entry script inside the existing JSC context.
-      InspectorHTTPServer::singleton().setReloadCallback([this]() {
+    inspector->setReloadCallback([this]() {
           if (!mApplicationUrl.empty()) {
               rtLogInfo("Web Inspector: Reloading application: %s\n", mApplicationUrl.c_str());
               runFile(mApplicationUrl.c_str(), nullptr, true);
@@ -99,6 +232,7 @@ JavaScriptContext::JavaScriptContext(JavaScriptContextFeatures& features, std::s
           }
       });
       rtLogInfo("Web Inspector: Context registered\n");
+    }
 #endif
     }
     registerUtils();
@@ -140,8 +274,10 @@ if (mModuleSettings.enablePlayer)
             JSSynchronousGarbageCollectForDebugging(gTopLevelContext);
         }
 #ifdef REMOTE_INSPECTOR_ENABLE
-        InspectorHTTPServer::singleton().setReloadCallback(nullptr);
-        InspectorHTTPServer::singleton().unregisterContext(gTopLevelContext);
+    if (auto* inspector = InspectorHTTPServer::runningInstance()) {
+        inspector->setReloadCallback(nullptr);
+        inspector->unregisterContext(gTopLevelContext);
+    }
 #endif
         gTopLevelContext = nullptr;
     }
@@ -380,6 +516,8 @@ void JavaScriptContext::processKeyEvent(struct JavaScriptKeyDetails& details, bo
 
 void JavaScriptContext::registerUtils()
 {
+    installLocalStorage(mContext, &mLocalStorage);
+
     m_webSocketBinding = new rtFunctionCallback(rtWebSocketBinding, nullptr);
 #ifdef WS_SERVER_ENABLED
     if (mEnableWebSockerServer)
@@ -591,16 +729,94 @@ if (mModuleSettings.enablePlayer)
     }
 }
 
+
+static std::string jsonEscape(const char* str)
+{
+    std::string out;
+    if (!str) return out;
+    static const char* hex = "0123456789abcdef";
+    for (const unsigned char* p = reinterpret_cast<const unsigned char*>(str); *p; ++p) {
+        switch (*p) {
+            case '"':  out += "\\\""; break;
+            case '\\': out += "\\\\"; break;
+            case '\b': out += "\\b"; break;
+            case '\f': out += "\\f"; break;
+            case '\n': out += "\\n"; break;
+            case '\r': out += "\\r"; break;
+            case '\t': out += "\\t"; break;
+            default:
+                if (*p < 0x20) {
+                    out += "\\u00";
+                    out += hex[(*p >> 4) & 0x0f];
+                    out += hex[*p & 0x0f];
+                } else {
+                    out += static_cast<char>(*p);
+                }
+        }
+    }
+    return out;
+}
+
+static std::string buildNetworkMetricPayload(const NetworkMetrics& net)
+{
+    std::ostringstream params;
+    params << "{\"url\":\"" << jsonEscape(net.url.cString()) << "\"," 
+           << "\"method\":\"" << jsonEscape(net.method.cString()) << "\"," 
+           << "\"statusCode\":" << net.statusCode << ","
+           << "\"headers\":[";
+
+    for (size_t j = 0; j < net.headers.size(); ++j) {
+        if (j) {
+            params << ",";
+        }
+        params << "\"" << jsonEscape(net.headers[j].cString()) << "\"";
+    }
+
+    params << "],\"timeMetricsData\":[";
+    bool firstMetric = true;
+    for (const auto& metric : net.timeMetricsData) {
+        if (!firstMetric) {
+            params << ",";
+        }
+        firstMetric = false;
+
+        const rtString metricKey = metric.first;
+        const rtString metricValue = metric.second.toString();
+        params << "{\"" << jsonEscape(metricKey.cString()) << "\":\""
+               << jsonEscape(metricValue.cString()) << "\"}";
+    }
+
+    params << "]}";
+    return params.str();
+}
+
 void JavaScriptContext::onMetricsData (NetworkMetrics *net)
 {
-   if (!net) {
+    if (!net) {
         rtLogError("onMetricsData: Received null NetworkMetrics structure.");
         return;
     }
-    rtString key = net->url;
-    mNetworkMetricsData->set(key, rtValue((void *)net));
+
+    bool networkCaptureEnabled = false;
+    {
+        std::lock_guard<std::mutex> lock(mNetworkMetricsMutex);
+        networkCaptureEnabled = mNetworkCaptureEnabled;
+    }
+
+    if (!networkCaptureEnabled) {
+        delete net;
+        return;
+    }
+
+    const std::string params = buildNetworkMetricPayload(*net);
+
+    #ifdef REMOTE_INSPECTOR_ENABLE
+    InspectorHTTPServer::singleton().sendNetworkMetric(mContext, params.c_str());
+    #endif
 
     dumpNetworkMetricData(net, this->getUrl());
+    delete net;
+    net = nullptr;
 }
 
 void JavaScriptContext::dumpNetworkMetricData(NetworkMetrics *metrics, std::string appUrl)
@@ -687,4 +903,16 @@ void JavaScriptContext::handleExternalApplication(const std::string& url)
         printf("Got exteranl application set [%s] in id [%d] \n", url.c_str(), mIds);
         mExternalApplicationHandler->runExternalApplication(url, mIds);
     }
+}
+
+void JavaScriptContext::setNetworkCaptureEnabled(bool enabled)
+{
+    std::lock_guard<std::mutex> lock(mNetworkMetricsMutex);
+    mNetworkCaptureEnabled = enabled;
+}
+
+bool JavaScriptContext::isNetworkCaptureEnabled() const
+{
+    std::lock_guard<std::mutex> lock(mNetworkMetricsMutex);
+    return mNetworkCaptureEnabled;
 }

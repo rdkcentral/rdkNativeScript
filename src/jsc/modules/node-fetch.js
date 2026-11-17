@@ -1471,7 +1471,12 @@ function consumeBody() {
 			}
 
       if (!Buffer.isBuffer(chunk)) {
-        chunk = Buffer.from(chunk);
+		  try {
+		    chunk = Buffer.from(chunk);
+		  } catch (e) {
+		    reject(new FetchError(`Invalid response body while trying to fetch ${_this4.url}: unable to convert chunk to Buffer`,'system',e));
+		    return;
+      		}
       }
 
 			if (_this4.size && accumBytes + chunk.length > _this4.size) {
@@ -2577,21 +2582,33 @@ function fetch(url, opts) {
 			clearTimeout(reqTimeout);
 		}
 
-    if (request.timeout) {
-      reqTimeout = setTimeout(function () {
-        reject(new FetchError(`network timeout at: ${request.url}`, 'request-timeout'));
-        finalize();
-      }, request.timeout);
-    }
+		if (request.timeout) {
+		  const startTimeout = function () {
+		    if (reqTimeout) {
+		      return;
+		    }
+		    reqTimeout = setTimeout(function () {
+		      reject(new FetchError(`network timeout at: ${request.url}`,'request-timeout'));
+		      finalize();
+		    }, request.timeout);
+		  };
+		
+		  if (typeof req.once === 'function') {
+		    req.once('socket', startTimeout);
+		
+		    // fallback for runtimes that never emit socket
+		    setTimeout(startTimeout, 0);
+		  } else {
+		    startTimeout();
+		  }
+		}
 
 		req.on('error', function (err) {
-      reject(new FetchError(`request to ${request.url} failed, reason: ${getErrorReason(err)}`, 'system', err));
-
-			if (response && response.body) {
-				destroyStream(response.body, err);
-			}
-
-			finalize();
+		    reject(new FetchError(`request to ${request.url} failed, reason: ${getErrorReason(err)}`,'system',err));
+		    if (response && response.body) {
+		        destroyStream(response.body, err);
+		    }
+		    finalize();
 		});
 
 		fixResponseChunkedTransferBadEnding(req, function (err) {

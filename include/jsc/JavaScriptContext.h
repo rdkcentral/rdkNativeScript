@@ -29,6 +29,7 @@
 #include <utility>
 #include <rtValue.h>
 #include <rtObject.h>
+#include <NativeJSLocalStorage.h>
 
 #include <JavaScriptCore/JavaScript.h>
 #include <JavaScriptContextBase.h>
@@ -83,6 +84,8 @@ class JavaScriptContext: public JavaScriptContextBase, public NetworkMetricsList
     virtual void onMetricsData (NetworkMetrics *net) override;
     rtMapObject* getNetworkMetricsData() const { return mNetworkMetricsData; }
     void dumpNetworkMetricData(NetworkMetrics *metrics, std::string appUrl);
+    void setNetworkCaptureEnabled(bool enabled);
+    bool isNetworkCaptureEnabled() const;
 
     void setCreateApplicationStartTime(double time);
     void setCreateApplicationEndTime(double time,uint32_t id);
@@ -114,8 +117,11 @@ class JavaScriptContext: public JavaScriptContextBase, public NetworkMetricsList
 #endif
     JSContextGroupRef mContextGroup;
     JSGlobalContextRef mContext;
+    NativeJSLocalStorage mLocalStorage;
     PerformanceMetrics mPerformanceMetrics;
     rtMapObject* mNetworkMetricsData;
+    mutable std::mutex mNetworkMetricsMutex;
+    bool mNetworkCaptureEnabled = false;
     rtRef<rtJSCContextPrivate> mPriv;
     rtRef<rtFunctionCallback> m_webSocketBinding;
     rtRef<rtFunctionCallback> m_webSocketServerBinding;

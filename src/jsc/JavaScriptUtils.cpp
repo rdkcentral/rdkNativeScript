@@ -70,8 +70,6 @@ std::thread::id gMainThreadId;
 
 static std::list<std::function<void ()>> gPendingFun;
 static std::mutex gDispatchMutex;
-static const char* envValue = std::getenv("NATIVEJS_DUMP_NETWORKMETRIC");
-
 void TimeoutQueue::pushTimeouts(const std::vector<TimeoutInfo*>& timerVec)
 {
     if (!timerVec.size())
@@ -163,13 +161,17 @@ void assertIsMainThread()
   assert(std::this_thread::get_id() == gMainThreadId);
 }
 
-  rtHttpRequestEx::rtHttpRequestEx(const rtString& url)
+  rtHttpRequestEx::rtHttpRequestEx(const rtString& url, JavaScriptContext* context)
     : rtHttpRequest(url)
+    , mJscContext(context)
+    , mRequestStartTime(std::chrono::system_clock::now())
   {
   }
 
-  rtHttpRequestEx::rtHttpRequestEx(const rtObjectRef& options)
+  rtHttpRequestEx::rtHttpRequestEx(const rtObjectRef& options, JavaScriptContext* context)
     : rtHttpRequest(options)
+    , mJscContext(context)
+    , mRequestStartTime(std::chrono::system_clock::now())
   {
   }
 
@@ -215,7 +217,7 @@ void assertIsMainThread()
       resp->setHeaders(downloadRequest->headerData(), downloadRequest->headerDataSize());
       resp->setDownloadedData(downloadRequest->downloadedData(), downloadRequest->downloadedDataSize());
 
-      if (mMetricsListener && envValue)
+      if (mMetricsListener && mJscContext && mJscContext->isNetworkCaptureEnabled())
       {
  	rtLogWarn("metriclistener");
         NetworkMetrics *metrics = new NetworkMetrics();
@@ -241,10 +243,25 @@ void assertIsMainThread()
         	}
     	    }
 	}
+      const char *responseHeaderData = downloadRequest->headerData();
+      const size_t responseHeaderSize = downloadRequest->headerDataSize();
+      rtValue responseHeaders;
+      responseHeaders.setString(rtString(responseHeaderData ? responseHeaderData : "",
+                                         responseHeaderSize));
+      metrics->timeMetricsData[rtString("harResponseHeadersRaw")] = responseHeaders;
+      rtValue responseHeaderBytes;
+      responseHeaderBytes.setString(std::to_string(responseHeaderSize).c_str());
+      metrics->timeMetricsData[rtString("harResponseHeadersSizeBytes")] = responseHeaderBytes;
+      rtValue responseBodyBytes;
+      responseBodyBytes.setString(std::to_string(downloadRequest->downloadedDataSize()).c_str());
+      metrics->timeMetricsData[rtString("harResponseBodySizeBytes")] = responseBodyBytes;
+      const auto requestStartTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+          mRequestStartTime.time_since_epoch()).count();
+      rtValue requestStartTime;
+      requestStartTime.setString(std::to_string(requestStartTimeMs).c_str());
+      metrics->timeMetricsData[rtString("requestStartTimeEpochMs")] = requestStartTime;
 
 	mMetricsListener->onMetricsData(metrics);
-	delete metrics;
-	metrics = nullptr;
       }
 
       rtObjectRef protectedRef = resp;
@@ -265,7 +282,6 @@ rtDefineObject(rtHttpRequestEx, rtHttpRequest);
 
 rtError rtHttpGetBinding(int numArgs, const rtValue* args, rtValue* result, void* context)
 {
-  UNUSED_PARAM(context);
   if (numArgs < 1) {
     rtLogError("%s: invalid args", __FUNCTION__);
     return RT_ERROR_INVALID_ARG;
@@ -274,11 +290,12 @@ rtError rtHttpGetBinding(int numArgs, const rtValue* args, rtValue* result, void
   JavaScriptContext* jscContext = (JavaScriptContext*)context;
   if (!jscContext) {
     rtLogError("context is null!");
+    return RT_FAIL;
   }
 
   rtHttpRequest* req;
   if (args[0].getType() == RT_stringType) {
-    req = new rtHttpRequestEx(args[0].toString());
+    req = new rtHttpRequestEx(args[0].toString(), jscContext);
   }
   else {
     if (args[0].getType() != RT_objectType) {
@@ -286,7 +303,7 @@ rtError rtHttpGetBinding(int numArgs, const rtValue* args, rtValue* result, void
       return RT_ERROR_INVALID_ARG;
     }
     rtLogInfo("new rtHttpRequest");
-    req = new rtHttpRequestEx(args[0].toObject());
+    req = new rtHttpRequestEx(args[0].toObject(), jscContext);
   }
 
   if (numArgs > 1 && args[1].getType() == RT_functionType) {
@@ -722,79 +739,13 @@ rtError rtJSRuntimeDownloadMetrics(int numArgs, const rtValue* args, rtValue* re
 {
   JavaScriptContext* jscContext = (JavaScriptContext*)context;
   if (jscContext == nullptr) {
-    rtLogError("context null");
+    rtLogError("%s: context null", __FUNCTION__);
     return RT_FAIL;
   }
 
-  rtMapObject* map = jscContext->getNetworkMetricsData();
-  if (!map) {
-    return RT_FAIL;
-  }
-
-  rtArrayObject* netMetricsArray = new rtArrayObject();
-
-  rtValue keys;
-  if (map->Get("allKeys", &keys) != RT_OK) {
-    rtLogWarn("Could not retrieve url for network metrics data.");
-    delete netMetricsArray;
-    return RT_FAIL;
-  }
-  rtObjectRef objRef = keys.toObject();
-  rtArrayObject* keysArray = static_cast<rtArrayObject*>(objRef.getPtr());
-
-  if (!keysArray) {
-    rtLogWarn("No url found in the network metrics data.");
-    delete netMetricsArray;
-    return RT_FAIL;
-  }
-
-  size_t count = keysArray->length();
-
-  for (size_t i = 0; i < count; ++i) {
-    rtValue keyValue;
-    rtString key = keysArray->get<rtString>(i);
-
-    keysArray->Get(key, &keyValue);
-    rtValue storedValue;
-    if (map->Get(key.cString(), &storedValue) == RT_OK) {
-      NetworkMetrics* metrics = (NetworkMetrics*)storedValue.toVoidPtr();
-      if (!metrics) {
-        rtLogError("Failed to cast stored value to NetworkMetrics structure for url: %s.", key.cString());
-        delete netMetricsArray;
-        return RT_FAIL;
-      }
-      rtMapObject* metricsMap = new rtMapObject();
-      metricsMap->set("url", metrics->url);
-      metricsMap->set("method", metrics->method);
-
-      rtArrayObject* headersArray = new rtArrayObject();
-      for (const auto& header : metrics->headers) {
-        headersArray->pushBack(rtValue(header));
-      }
-      metricsMap->set("headers", rtValue(headersArray));
-      delete headersArray;
-
-      rtArrayObject* timeMetricsArray = new rtArrayObject();
-      for (const auto& metric : metrics->timeMetricsData) {
-        rtObjectRef timeMetricObj = new rtMapObject();
-        timeMetricObj->Set(metric.first.cString(), &metric.second);
-        timeMetricsArray->pushBack(rtValue(timeMetricObj));
-	delete timeMetricObj;
-	timeMetricObj = nullptr;
-      }
-
-      metricsMap->set("timeMetricsData", rtValue(timeMetricsArray));
-      delete timeMetricsArray;
-
-      netMetricsArray->pushBack(rtValue(metricsMap));
-    }
-    else {
-      rtLogWarn("Url not found in network metrics data: %s", key.cString());
-    }
-  }
-
-  *result = rtValue(netMetricsArray);
-
+  bool enabled = (numArgs >= 1) ? args[0].toBool() : false;
+  jscContext->setNetworkCaptureEnabled(enabled);
+  if (result) *result = true;
   return RT_OK;
 }
 
