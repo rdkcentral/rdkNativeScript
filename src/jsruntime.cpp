@@ -69,6 +69,8 @@ int main(int argc, char* argv[])
         NativeJSLogger::log(WARN, "Pass the URL to run\n");
 	return -1;
     }
+	
+	NativeJSLogger::log(INFO, "main() function\n");
 
     bool runServer = false;
 
