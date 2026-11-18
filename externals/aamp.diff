@@ -1,0 +1,80 @@
+/**
+* If not stated otherwise in this file or this component's LICENSE
+* file the following copyright and licenses apply:
+*
+* Copyright 2024 RDK Management
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+* http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+**/
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 900f60b05..57ac3da3a 100755
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -111,9 +111,10 @@ endif()
+ 
+ if(CMAKE_WPEWEBKIT_JSBINDINGS)
+ 	message("CMAKE_WPEWEBKIT_JSBINDINGS is set, Finding JavaScriptCore")
+-	pkg_search_module(PC_WPE_WEBKIT wpe-webkit-deprecated-0.1 wpe-webkit-1.0 wpe-webkit-1.1)
+-        find_path (JSC_INCDIR JavaScriptCore/JavaScript.h HINTS ${PC_WPE_WEBKIT_INCLUDEDIR} ${PC_WPE_WEBKIT_INCLUDE_DIRS})
+-        include_directories(${JSC_INCDIR})
++#	pkg_search_module(PC_WPE_WEBKIT wpe-webkit-deprecated-0.1 wpe-webkit-1.0 wpe-webkit-1.1)
++#        find_path (JSC_INCDIR JavaScriptCore/JavaScript.h HINTS ${PC_WPE_WEBKIT_INCLUDEDIR} ${PC_WPE_WEBKIT_INCLUDE_DIRS})
++#        include_directories(${JSC_INCDIR})
++	include_directories($ENV{EXT_INSTALL_PATH})
+ else()
+ 	message("CMAKE_WPEWEBKIT_JSBINDINGS not set")
+ endif()
+@@ -658,7 +659,7 @@ endif()
+ if(CMAKE_WPEWEBKIT_JSBINDINGS)
+ 	message("CMAKE_WPEWEBKIT_JSBINDINGS set, creating jsbinding library")
+     include_directories(${CMAKE_CURRENT_SOURCE_DIR} jsbindings jsbindings/PersistentWatermark)
+-	add_subdirectory(test)
++#	add_subdirectory(test)
+     set(JSBINDINGS_STD_SOURCES jsbindings/jscontroller-jsbindings.cpp jsbindings/jsbindings.cpp jsbindings/jsutils.cpp jsbindings/jsmediaplayer.cpp jsbindings/jseventlistener.cpp jsbindings/jsevent.cpp jsbindings/PersistentWatermark/PersistentWatermark.cpp)
+     if(CMAKE_WPEWEBKIT_WATERMARK_JSBINDINGS)
+         add_library(aampjsbindings SHARED ${JSBINDINGS_STD_SOURCES} jsbindings/PersistentWatermark/PersistentWatermarkDisplaySequencer.cpp  jsbindings/PersistentWatermark/PersistentWatermarkEventHandler.cpp jsbindings/PersistentWatermark/PersistentWatermarkPluginAccess.cpp jsbindings/PersistentWatermark/PersistentWatermarkStorage.cpp)
+@@ -686,7 +687,8 @@ if(CMAKE_AUXILIARY_AUDIO_ENABLED)
+ endif()
+ 
+ message("LIB_AAMP_DEPENDS is ${LIBAAMP_DEPENDS}")
+-target_link_libraries(aamp ${LIBAAMP_DEPENDS} ${LIBAAMP_MOCK_DEPENDS})
++#target_link_libraries(aamp ${LIBAAMP_DEPENDS} ${LIBAAMP_MOCK_DEPENDS})
++target_link_libraries(aamp -L$ENV{EXT_INSTALL_PATH}/lib ${LIBAAMP_DEPENDS} ${LIBAAMP_MOCK_DEPENDS})
+ 
+ if (CMAKE_WPEFRAMEWORK_REQUIRED)
+ 	set(LIBAAMP_DEFINES "${LIBAAMP_DEFINES} -DUSE_CPP_THUNDER_PLUGIN_ACCESS")
+@@ -728,7 +730,9 @@ set(GSTTESTHARNESS_SOURCES test/gstTestHarness/gst-port.cpp
+ 						   test/gstTestHarness/string_utils.cpp)
+ 
+ add_executable(gstTestHarness ${GSTTESTHARNESS_HEADERS} ${GSTTESTHARNESS_SOURCES})
+-target_link_libraries(gstTestHarness ${GSTTESTHARNESS_DEPENDS} "-lreadline")
++#target_link_libraries(gstTestHarness ${GSTTESTHARNESS_DEPENDS} "-lreadline")
++target_link_libraries(gstTestHarness ${GSTTESTHARNESS_DEPENDS} "-L$ENV{EXT_INSTALL_PATH}/lib -lreadline")
++
+ # XCode schema target
+ xcode_define_schema(gstTestHarness)
+ 
+@@ -777,9 +781,9 @@ if (UTEST_ENABLED)
+ 	add_subdirectory(test/utests EXCLUDE_FROM_ALL)
+ endif()
+ 
+-if (CMAKE_PLATFORM_UBUNTU OR CMAKE_SYSTEM_NAME STREQUAL Darwin )
+-    install(FILES build/aampcli-run-subtec.sh DESTINATION bin)
+-endif()
++#if (CMAKE_PLATFORM_UBUNTU OR CMAKE_SYSTEM_NAME STREQUAL Darwin )
++#    install(FILES build/aampcli-run-subtec.sh DESTINATION bin)
++#endif()
+ 
+ message("LIBAAMP_DEFINES is ${LIBAAMP_DEFINES}")
+ message("LIBAAMP_SOURCES is ${LIBAAMP_SOURCES}")
